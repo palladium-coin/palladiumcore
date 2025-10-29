@@ -17,7 +17,7 @@ Palladium Core is a decentralized digital currency forked from Bitcoin, specific
 
 ### Installation
 
-1. **Download and Install**: Get the latest Palladium Core wallet from our [releases page](https://github.com/davide3011/palladiumcore/releases/tag/v1.3.0)
+1. **Download and Install**: Get the latest Palladium Core wallet from our [releases page](https://github.com/palladium-coin/palladiumcore/releases)
 2. **Configure**: Create the `palladium.conf` configuration file (see [Configuration](#advanced-configuration) section below)
 3. **Launch the Core**: Start the Palladium Core application (includes automatic network synchronization)
 
@@ -82,30 +82,51 @@ zmqpubhashblock=tcp://0.0.0.0:28332
 
 ## Building from Source
 
-### Dependencies
+### Docker Build (Recommended)
 
-- **C++ Compiler**: GCC 7+ or Clang 5+
-- **Build Tools**: Make, Autotools
-- **Libraries**: Boost, OpenSSL, libevent, ZeroMQ
+For a simpler and more reproducible build process, you can use our Docker-based build system. This method provides a consistent build environment and eliminates dependency management issues.
 
-### Build Instructions
+**Requirements:**
+- Linux AMD x86_64 system with Ubuntu 20.04 or newer
+- Docker installed and running
+
+For detailed instructions and configuration options, see the [docker-build](docker-build/) directory.
+
+### Manual Build Instructions
 
 ```bash
-# Clone repository
-git clone https://github.com/palladium-coin/palladiumcore.git
-cd palladiumcore
+# Step 1: Install build dependencies
+sudo apt-get update
+sudo apt-get install build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 curl
 
-# Generate build files
+# Step 2: Build with depends (manages everything automatically)
+cd depends
+make HOST=x86_64-pc-linux-gnu -j$(nproc)
+cd ..
+
+# Step 3: Configure and build
 ./autogen.sh
-
-# Configure build
-./configure
-
-# Compile
+./configure --prefix=$PWD/depends/x86_64-pc-linux-gnu \
+            --enable-glibc-back-compat \
+            --enable-reduce-exports \
+            LDFLAGS=-static-libstdc++
 make -j$(nproc)
 
-# Install (optional)
-sudo make install
+# Step 4: Verify binaries are built
+ls -la src/palladiumd src/palladium-cli src/palladium-tx src/palladium-wallet src/qt/palladium-qt
+
+# Step 5: Test that binaries work
+./src/palladiumd --version
+./src/palladium-cli --version
+./src/palladium-tx --version
+./src/palladium-wallet --version
+./src/qt/palladium-qt --version
+```
+
+**Runtime Dependencies (for GUI):**
+```bash
+sudo apt-get update
+sudo apt-get install libqt5gui5 libqt5widgets5 libqt5core5a
 ```
 
 ## Contributing
