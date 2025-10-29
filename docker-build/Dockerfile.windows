@@ -1,0 +1,18 @@
+FROM ubuntu:20.04
+
+ENV DEBIAN_FRONTEND=noninteractive TZ=UTC
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential libtool autotools-dev automake autoconf pkg-config \
+    bsdmainutils python3 curl ca-certificates git unzip zip file rsync \
+    g++-mingw-w64-x86-64 binutils-mingw-w64-x86-64 nsis \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix || true && \
+    update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix || true
+
+WORKDIR /src
+
+COPY . /src
+
+CMD ["/bin/bash"]
