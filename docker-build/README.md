@@ -64,6 +64,77 @@ docker run --rm -it -v "$(pwd)/../build/linux-x86_64":/out palladium-builder:lin
 
 **Missing dependencies:** The Dockerfile installs all required build dependencies automatically
 
+## Linux aarch64 Build
+
+### Overview
+
+This build creates Linux aarch64 (ARM64) binaries specifically designed for single board computers like the popular Raspberry Pi and other ARM-based devices. The build process uses cross-compilation in a Docker container:
+
+1. **Builds a Docker image** (`palladium-builder:linux-aarch64-ubuntu20.04`) containing ARM64 cross-compilation toolchain
+2. **Copies the entire repository** into the container during image build
+3. **Cross-compiles for ARM64** using the `depends` system with `aarch64-linux-gnu` target
+4. **Outputs binaries** to a mounted volume for host access
+
+### Quick Start
+
+```bash
+cd docker-build
+chmod +x build-linux-aarch64.sh
+./build-linux-aarch64.sh
+```
+
+ARM64 binaries will be available in `../build/linux-aarch64/` directory.
+
+### Prerequisites
+
+- Docker installed and running ([installation guide](https://docs.docker.com/get-docker/))
+- Sufficient disk space for the build process (at least 12 GB free)
+- Internet connection for downloading dependencies and ARM64 cross-compilation toolchain
+
+### Target Devices
+
+This build is optimized for:
+- **Raspberry Pi 4** and newer models
+- **Raspberry Pi 3** (64-bit mode)
+- Other ARM64-based single board computers
+- ARM64 Linux servers and workstations
+
+### Produced Binaries
+
+The following ARM64 binaries are built and copied to the output directory:
+
+- `palladiumd`: Main daemon
+- `palladium-cli`: Command-line client
+- `palladium-tx`: Transaction utility
+- `palladium-wallet`: Wallet utility
+- `palladium-qt`: GUI application (if Qt dependencies are available)
+
+### Output Directory
+
+Binaries are placed in: `../build/linux-aarch64/` (relative to the docker-build directory)
+
+### Cross-Compilation Details
+
+- **Target Triple**: `aarch64-linux-gnu`
+- **Toolchain**: GCC ARM64 cross-compiler
+- **Dependencies**: Built using the `depends` system for ARM64 target
+- **Configuration**: Uses `CONFIG_SITE` for proper cross-compilation setup
+
+### Troubleshooting
+
+**Permission errors:** The build script automatically handles file permissions using host UID/GID
+
+**Build failed:** Run interactive container for debugging:
+```bash
+docker run --rm -it -v "$(pwd)/../build/linux-aarch64":/out palladium-builder:linux-aarch64-ubuntu20.04 bash
+```
+
+**Cross-compilation issues:** Ensure the ARM64 cross-compilation toolchain is properly installed in the container
+
+**Missing binaries:** Check that the configure script detected the ARM64 target correctly
+
+**Docker build issues:** Ensure Docker has sufficient resources and the daemon is running
+
 ## Windows x86_64 Build
 
 ### Overview
