@@ -94,40 +94,33 @@ For detailed instructions and configuration options, see the [docker-build](dock
 
 ### Manual Build Instructions
 
-```bash
-# Step 1: Install build dependencies
-sudo apt-get update
-sudo apt-get install build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 curl
+## Manual Build Instructions
 
-# Step 2: Build with depends (manages everything automatically)
-cd depends
-make HOST=x86_64-pc-linux-gnu -j$(nproc)
-cd ..
+For detailed manual build instructions specific to your operating system, please refer to the comprehensive documentation available in the `/doc` folder:
 
-# Step 3: Configure and build
-./autogen.sh
-./configure --prefix=$PWD/depends/x86_64-pc-linux-gnu \
-            --enable-glibc-back-compat \
-            --enable-reduce-exports \
-            LDFLAGS=-static-libstdc++
-make -j$(nproc)
+### Platform-Specific Build Guides
 
-# Step 4: Verify binaries are built
-ls -la src/palladiumd src/palladium-cli src/palladium-tx src/palladium-wallet src/qt/palladium-qt
+- **Unix/Linux Systems**: [`doc/build-unix.md`](doc/build-unix.md)
+- **Windows**: [`doc/build-windows.md`](doc/build-windows.md)
+- **macOS**: [`doc/build-osx.md`](doc/build-osx.md)
+- **FreeBSD**: [`doc/build-freebsd.md`](doc/build-freebsd.md)
+- **NetBSD**: [`doc/build-netbsd.md`](doc/build-netbsd.md)
+- **OpenBSD**: [`doc/build-openbsd.md`](doc/build-openbsd.md)
 
-# Step 5: Test that binaries work
-./src/palladiumd --version
-./src/palladium-cli --version
-./src/palladium-tx --version
-./src/palladium-wallet --version
-./src/qt/palladium-qt --version
-```
+### Additional Resources
 
-**Runtime Dependencies (for GUI):**
-```bash
-sudo apt-get update
-sudo apt-get install libqt5gui5 libqt5widgets5 libqt5core5a
-```
+- **Dependencies Overview**: [`doc/dependencies.md`](doc/dependencies.md) - Complete list of build dependencies
+- **Developer Notes**: [`doc/developer-notes.md`](doc/developer-notes.md) - Advanced build configurations and development setup
+- **Gitian Building**: [`doc/gitian-building.md`](doc/gitian-building.md) - Deterministic builds for release binaries
+
+Each platform-specific guide includes:
+- Required dependencies and installation commands
+- Step-by-step build process
+- Configuration options and optimizations
+- Troubleshooting common build issues
+- Platform-specific considerations and best practices
+
+Choose the appropriate guide for your operating system to ensure a successful build process.
 
 ## Contributing
 
