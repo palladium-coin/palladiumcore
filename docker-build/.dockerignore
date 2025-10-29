@@ -1,74 +1,16 @@
-# Build outputs
-out/
+.git
+.gitignore
+docker-build
+build
+dist*
+out
 *.o
 *.a
 *.so
 *.dylib
 *.exe
-
-# Git
-.git/
-.gitignore
-.gitattributes
-
-# Documentation
-*.md
-doc/
-README*
-
-# CI/CD
-.github/
-.travis.yml
-.appveyor.yml
-.cirrus.yml
-
-# IDE and editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Temporary files
-*.tmp
-*.temp
+*.app
 *.log
-
-# Test files
-test/
-src/test/
-src/bench/
-
-# Qt files (if not needed for headless build)
-src/qt/
-
-# Dependencies cache (will be rebuilt)
-depends/built/
-depends/work/
-depends/sources/
-
-# Autotools generated files
-autom4te.cache/
-config.log
-config.status
-configure
-Makefile
-Makefile.in
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-
-# Backup files
-*.bak
-*.backup
+__pycache__
+*.tar*
+*.zip

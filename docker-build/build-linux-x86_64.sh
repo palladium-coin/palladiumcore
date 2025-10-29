@@ -1,35 +1,58 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-IMAGE_NAME="palladium-builder:ubuntu20.04"
+IMAGE_NAME="palladium-builder:linux-x86_64-ubuntu20.04"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-OUT_DIR="${SCRIPT_DIR}/out"
-HOST="x86_64-pc-linux-gnu"
+REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"      
+OUT_DIR="${REPO_DIR}/build/linux-x86_64"
+HOST_TRIPLE="x86_64-pc-linux-gnu"
 
-if ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
-  docker build -t "$IMAGE_NAME" -f "${SCRIPT_DIR}/Dockerfile" "${SCRIPT_DIR}"
-fi
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
 
-mkdir -p "$OUT_DIR"
+echo "[*] Building image including the ENTIRE repository (COPY . /src)..."
 
-docker run --rm \
-  -v "${REPO_DIR}":/src \
+docker build --platform=linux/amd64 \
+  -t "$IMAGE_NAME" \
+  -f "${SCRIPT_DIR}/Dockerfile.linux-x86_64" \
+  "${REPO_DIR}"
+
+mkdir -p "${OUT_DIR}"
+
+echo "[*] Starting container: build entirely inside the container; mounting ONLY the output..."
+docker run --rm --platform=linux/amd64 \
+  -e HOST_UID="${HOST_UID}" -e HOST_GID="${HOST_GID}" \
   -v "${OUT_DIR}":/out \
   "$IMAGE_NAME" \
   bash -c "
     set -euo pipefail
     cd /src
-    cd depends && make HOST=${HOST} -j\$(nproc) && cd ..
+
+    echo '[*] depends...'
+    cd depends && make HOST=${HOST_TRIPLE} -j\$(nproc) && cd ..
+
+    echo '[*] autogen/configure...'
     [[ -x ./autogen.sh ]] && ./autogen.sh
-    ./configure --prefix=\$PWD/depends/${HOST} \
+    [[ -f ./configure ]] || { echo 'configure not found: autogen failed'; exit 1; }
+
+    ./configure --prefix=\$PWD/depends/${HOST_TRIPLE} \
                 --enable-glibc-back-compat \
                 --enable-reduce-exports \
                 LDFLAGS='-static-libstdc++'
+
+    echo '[*] make...'
     make -j\$(nproc)
-    for bin in src/palladiumd src/palladium-cli src/palladium-tx src/palladium-wallet src/qt/palladium-qt; do
-      [[ -f \"\$bin\" ]] && install -m 0755 \"\$bin\" /out/
+
+    echo '[*] copying binaries to /out volume...'
+    mkdir -p /out
+    for b in src/palladiumd src/palladium-cli src/palladium-tx src/palladium-wallet src/qt/palladium-qt; do
+      [[ -f \"\$b\" ]] && install -m 0755 \"\$b\" /out/
     done
+
+    # Align permissions to host user
+    chown -R \${HOST_UID:-0}:\${HOST_GID:-0} /out
+
+    echo '[*] build COMPLETED (everything in container) → /out'
   "
 
-echo "[*] x86_64 binaries copied to ${OUT_DIR}"
+echo "[*] Binaries available in: ${OUT_DIR}"
