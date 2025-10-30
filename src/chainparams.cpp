@@ -220,10 +220,10 @@ public:
 
    
 
-        pchMessageStart[0] = 0x0b;
-        pchMessageStart[1] = 0x11;
-        pchMessageStart[2] = 0x09;
-        pchMessageStart[3] = 0x07;
+        pchMessageStart[0] = 0x0c;
+        pchMessageStart[1] = 0x12;
+        pchMessageStart[2] = 0x0a;
+        pchMessageStart[3] = 0x08;
         nDefaultPort = 12333;
         nPruneAfterHeight = 1000;
         m_assumed_blockchain_size = 1;

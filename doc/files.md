@@ -33,7 +33,7 @@ Windows  | `%APPDATA%\Palladium\` <sup>[\[1\]](#note1)</sup>
 Chain option        | Data directory path
 --------------------|--------------------
 no option (mainnet) | *path_to_datadir*`/`
-`-testnet`          | *path_to_datadir*`/testnet3/`
+`-testnet`          | *path_to_datadir*`/testnet/`
 `-regtest`          | *path_to_datadir*`/regtest/`
 
 ## Data directory layout
