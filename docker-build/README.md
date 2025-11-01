@@ -10,6 +10,13 @@ All builds use:
 - **Host Architecture**: x86_64 (AMD64)
 - **Build Method**: Cross-compilation for target platforms
 
+## Supported Target Architectures
+
+- **Linux x86_64**: Native Linux 64-bit binaries
+- **Linux aarch64**: ARM64 binaries for Raspberry Pi 4+ and modern ARM devices
+- **Linux ARMv7l**: 32-bit ARM binaries for Raspberry Pi 2/3, Pi Zero, and older ARM devices
+- **Windows x86_64**: Windows executables via MinGW-w64 cross-compilation
+
 ## Linux x86_64 Build
 
 ### Overview
@@ -134,6 +141,81 @@ docker run --rm -it -v "$(pwd)/../build/linux-aarch64":/out palladium-builder:li
 **Missing binaries:** Check that the configure script detected the ARM64 target correctly
 
 **Docker build issues:** Ensure Docker has sufficient resources and the daemon is running
+
+## Linux ARMv7l Build
+
+### Overview
+
+This build creates Linux ARMv7l (32-bit ARM) binaries specifically designed for older ARM-based devices and single board computers. The build process uses cross-compilation in a Docker container:
+
+1. **Builds a Docker image** (`palladium-builder:linux-armv7l-ubuntu20.04`) containing ARMv7l cross-compilation toolchain
+2. **Copies the entire repository** into the container during image build
+3. **Cross-compiles for ARMv7l** using the `depends` system with `arm-linux-gnueabihf` target
+4. **Outputs binaries** to a mounted volume for host access
+
+### Quick Start
+
+```bash
+cd docker-build
+chmod +x build-linux-armv7l.sh
+./build-linux-armv7l.sh
+```
+
+ARMv7l binaries will be available in `../build/armv7l/` directory.
+
+### Prerequisites
+
+- Docker installed and running ([installation guide](https://docs.docker.com/get-docker/))
+- Sufficient disk space for the build process (at least 12 GB free)
+- Internet connection for downloading dependencies and ARMv7l cross-compilation toolchain
+
+### Target Devices
+
+This build is optimized for:
+- **Raspberry Pi 2** and **Raspberry Pi 3** (32-bit mode)
+- **Raspberry Pi Zero** and **Zero W**
+- Older ARM-based single board computers (BeagleBone, etc.)
+- ARMv7l Linux embedded devices
+- 32-bit ARM servers and workstations
+
+### Produced Binaries
+
+The following ARMv7l binaries are built and copied to the output directory:
+
+- `palladiumd`: Main daemon
+- `palladium-cli`: Command-line client
+- `palladium-tx`: Transaction utility
+- `palladium-wallet`: Wallet utility
+- `palladium-qt`: GUI application (if Qt dependencies are available)
+
+### Output Directory
+
+Binaries are placed in: `../build/armv7l/` (relative to the docker-build directory)
+
+### Cross-Compilation Details
+
+- **Target Triple**: `arm-linux-gnueabihf`
+- **Toolchain**: GCC ARM cross-compiler with hard-float ABI
+- **Dependencies**: Built using the `depends` system for ARMv7l target
+- **Configuration**: Uses `CONFIG_SITE` for proper cross-compilation setup
+- **ABI**: Hard-float (gnueabihf) for better performance on modern ARM devices
+
+### Troubleshooting
+
+**Permission errors:** The build script automatically handles file permissions using host UID/GID
+
+**Build failed:** Run interactive container for debugging:
+```bash
+docker run --rm -it -v "$(pwd)/../build/armv7l":/out palladium-builder:linux-armv7l-ubuntu20.04 bash
+```
+
+**Cross-compilation issues:** Ensure the ARM cross-compilation toolchain is properly installed in the container
+
+**Missing binaries:** Check that the configure script detected the ARMv7l target correctly
+
+**Docker build issues:** Ensure Docker has sufficient resources and the daemon is running
+
+**Performance considerations:** ARMv7l builds may take longer to execute on target devices compared to ARM64 builds
 
 ## Windows x86_64 Build
 
