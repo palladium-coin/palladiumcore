@@ -101,10 +101,23 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
             qApp->setStyleSheet(ts.readAll());
             f.close();
         }
-        // Wichtig: Den Haken im Menü setzen!
-        if(themeAction) {
-             themeAction->setChecked(true);
-        }
+        
+        // Palette setzen
+        QPalette darkPalette;
+        darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::WindowText, Qt::white);
+        darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
+        darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
+        darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+        darkPalette.setColor(QPalette::Text, Qt::white);
+        darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::ButtonText, Qt::white);
+        darkPalette.setColor(QPalette::BrightText, Qt::red);
+        darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
+        darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+        darkPalette.setColor(QPalette::HighlightedText, Qt::black);
+        qApp->setPalette(darkPalette);
     }
 
     //QSettings settings;
@@ -122,21 +135,33 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
 
     rpcConsole = new RPCConsole(node, _platformStyle, nullptr);
     helpMessageDialog = new HelpMessageDialog(node, this, false);
+
+    // --- UPDATE CHECKER LAYOUT SETUP ---
+    QWidget* mainContainer = new QWidget(this);
+    QVBoxLayout* mainLayout = new QVBoxLayout(mainContainer);
+    mainLayout->setContentsMargins(0,0,0,0);
+    mainLayout->setSpacing(0);
+
+    updateAlertWidget = new QWidget(mainContainer);
+    updateAlertWidget->setVisible(false);
+    mainLayout->addWidget(updateAlertWidget);
+
 #ifdef ENABLE_WALLET
     if(enableWallet)
     {
         /** Create wallet frame and make it the central widget */
         walletFrame = new WalletFrame(_platformStyle, this);
-        setCentralWidget(walletFrame);
+        mainLayout->addWidget(walletFrame);
     } else
 #endif // ENABLE_WALLET
     {
         /* When compiled without wallet or -disablewallet is provided,
          * the central widget is the rpc console.
          */
-        setCentralWidget(rpcConsole);
+        mainLayout->addWidget(rpcConsole);
         Q_EMIT consoleShown(rpcConsole);
     }
+    setCentralWidget(mainContainer);
 
     // Accept D&D of URIs
     setAcceptDrops(true);
@@ -144,6 +169,10 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
     // Create actions for the toolbar, menu bar and tray/dock icon
     // Needs walletFrame to be initialized
     createActions();
+
+    if (isDark && themeAction) {
+        themeAction->setChecked(true);
+    }
 
     // Create application menu bar
     createMenuBar();
@@ -228,6 +257,9 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
     });
 
     modalOverlay = new ModalOverlay(enableWallet, this->centralWidget());
+    if (themeAction->isChecked()) {
+        modalOverlay->setStyleSheet("background-color: #2b2b2b; color: white;");
+    }
     connect(labelBlocksIcon, &GUIUtil::ClickableLabel::clicked, this, &PalladiumGUI::showModalOverlay);
     connect(progressBar, &GUIUtil::ClickableProgressBar::clicked, this, &PalladiumGUI::showModalOverlay);
 #ifdef ENABLE_WALLET
@@ -244,16 +276,7 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
     networkManager = new QNetworkAccessManager(this);
     connect(networkManager, &QNetworkAccessManager::finished, this, &PalladiumGUI::onUpdateResult);
     
-    updateAlertWidget = new QWidget(this);
-    updateAlertWidget->setVisible(false); 
-    
-    // Versuche das Widget oben im Layout des zentralen Widgets einzufügen
-    if (this->centralWidget() && this->centralWidget()->layout()) {
-        QBoxLayout* layout = qobject_cast<QBoxLayout*>(this->centralWidget()->layout());
-        if (layout) {
-            layout->insertWidget(0, updateAlertWidget);
-        }
-    }
+    // updateAlertWidget is already initialized and added to layout above
 
     // Check beim Start ausführen
     checkUpdate();
@@ -1527,13 +1550,41 @@ void PalladiumGUI::toggleTheme()
             qApp->setStyleSheet(ts.readAll());
             f.close();
         }
+        
+        // Palette setzen für bessere Kompatibilität
+        QPalette darkPalette;
+        darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::WindowText, Qt::white);
+        darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
+        darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
+        darkPalette.setColor(QPalette::ToolTipText, Qt::white);
+        darkPalette.setColor(QPalette::Text, Qt::white);
+        darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
+        darkPalette.setColor(QPalette::ButtonText, Qt::white);
+        darkPalette.setColor(QPalette::BrightText, Qt::red);
+        darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
+        darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
+        darkPalette.setColor(QPalette::HighlightedText, Qt::black);
+        qApp->setPalette(darkPalette);
+
         // 2. Speichern, dass er an ist
         settings.setValue("darkModeEnabled", true);
+        
+        if (modalOverlay) {
+            modalOverlay->setStyleSheet("background-color: #2b2b2b; color: white;");
+        }
     } else {
         // 1. Standard Theme (Weiß)
         qApp->setStyleSheet("");
+        qApp->setPalette(style()->standardPalette());
+        
         // 2. Speichern, dass er aus ist
         settings.setValue("darkModeEnabled", false);
+        
+        if (modalOverlay) {
+            modalOverlay->setStyleSheet("");
+        }
     }
 }
 
@@ -1566,6 +1617,9 @@ void PalladiumGUI::onUpdateResult(QNetworkReply* reply)
 
         // Aktuelle Client Version holen
         QString currentVersionStr = QString::fromStdString(FormatFullVersion());
+        if(currentVersionStr.startsWith("v")) {
+            currentVersionStr.remove(0, 1);
+        }
         // Bereinige currentVersionStr falls nötig, FormatFullVersion gibt oft sowas wie "1.0.0-beta" zurück
 
         // Einfacher String Vergleich oder QVersionNumber (besser)
@@ -1596,7 +1650,13 @@ void PalladiumGUI::onUpdateResult(QNetworkReply* reply)
                 
                 QPushButton *btn = new QPushButton(tr("Download"), updateAlertWidget);
                 btn->setStyleSheet("background-color: white; color: #d9534f; font-weight: bold; border-radius: 3px; padding: 3px 10px;");
-                connect(btn, &QPushButton::clicked, this, &PalladiumGUI::openUpdateLink);
+                
+                QString url = latestVersionUrl;
+                connect(btn, &QPushButton::clicked, [this, url]() {
+                    if(!QDesktopServices::openUrl(QUrl(url))) {
+                        QMessageBox::information(this, tr("Update Available"), tr("Please visit: %1").arg(url));
+                    }
+                });
                 
                 QPushButton *btnClose = new QPushButton("X", updateAlertWidget);
                 btnClose->setFlat(true);

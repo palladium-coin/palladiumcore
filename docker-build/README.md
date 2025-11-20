@@ -6,6 +6,26 @@
 - **Docker**: Installed and running ([installation guide](https://docs.docker.com/get-docker/))
 - **Disk Space**: At least 15 GB free
 
+## Unified Build Menu (Recommended)
+
+The easiest way to build binaries for one or multiple platforms is using the interactive menu script.
+
+### Usage
+
+```bash
+cd docker-build
+./build-menu.sh
+```
+
+You will be prompted to select the target platforms:
+- `1`: Linux x86_64
+- `2`: Linux aarch64
+- `3`: Linux ARMv7l
+- `4`: Windows x86_64
+- `5`: Build ALL targets
+
+You can also select multiple targets by separating them with spaces (e.g., `1 4`).
+
 ## Linux x86_64
 
 Creates native Linux 64-bit binaries using a Docker container based on Ubuntu 20.04.
