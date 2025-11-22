@@ -567,7 +567,7 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     if (ChainActive().Height() < 350000) {
         for (const CTxOut& txout : tx.vout) {
             if (txout.scriptPubKey.IsUnspendable() && txout.scriptPubKey.size() > 83) {
-                return state.DoS(0, false, TxValidationResult::TX_NOT_STANDARD, "bad-txns-oversize-opreturn-prefork");
+                return state.Invalid(TxValidationResult::TX_NOT_STANDARD, "bad-txns-oversize-opreturn-prefork");
             }
         }
     }
