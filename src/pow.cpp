@@ -28,6 +28,20 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     if (params.fPowAllowMinDifficultyBlocks && pindexLast->nHeight >= 0)
         return LwmaCalculateNextWorkRequired(pindexLast, params);
 
+    // Palladium: Hard Fork at 350,000 for fast difficulty adjustment
+    if (pindexLast->nHeight + 1 >= 350000) {
+        int64_t nIntervalNew = 60;
+        if ((pindexLast->nHeight + 1) % nIntervalNew != 0)
+            return pindexLast->nBits;
+
+        int nHeightFirst = pindexLast->nHeight - (nIntervalNew - 1);
+        assert(nHeightFirst >= 0);
+        const CBlockIndex* pindexFirst = pindexLast->GetAncestor(nHeightFirst);
+        assert(pindexFirst);
+
+        return CalculateNextWorkRequired(pindexLast, pindexFirst->GetBlockTime(), params);
+    }
+
     if (pindexLast->nHeight >= 29000)
         return LwmaCalculateNextWorkRequired(pindexLast, params);
 
@@ -110,19 +124,25 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
     if (params.fPowNoRetargeting)
         return pindexLast->nBits;
 
+    // Palladium: Hard Fork at 350,000 for fast difficulty adjustment
+    int64_t nTargetTimespan = params.nPowTargetTimespan;
+    if (pindexLast->nHeight + 1 >= 350000) {
+        nTargetTimespan = 7200; // 60 blocks * 120 seconds
+    }
+
     // Limit adjustment step
     int64_t nActualTimespan = pindexLast->GetBlockTime() - nFirstBlockTime;
-    if (nActualTimespan < params.nPowTargetTimespan/4)
-        nActualTimespan = params.nPowTargetTimespan/4;
-    if (nActualTimespan > params.nPowTargetTimespan*4)
-        nActualTimespan = params.nPowTargetTimespan*4;
+    if (nActualTimespan < nTargetTimespan/4)
+        nActualTimespan = nTargetTimespan/4;
+    if (nActualTimespan > nTargetTimespan*4)
+        nActualTimespan = nTargetTimespan*4;
 
     // Retarget
     const arith_uint256 bnPowLimit = UintToArith256(params.powLimit);
     arith_uint256 bnNew;
     bnNew.SetCompact(pindexLast->nBits);
     bnNew *= nActualTimespan;
-    bnNew /= params.nPowTargetTimespan;
+    bnNew /= nTargetTimespan;
 
     if (bnNew > bnPowLimit)
         bnNew = bnPowLimit;
