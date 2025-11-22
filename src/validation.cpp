@@ -563,6 +563,15 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     if (fRequireStandard && !IsStandardTx(tx, reason))
         return state.Invalid(TxValidationResult::TX_NOT_STANDARD, reason);
 
+    // Check OP_RETURN size based on activation height
+    if (ChainActive().Height() < 350000) {
+        for (const CTxOut& txout : tx.vout) {
+            if (txout.scriptPubKey.IsUnspendable() && txout.scriptPubKey.size() > 83) {
+                return state.DoS(0, false, TxValidationResult::TX_NOT_STANDARD, "bad-txns-oversize-opreturn-prefork");
+            }
+        }
+    }
+
     // Do not work on transactions that are too small.
     // A transaction with 1 segwit input and 1 P2WPHK output has non-witness size of 82 bytes.
     // Transactions smaller than this are not relayed to mitigate CVE-2017-12842 by not relaying
