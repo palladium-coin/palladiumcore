@@ -81,8 +81,8 @@ std::string FormatFullVersion()
 {
     // Display a simplified semantic version: omit trailing ".0" and git suffix
     // by reusing FormatVersion on the aggregated CLIENT_VERSION.
-    // This yields e.g. "v1.4.3" when CLIENT_VERSION_BUILD == 0,
-    // or "v1.4.3.1" if a non-zero build number is used.
+    // This yields e.g. "v1.5.0" when CLIENT_VERSION_BUILD == 0,
+    // or "v1.5.0.1" if a non-zero build number is used.
     return std::string("v") + FormatVersion(CLIENT_VERSION);
 }
 
