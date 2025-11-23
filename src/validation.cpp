@@ -564,7 +564,7 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
         return state.Invalid(TxValidationResult::TX_NOT_STANDARD, reason);
 
     // Check OP_RETURN size based on activation height
-    if (ChainActive().Height() < 340000) {
+    if (ChainActive().Height() < Params().GetConsensus().nResilienceForkHeight) {
         for (const CTxOut& txout : tx.vout) {
             if (txout.scriptPubKey.IsUnspendable() && txout.scriptPubKey.size() > 83) {
                 return state.Invalid(TxValidationResult::TX_NOT_STANDARD, "bad-txns-oversize-opreturn-prefork");
