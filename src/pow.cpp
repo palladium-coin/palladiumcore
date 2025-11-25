@@ -5,6 +5,7 @@
 
 #include <pow.h>
 
+#include <chainparams.h>
 #include <arith_uint256.h>
 #include <chain.h>
 #include <primitives/block.h>
@@ -29,7 +30,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         return LwmaCalculateNextWorkRequired(pindexLast, params);
 
     // Palladium: Hard Fork at 350,000 for fast difficulty adjustment
-    if (pindexLast->nHeight + 1 >= 340000) {
+    if (pindexLast->nHeight + 1 >= params.nResilienceForkHeight) {
         int64_t nIntervalNew = 60;
         if ((pindexLast->nHeight + 1) % nIntervalNew != 0)
             return pindexLast->nBits;

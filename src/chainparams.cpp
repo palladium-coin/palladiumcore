@@ -65,6 +65,7 @@ public:
     CMainParams() {
         strNetworkID = CBaseChainParams::MAIN;
         consensus.nSubsidyHalvingInterval = 210000;
+        consensus.nResilienceForkHeight = 340000;
 
         consensus.BIP16Exception = uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
         consensus.BIP34Height = 29000;
@@ -184,6 +185,7 @@ public:
     CTestNetParams() {
         strNetworkID = CBaseChainParams::TESTNET;
         consensus.nSubsidyHalvingInterval = 210000;
+        consensus.nResilienceForkHeight = 2000;
        
         consensus.BIP34Height = 1700;
         consensus.BIP34Hash = uint256();
@@ -273,6 +275,7 @@ public:
     explicit CRegTestParams(const ArgsManager& args) {
         strNetworkID =  CBaseChainParams::REGTEST;
         consensus.nSubsidyHalvingInterval = 150;
+        consensus.nResilienceForkHeight = 200;
         consensus.BIP16Exception = uint256();
         consensus.BIP34Height = 0;
         consensus.BIP34Hash = uint256();
