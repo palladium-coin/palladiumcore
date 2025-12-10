@@ -101,23 +101,6 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
             qApp->setStyleSheet(ts.readAll());
             f.close();
         }
-        
-        // Palette setzen
-        QPalette darkPalette;
-        darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::WindowText, Qt::white);
-        darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
-        darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
-        darkPalette.setColor(QPalette::ToolTipText, Qt::white);
-        darkPalette.setColor(QPalette::Text, Qt::white);
-        darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::ButtonText, Qt::white);
-        darkPalette.setColor(QPalette::BrightText, Qt::red);
-        darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
-        darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
-        darkPalette.setColor(QPalette::HighlightedText, Qt::black);
-        qApp->setPalette(darkPalette);
     }
 
     //QSettings settings;
@@ -1550,23 +1533,6 @@ void PalladiumGUI::toggleTheme()
             qApp->setStyleSheet(ts.readAll());
             f.close();
         }
-        
-        // Palette setzen für bessere Kompatibilität
-        QPalette darkPalette;
-        darkPalette.setColor(QPalette::Window, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::WindowText, Qt::white);
-        darkPalette.setColor(QPalette::Base, QColor(25, 25, 25));
-        darkPalette.setColor(QPalette::AlternateBase, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::ToolTipBase, Qt::white);
-        darkPalette.setColor(QPalette::ToolTipText, Qt::white);
-        darkPalette.setColor(QPalette::Text, Qt::white);
-        darkPalette.setColor(QPalette::Button, QColor(53, 53, 53));
-        darkPalette.setColor(QPalette::ButtonText, Qt::white);
-        darkPalette.setColor(QPalette::BrightText, Qt::red);
-        darkPalette.setColor(QPalette::Link, QColor(42, 130, 218));
-        darkPalette.setColor(QPalette::Highlight, QColor(42, 130, 218));
-        darkPalette.setColor(QPalette::HighlightedText, Qt::black);
-        qApp->setPalette(darkPalette);
 
         // 2. Speichern, dass er an ist
         settings.setValue("darkModeEnabled", true);
@@ -1621,20 +1587,13 @@ void PalladiumGUI::onUpdateResult(QNetworkReply* reply)
             currentVersionStr.remove(0, 1);
         }
         // Bereinige currentVersionStr falls nötig, FormatFullVersion gibt oft sowas wie "1.0.0-beta" zurück
+        currentVersionStr = currentVersionStr.split('-').first();
 
-        // Einfacher String Vergleich oder QVersionNumber (besser)
-        // Hier nutzen wir eine einfache Logik: Wenn der String anders ist, nehmen wir an es ist neu.
-        // Für echte Produktion sollte QVersionNumber::fromString genutzt werden.
-        
-        // Beispiel mit QVersionNumber (benötigt Qt 5.6+):
-        /*
+        // Vergleiche Versionen mit QVersionNumber
         QVersionNumber local = QVersionNumber::fromString(currentVersionStr);
         QVersionNumber remote = QVersionNumber::fromString(remoteVersionStr);
-        if (remote > local) { ... }
-        */
 
-        // Wenn du sicher bist, dass die GitHub Version neuer ist:
-        if (remoteVersionStr != currentVersionStr && !remoteVersionStr.isEmpty()) {
+        if (remote > local) {
             
             // Erstelle das Layout für den Warnbalken
             if (!updateAlertWidget->layout()) {
