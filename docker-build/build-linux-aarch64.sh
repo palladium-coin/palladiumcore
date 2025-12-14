@@ -4,7 +4,7 @@ set -euo pipefail
 IMAGE_NAME="palladium-builder:linux-aarch64-ubuntu20.04"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-OUT_DIR="${REPO_DIR}/build/aarch64"
+OUT_DIR="${REPO_DIR}/build/linux-aarch64"
 HOST_TRIPLE="aarch64-linux-gnu"
 
 HOST_UID="$(id -u)"

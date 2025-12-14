@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Default to not building the installer
+BUILD_INSTALLER=false
+
+# Check for --installer flag
+if [[ "$1" == "--installer" ]]; then
+    BUILD_INSTALLER=true
+    echo "[*] Installer build requested."
+fi
+
 IMAGE_NAME="palladium-builder:windows-ubuntu20.04"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -23,6 +32,7 @@ echo "[*] Starting container: build COMPLETELY in container; mount ONLY the outp
 docker run --rm --platform=linux/amd64 \
   -e HOST_UID="${HOST_UID}" -e HOST_GID="${HOST_GID}" \
   -v "${OUT_DIR}":/out \
+  -e BUILD_INSTALLER="${BUILD_INSTALLER}" \
   "$IMAGE_NAME" \
   bash -c "
     set -euo pipefail
@@ -53,6 +63,13 @@ docker run --rm --platform=linux/amd64 \
       src/qt/palladium-qt.exe; do
       [[ -f \"\$b\" ]] && install -m 0755 \"\$b\" /out/
     done
+
+    if [[ "\$BUILD_INSTALLER" == "true" ]]; then
+        echo '[*] make deploy (creating installer)...'
+        make deploy
+        echo '[*] copying installer to /out...'
+        find . -iname 'palladium-*-win64-setup.exe' -print -exec install -m 0644 {} /out/ \;
+    fi
 
     # Align permissions to host user
     chown -R \${HOST_UID:-0}:\${HOST_GID:-0} /out

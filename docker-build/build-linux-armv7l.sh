@@ -4,7 +4,7 @@ set -euo pipefail
 IMAGE_NAME="palladium-builder:linux-armv7l-ubuntu20.04"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-OUT_DIR="${REPO_DIR}/build/armv7l"
+OUT_DIR="${REPO_DIR}/build/linux-armv7l"
 HOST_TRIPLE="arm-linux-gnueabihf"
 
 HOST_UID="$(id -u)"

@@ -79,7 +79,7 @@ cd docker-build                     # Navigate to the docker-build directory
 
 ### Output
 
-Binaries will be available in `../build/armv7l/`:
+Binaries will be available in `../build/linux-armv7l/`:
 - `palladiumd` - Main daemon
 - `palladium-cli` - Command-line client
 - `palladium-tx` - Transaction utility
