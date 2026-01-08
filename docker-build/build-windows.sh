@@ -5,7 +5,7 @@ set -euo pipefail
 BUILD_INSTALLER=false
 
 # Check for --installer flag
-if [[ "$1" == "--installer" ]]; then
+if [[ "${1:-}" == "--installer" ]]; then
     BUILD_INSTALLER=true
     echo "[*] Installer build requested."
 fi
