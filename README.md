@@ -51,6 +51,67 @@ For detailed instructions and configuration options, see the [docker-build](dock
 
 ## Manual Build Instructions
 
+### Quick Build Script (Ubuntu/WSL Only)
+
+**For rapid development and debugging on Ubuntu 20.04 or WSL with Ubuntu 20.04**
+
+We provide a convenient automated build script designed specifically for quick development iterations and GUI testing:
+
+```bash
+./quick-build.sh [OPTIONS]
+```
+
+**⚠️ Important Note**: This script is optimized for **Ubuntu 20.04** (including WSL with Ubuntu 20.04). It may not work correctly on newer Ubuntu versions due to dependency differences.
+
+#### Available Options:
+
+- `--full` or no arguments: Complete build process (dependencies + BerkeleyDB + compilation) [DEFAULT]
+- `--build`: Full build with reconfigure (runs distclean, configure, and make)
+- `--rebuild`: Quick incremental rebuild (clean + make, no reconfigure) - **fastest for testing**
+- `--install-deps`: Install system dependencies only
+- `--install-db`: Install BerkeleyDB 4.8 only
+- `--clean`: Clean build artifacts
+- `--help`: Show help message
+
+#### Usage Examples:
+
+```bash
+# First time setup (installs everything)
+./quick-build.sh
+
+# Full rebuild after configuration changes
+./quick-build.sh --build
+
+# Quick rebuild after code changes (fastest)
+./quick-build.sh --rebuild
+
+# Clean build artifacts
+./quick-build.sh --clean
+```
+
+#### What It Does:
+
+- **Automated dependency installation**: Installs all required build tools, libraries, and Qt5 for GUI
+- **BerkeleyDB 4.8 setup**: Automatically installs BerkeleyDB 4.8 (required for wallet functionality)
+- **Optimized compilation**: Uses all available CPU cores with `make -j$(nproc)`
+- **ccache support**: Automatically enables ccache for faster recompilation
+- **GUI support**: Builds `palladium-qt` for testing the graphical interface
+
+#### Output Binaries:
+
+After successful build, binaries are located at:
+- `src/palladiumd` - Daemon
+- `src/palladium-cli` - Command-line interface
+- `src/qt/palladium-qt` - Qt GUI application
+
+#### Build Workflow Recommendation:
+
+1. **First time**: `./quick-build.sh` (installs everything)
+2. **After code changes**: `./quick-build.sh --rebuild` (fastest, keeps configuration)
+3. **After configure changes**: `./quick-build.sh --build` (reconfigures everything)
+
+---
+
 For detailed manual build instructions specific to your operating system, please refer to the comprehensive documentation available in the `/doc` folder:
 
 ### Platform-Specific Build Guides
