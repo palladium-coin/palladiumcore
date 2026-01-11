@@ -27,6 +27,12 @@ userClosed(false)
         raise();
     }
 
+    // Set opaque background using palette
+    QPalette pal = ui->bgWidget->palette();
+    pal.setColor(QPalette::Window, pal.color(QPalette::Window));
+    ui->bgWidget->setAutoFillBackground(true);
+    ui->bgWidget->setPalette(pal);
+
     blockProcessTime.clear();
     setVisible(false);
     if (!enable_wallet) {
