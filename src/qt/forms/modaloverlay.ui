@@ -54,29 +54,29 @@
         </property>
         <layout class="QVBoxLayout" name="verticalLayoutSub" stretch="1,0,0,0">
          <property name="spacing">
-          <number>0</number>
+          <number>16</number>
          </property>
          <property name="leftMargin">
-          <number>10</number>
+          <number>20</number>
          </property>
          <property name="topMargin">
-          <number>10</number>
+          <number>20</number>
          </property>
          <property name="rightMargin">
-          <number>10</number>
+          <number>20</number>
          </property>
          <property name="bottomMargin">
-          <number>10</number>
+          <number>20</number>
          </property>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayoutIconText" stretch="0,1">
-           <property name="topMargin">
-            <number>20</number>
+           <property name="spacing">
+            <number>16</number>
            </property>
            <item>
             <layout class="QVBoxLayout" name="verticalLayoutIcon">
-             <property name="leftMargin">
-              <number>0</number>
+             <property name="spacing">
+              <number>8</number>
              </property>
              <item>
               <widget class="QPushButton" name="warningIcon">
@@ -119,11 +119,8 @@
            </item>
            <item>
             <layout class="QVBoxLayout" name="verticalLayoutInfoText">
-             <property name="leftMargin">
-              <number>0</number>
-             </property>
-             <property name="topMargin">
-              <number>0</number>
+             <property name="spacing">
+              <number>12</number>
              </property>
              <item>
               <widget class="QLabel" name="infoText">
@@ -165,7 +162,7 @@
                <property name="sizeHint" stdset="0">
                 <size>
                  <width>20</width>
-                 <height>40</height>
+                 <height>20</height>
                 </size>
                </property>
               </spacer>
@@ -182,7 +179,7 @@
            <property name="sizeHint" stdset="0">
             <size>
              <width>20</width>
-             <height>40</height>
+             <height>24</height>
             </size>
            </property>
           </spacer>
@@ -193,13 +190,22 @@
             <enum>QFormLayout::FieldsStayAtSizeHint</enum>
            </property>
            <property name="horizontalSpacing">
-            <number>6</number>
+            <number>16</number>
            </property>
            <property name="verticalSpacing">
-            <number>6</number>
+            <number>10</number>
            </property>
            <property name="topMargin">
-            <number>10</number>
+            <number>0</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
            </property>
            <item row="0" column="0">
             <widget class="QLabel" name="labelNumberOfBlocksLeft">
@@ -262,6 +268,9 @@
            </item>
            <item row="2" column="1">
             <layout class="QHBoxLayout" name="horizontalLayoutSync" stretch="0,1">
+             <property name="spacing">
+              <number>8</number>
+             </property>
              <item>
               <widget class="QLabel" name="percentageProgress">
                <property name="text">
@@ -325,11 +334,20 @@
          </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayoutButtons">
+           <property name="spacing">
+            <number>8</number>
+           </property>
            <property name="leftMargin">
-            <number>10</number>
+            <number>0</number>
            </property>
            <property name="topMargin">
-            <number>10</number>
+            <number>20</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
            </property>
            <item>
             <spacer name="horizontalSpacer">
