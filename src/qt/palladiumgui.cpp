@@ -109,9 +109,6 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
         move(QGuiApplication::primaryScreen()->availableGeometry().center() - frameGeometry().center());
     }
 
-    // Set minimum window size to prevent UI breaking (must be after restoreGeometry)
-    setMinimumSize(850, 550);
-
 #ifdef ENABLE_WALLET
     enableWallet = WalletModel::isWalletEnabled();
 #endif // ENABLE_WALLET
@@ -267,6 +264,10 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
     // Check beim Start ausführen
     checkUpdate();
     // --- ENDE EINFÜGUNG: UPDATE CHECKER ---
+
+    // Set minimum window size to prevent UI breaking
+    // Must be set AFTER all widgets are configured to ensure it's not overridden
+    setMinimumSize(850, 550);
 }
 
 PalladiumGUI::~PalladiumGUI()
