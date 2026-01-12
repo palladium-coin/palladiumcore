@@ -29,12 +29,12 @@ SplashScreen::SplashScreen(interfaces::Node& node, Qt::WindowFlags f, const Netw
     QWidget(nullptr, f), curAlignment(0), m_node(node)
 {
     // set reference point, paddings
-    int paddingRight            = 50;
+    int paddingRight            = 20;
     int paddingTop              = 50;
     int titleVersionVSpace      = 17;
     int titleCopyrightVSpace    = 40;
 
-    float fontFactor            = 1.0;
+    float fontFactor            = 1.3;
     float devicePixelRatio      = 1.0;
     devicePixelRatio = static_cast<QGuiApplication*>(QCoreApplication::instance())->devicePixelRatio();
 
@@ -82,7 +82,16 @@ SplashScreen::SplashScreen(interfaces::Node& node, Qt::WindowFlags f, const Netw
     pixPaint.setFont(QFont(font, 33*fontFactor));
     fm = pixPaint.fontMetrics();
     titleTextWidth  = GUIUtil::TextWidth(fm, titleText);
-    pixPaint.drawText(pixmap.width()/devicePixelRatio-titleTextWidth-paddingRight,paddingTop,titleText);
+
+    // Draw title with shadow effect
+    int titleX = pixmap.width()/devicePixelRatio-titleTextWidth-paddingRight;
+    int titleY = paddingTop;
+    // Shadow (subtle offset with high opacity)
+    pixPaint.setPen(QColor(255, 255, 255, 230));
+    pixPaint.drawText(titleX+1, titleY+1, titleText);
+    // Main text in very dark color for maximum contrast
+    pixPaint.setPen(QColor(0, 0, 0));
+    pixPaint.drawText(titleX, titleY, titleText);
 
     pixPaint.setFont(QFont(font, 15*fontFactor));
 
@@ -93,7 +102,16 @@ SplashScreen::SplashScreen(interfaces::Node& node, Qt::WindowFlags f, const Netw
         pixPaint.setFont(QFont(font, 10*fontFactor));
         titleVersionVSpace -= 5;
     }
-    pixPaint.drawText(pixmap.width()/devicePixelRatio-titleTextWidth-paddingRight+2,paddingTop+titleVersionVSpace,versionText);
+
+    // Draw version with shadow effect
+    int versionX = pixmap.width()/devicePixelRatio-titleTextWidth-paddingRight+2;
+    int versionY = paddingTop+titleVersionVSpace;
+    // Shadow (subtle offset with high opacity)
+    pixPaint.setPen(QColor(255, 255, 255, 230));
+    pixPaint.drawText(versionX+1, versionY+1, versionText);
+    // Main text in very dark color for maximum contrast
+    pixPaint.setPen(QColor(0, 0, 0));
+    pixPaint.drawText(versionX, versionY, versionText);
 
     // draw copyright stuff
     {
@@ -101,6 +119,13 @@ SplashScreen::SplashScreen(interfaces::Node& node, Qt::WindowFlags f, const Netw
         const int x = pixmap.width()/devicePixelRatio-titleTextWidth-paddingRight;
         const int y = paddingTop+titleCopyrightVSpace;
         QRect copyrightRect(x, y, pixmap.width() - x - paddingRight, pixmap.height() - y);
+        // Shadow for copyright (subtle offset with high opacity)
+        pixPaint.setPen(QColor(255, 255, 255, 230));
+        copyrightRect.translate(1, 1);
+        pixPaint.drawText(copyrightRect, Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap, copyrightText);
+        // Main text for copyright in very dark color for maximum contrast
+        copyrightRect.translate(-1, -1);
+        pixPaint.setPen(QColor(0, 0, 0));
         pixPaint.drawText(copyrightRect, Qt::AlignLeft | Qt::AlignTop | Qt::TextWordWrap, copyrightText);
     }
 
