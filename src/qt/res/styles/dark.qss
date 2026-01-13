@@ -528,3 +528,50 @@ QFrame[frameShape="VLine"] {
     border: none;
     border-left: 1px solid #404040;
 }
+
+/* --- SEND COINS ENTRY (Dark Mode Fix) --- */
+/* Payment request warning frame */
+QFrame#SendCoins_UnauthenticatedPaymentRequest {
+    background-color: #3A3A00;  /* Dark yellow/warning background */
+    border: 1px solid #5A5A00;
+    border-radius: 6px;
+    color: #FFFF99;  /* Light yellow text */
+}
+
+QFrame#SendCoins_UnauthenticatedPaymentRequest QLabel {
+    color: #FFFF99;  /* Light yellow text for labels */
+    background-color: transparent;
+}
+
+/* --- PALLADIUM AMOUNT FIELD (Dark Mode Fix) --- */
+/* Fix for Amount field background in Send/Receive pages */
+PalladiumAmountField QAbstractSpinBox {
+    background-color: #1E1E1E;
+    color: #FFFFFF;
+    border: 1px solid #4A4A4A;
+    border-radius: 5px;
+    padding: 6px 8px;
+}
+
+PalladiumAmountField QAbstractSpinBox:hover {
+    border: 1px solid #5A5A5A;
+    background-color: #252525;
+}
+
+PalladiumAmountField QAbstractSpinBox:focus {
+    border: 2px solid #007BFF;
+    background-color: #252525;
+    padding: 5px 7px;
+}
+
+PalladiumAmountField QComboBox {
+    background-color: #1E1E1E;
+    color: #E0E0E0;
+    border: 1px solid #4A4A4A;
+    border-radius: 5px;
+}
+
+PalladiumAmountField QComboBox:hover {
+    border: 1px solid #5A5A5A;
+    background-color: #252525;
+}
