@@ -21,7 +21,7 @@
 #define CLIENT_VERSION_MINOR 5
 
 /* Build revision */
-#define CLIENT_VERSION_REVISION 0
+#define CLIENT_VERSION_REVISION 1
 
 /* Copyright holder(s) before %s replacement */
 #define COPYRIGHT_HOLDERS "The %s developers"
@@ -265,7 +265,7 @@
 #define PACKAGE_NAME "Palladium Core"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "Palladium Core 1.5.0"
+#define PACKAGE_STRING "Palladium Core 1.5.1"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "palladium"
@@ -274,7 +274,7 @@
 #define PACKAGE_URL "https://palladiumblockchain.net/"
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "1.5.0"
+#define PACKAGE_VERSION "1.5.1"
 
 /* Define to necessary symbol if this constant uses a non-standard name on
    your system. */
