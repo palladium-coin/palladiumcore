@@ -267,7 +267,7 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
 
     // Set minimum window size to prevent UI breaking
     // Must be set AFTER all widgets are configured to ensure it's not overridden
-    setMinimumSize(850, 550);
+    setMinimumSize(950, 550);
 }
 
 PalladiumGUI::~PalladiumGUI()
