@@ -59,6 +59,7 @@ src/qt/palladium-qt.includes
 .dirstamp
 .libs
 .*.swp
+*~
 *.*~*
 *.bak
 *.rej
