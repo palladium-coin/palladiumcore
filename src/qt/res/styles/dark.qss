@@ -122,6 +122,8 @@ QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox {
     color: #FFFFFF;
     border: 1px solid #4A4A4A;
     selection-background-color: #007BFF;
+    min-height: 20px;
+    padding: 3px;
 }
 
 QLineEdit:hover, QTextEdit:hover, QPlainTextEdit:hover,
@@ -306,6 +308,8 @@ QComboBox {
     background-color: #1E1E1E;
     color: #E0E0E0;
     border: 1px solid #4A4A4A;
+    min-height: 20px;
+    padding: 3px;
 }
 
 QComboBox:hover {
@@ -432,8 +436,8 @@ PalladiumAmountField QAbstractSpinBox {
     background-color: #1E1E1E;
     color: #FFFFFF;
     border: 1px solid #4A4A4A;
-    min-height: 26px;
-    padding: 2px;
+    min-height: 20px;
+    padding: 3px;
 }
 
 PalladiumAmountField QAbstractSpinBox:hover {
