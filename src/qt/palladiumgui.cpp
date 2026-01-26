@@ -1544,12 +1544,20 @@ void PalladiumGUI::toggleTheme()
         // 1. Standard Theme (Weiß)
         qApp->setStyleSheet("");
         qApp->setPalette(style()->standardPalette());
-        
+
         // 2. Speichern, dass er aus ist
         settings.setValue("darkModeEnabled", false);
-        
+
         if (modalOverlay) {
             modalOverlay->setStyleSheet("");
+        }
+    }
+
+    // Force geometry recalculation for all widgets after theme change
+    // This ensures proper sizing when switching between native (light) and stylesheet (dark) rendering
+    for (QWidget *widget : qApp->allWidgets()) {
+        if (widget && widget->isVisible()) {
+            widget->updateGeometry();
         }
     }
 }

@@ -432,6 +432,8 @@ PalladiumAmountField QAbstractSpinBox {
     background-color: #1E1E1E;
     color: #FFFFFF;
     border: 1px solid #4A4A4A;
+    min-height: 26px;
+    padding: 2px;
 }
 
 PalladiumAmountField QAbstractSpinBox:hover {
@@ -442,6 +444,49 @@ PalladiumAmountField QAbstractSpinBox:hover {
 PalladiumAmountField QAbstractSpinBox:focus {
     border: 1px solid #007BFF;
     background-color: #252525;
+}
+
+/* Fix for spinbox up/down buttons visibility */
+PalladiumAmountField QAbstractSpinBox::up-button,
+PalladiumAmountField QAbstractSpinBox::down-button {
+    background-color: #2A2A2A;
+    border: 1px solid #3A3A3A;
+    width: 16px;
+}
+
+PalladiumAmountField QAbstractSpinBox::up-button:hover,
+PalladiumAmountField QAbstractSpinBox::down-button:hover {
+    background-color: #3A3A3A;
+    border: 1px solid #4A4A4A;
+}
+
+PalladiumAmountField QAbstractSpinBox::up-button:pressed,
+PalladiumAmountField QAbstractSpinBox::down-button:pressed {
+    background-color: #007BFF;
+}
+
+PalladiumAmountField QAbstractSpinBox::up-arrow {
+    image: none;
+    width: 8px;
+    height: 8px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 6px solid #808080;
+}
+
+PalladiumAmountField QAbstractSpinBox::down-arrow {
+    image: none;
+    width: 8px;
+    height: 8px;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 6px solid #808080;
+}
+
+PalladiumAmountField QAbstractSpinBox::up-arrow:hover,
+PalladiumAmountField QAbstractSpinBox::down-arrow:hover {
+    border-bottom-color: #A0A0A0;
+    border-top-color: #A0A0A0;
 }
 
 PalladiumAmountField QComboBox {

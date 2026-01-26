@@ -190,6 +190,19 @@ protected:
         return QAbstractSpinBox::event(event);
     }
 
+    void changeEvent(QEvent *event)
+    {
+        if (event->type() == QEvent::StyleChange ||
+            event->type() == QEvent::PaletteChange ||
+            event->type() == QEvent::FontChange)
+        {
+            // Invalidate cached size hint when theme/style changes
+            cachedMinimumSizeHint = QSize();
+            updateGeometry();
+        }
+        QAbstractSpinBox::changeEvent(event);
+    }
+
     StepEnabled stepEnabled() const
     {
         if (isReadOnly()) // Disable steps when AmountSpinBox is read-only
