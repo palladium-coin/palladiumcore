@@ -50,7 +50,7 @@
       <item>
        <widget class="QWidget" name="contentWidget" native="true">
         <property name="styleSheet">
-         <string notr="true">#contentWidget { border-radius: 6px; }
+         <string notr="true">#contentWidget { border: 1px solid palette(mid); border-radius: 6px; }
 QFormLayout QLabel { min-height: 20px; }</string>
         </property>
         <layout class="QVBoxLayout" name="verticalLayoutSub" stretch="1,0,0,0">

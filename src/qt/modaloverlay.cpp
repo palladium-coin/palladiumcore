@@ -27,9 +27,11 @@ userClosed(false)
         raise();
     }
 
-    // Set opaque background using palette
+    // Set semi-transparent background
     QPalette pal = ui->bgWidget->palette();
-    pal.setColor(QPalette::Window, pal.color(QPalette::Window));
+    QColor bgColor = pal.color(QPalette::Window);
+    bgColor.setAlpha(230);  // Semi-transparent (0-255, where 255 is opaque)
+    pal.setColor(QPalette::Window, bgColor);
     ui->bgWidget->setAutoFillBackground(true);
     ui->bgWidget->setPalette(pal);
 
