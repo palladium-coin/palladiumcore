@@ -9,6 +9,8 @@
 #include <primitives/transaction.h>
 #include <random.h>
 
+#include <stdexcept>
+
 //! target minimum change amount
 static constexpr CAmount MIN_CHANGE{COIN / 100};
 //! final minimum change amount after paying for fees

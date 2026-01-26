@@ -8,8 +8,9 @@
 #include <stdint.h>
 #include <list>
 #include <map>
-#include <mutex>
 #include <memory>
+#include <mutex>
+#include <stdexcept>
 #include <unordered_map>
 
 /**

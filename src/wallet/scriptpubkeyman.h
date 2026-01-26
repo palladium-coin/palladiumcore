@@ -15,6 +15,8 @@
 #include <wallet/walletdb.h>
 #include <wallet/walletutil.h>
 
+#include <stdexcept>
+
 #include <boost/signals2/signal.hpp>
 
 enum class OutputType;

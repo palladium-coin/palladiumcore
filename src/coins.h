@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 #include <functional>
+#include <stdexcept>
 #include <unordered_map>
 
 /**

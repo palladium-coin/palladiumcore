@@ -17,6 +17,7 @@
 #include <univalue.h>
 #include <util/check.h>
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 

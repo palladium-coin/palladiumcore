@@ -27,6 +27,7 @@
 #include <util/system.h>
 #include <util/strencodings.h>
 
+#include <array>
 #include <memory>
 #include <typeinfo>
 

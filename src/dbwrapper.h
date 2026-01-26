@@ -12,6 +12,8 @@
 #include <util/system.h>
 #include <util/strencodings.h>
 
+#include <stdexcept>
+
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
 
