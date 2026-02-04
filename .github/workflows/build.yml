@@ -1,0 +1,55 @@
+name: Build Palladium Core
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 libssl-dev libevent-dev libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-test-dev libboost-thread-dev libdb-dev libdb++-dev libminiupnpc-dev libzmq3-dev libqt5gui5 libqt5core5a libqt5dbus5 qttools5-dev qttools5-dev-tools libprotobuf-dev protobuf-compiler
+    - name: Autogen
+      run: ./autogen.sh
+    - name: Configure
+      run: ./configure --with-gui=qt5
+    - name: Build
+      run: make -j4
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: palladium-linux
+        path: |
+          src/palladiumd
+          src/palladium-cli
+          src/qt/palladium-qt
+
+  build-windows:
+    name: Build Windows
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 g++-mingw-w64-x86-64
+    - name: Autogen
+      run: ./autogen.sh
+    - name: Configure
+      run: ./configure --host=x86_64-w64-mingw32 --disable-bench --disable-tests
+    - name: Build
+      run: make -j4
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: palladium-windows
+        path: |
+          src/palladiumd.exe
+          src/palladium-cli.exe
