@@ -9,7 +9,7 @@ on:
 jobs:
   build-linux:
     name: Build Linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - name: Install dependencies
@@ -18,15 +18,15 @@ jobs:
         sudo apt-get install -y build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 libssl-dev libevent-dev libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-test-dev libboost-thread-dev libminiupnpc-dev libzmq3-dev libqt5gui5 libqt5core5a libqt5dbus5 qttools5-dev qttools5-dev-tools libprotobuf-dev protobuf-compiler
     - name: Build BerkeleyDB 4.8
       run: |
-        ./contrib/install_db4.sh /home/arian/.openclaw/workspace
+        ./contrib/install_db4.sh .
     - name: Autogen
       run: ./autogen.sh
     - name: Configure
       run: |
-        export BDB_PREFIX=/home/arian/.openclaw/workspace/db4
-        ./configure --with-gui=qt5 BDB_LIBS=-L/lib -ldb_cxx-4.8 BDB_CFLAGS=-I/include --disable-tests --disable-bench
+        export BDB_PREFIX="$(pwd)/db4"
+        ./configure --with-gui=qt5 BDB_LIBS="-L${BDB_PREFIX}/lib -ldb_cxx-4.8" BDB_CFLAGS="-I${BDB_PREFIX}/include" --disable-tests --disable-bench
     - name: Build
-      run: make -j4
+      run: make -j$(nproc)
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
@@ -38,19 +38,26 @@ jobs:
 
   build-windows:
     name: Build Windows
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v4
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 g++-mingw-w64-x86-64
+        sudo apt-get install -y build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 g++-mingw-w64-x86-64 curl
+    - name: Build Windows Dependencies
+      run: |
+        # We need a cross-compiled BerkeleyDB for Windows
+        mkdir -p build-win
+        cd build-win
+        ../contrib/install_db4.sh .
     - name: Autogen
       run: ./autogen.sh
     - name: Configure
-      run: ./configure --host=x86_64-w64-mingw32 --disable-wallet --disable-bench --disable-tests
+      run: |
+        ./configure --host=x86_64-w64-mingw32 --disable-wallet --disable-bench --disable-tests --with-gui=no
     - name: Build
-      run: make -j4
+      run: make -j$(nproc)
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
