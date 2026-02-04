@@ -2,7 +2,7 @@ name: Build Palladium Core
 
 on:
   push:
-    branches: [ master, main ]
+    branches: [ master, main, palladium-2026-core ]
   pull_request:
     branches: [ master, main ]
 
@@ -15,11 +15,16 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 libssl-dev libevent-dev libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-test-dev libboost-thread-dev libdb-dev libdb++-dev libminiupnpc-dev libzmq3-dev libqt5gui5 libqt5core5a libqt5dbus5 qttools5-dev qttools5-dev-tools libprotobuf-dev protobuf-compiler
+        sudo apt-get install -y build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 libssl-dev libevent-dev libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-test-dev libboost-thread-dev libminiupnpc-dev libzmq3-dev libqt5gui5 libqt5core5a libqt5dbus5 qttools5-dev qttools5-dev-tools libprotobuf-dev protobuf-compiler
+    - name: Build BerkeleyDB 4.8
+      run: |
+        ./contrib/install_db4.sh /home/arian/.openclaw/workspace
     - name: Autogen
       run: ./autogen.sh
     - name: Configure
-      run: ./configure --with-gui=qt5
+      run: |
+        export BDB_PREFIX=/home/arian/.openclaw/workspace/db4
+        ./configure --with-gui=qt5 BDB_LIBS=-L/lib -ldb_cxx-4.8 BDB_CFLAGS=-I/include --disable-tests --disable-bench
     - name: Build
       run: make -j4
     - name: Upload Artifact
@@ -43,7 +48,7 @@ jobs:
     - name: Autogen
       run: ./autogen.sh
     - name: Configure
-      run: ./configure --host=x86_64-w64-mingw32 --disable-bench --disable-tests
+      run: ./configure --host=x86_64-w64-mingw32 --disable-wallet --disable-bench --disable-tests
     - name: Build
       run: make -j4
     - name: Upload Artifact
