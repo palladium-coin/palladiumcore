@@ -26,6 +26,13 @@ make install # optional
 
 This will build palladium-qt as well, if the dependencies are met.
 
+Ubuntu 24.04 (Noble Numbat) Notes
+---------------------
+For Ubuntu 24.04, ensure all dependencies are installed using:
+
+
+
+
 Dependencies
 ---------------------
 
