@@ -22,6 +22,7 @@ from . import coverage
 from .test_node import TestNode
 from .mininode import NetworkThread
 from .util import (
+    COINBASE_MATURITY,
     MAX_NODES,
     PortSeed,
     assert_equal,
@@ -340,8 +341,9 @@ class PalladiumTestFramework(metaclass=PalladiumTestMetaClass):
         self.start_nodes()
         self.import_deterministic_coinbase_privkeys()
         if not self.setup_clean_chain:
+            target_blocks = max(199, COINBASE_MATURITY + 99)
             for n in self.nodes:
-                assert_equal(n.getblockchaininfo()["blocks"], 199)
+                assert_equal(n.getblockchaininfo()["blocks"], target_blocks)
             # To ensure that all nodes are out of IBD, the most recent block
             # must have a timestamp not too old (see IsInitialBlockDownload()).
             self.log.debug('Generate a block with current time')
@@ -350,7 +352,7 @@ class PalladiumTestFramework(metaclass=PalladiumTestMetaClass):
             for n in self.nodes:
                 n.submitblock(block)
                 chain_info = n.getblockchaininfo()
-                assert_equal(chain_info["blocks"], 200)
+                assert_equal(chain_info["blocks"], target_blocks + 1)
                 assert_equal(chain_info["initialblockdownload"], False)
 
     def import_deterministic_coinbase_privkeys(self):
@@ -566,6 +568,17 @@ class PalladiumTestFramework(metaclass=PalladiumTestMetaClass):
                 )
 
             assert_equal(self.nodes[CACHE_NODE_ID].getblockchaininfo()["blocks"], 199)
+
+            # Ensure enough blocks for 25 mature coinbase outputs per node with
+            # the current COINBASE_MATURITY.
+            target_blocks = COINBASE_MATURITY + 99
+            current_blocks = self.nodes[CACHE_NODE_ID].getblockchaininfo()["blocks"]
+            if current_blocks < target_blocks:
+                self.nodes[CACHE_NODE_ID].generatetoaddress(
+                    nblocks=target_blocks - current_blocks,
+                    address=TestNode.PRIV_KEYS[0].address,
+                )
+                assert_equal(self.nodes[CACHE_NODE_ID].getblockchaininfo()["blocks"], target_blocks)
 
             # Shut it down, and clean up cache directories:
             self.stop_nodes()
