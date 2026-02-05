@@ -8,6 +8,7 @@
 #
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     assert_raises_rpc_error,
 )
@@ -18,7 +19,7 @@ TESTSDIR = os.path.dirname(os.path.realpath(__file__))
 
 class GetblockstatsTest(PalladiumTestFramework):
 
-    start_height = 101
+    start_height = COINBASE_MATURITY + 1
     max_stat_pos = 2
 
     def add_options(self, parser):
@@ -41,7 +42,7 @@ class GetblockstatsTest(PalladiumTestFramework):
     def generate_test_data(self, filename):
         mocktime = 1525107225
         self.nodes[0].setmocktime(mocktime)
-        self.nodes[0].generate(101)
+        self.nodes[0].generate(COINBASE_MATURITY + 1)
 
         address = self.nodes[0].get_deterministic_priv_key().address
         self.nodes[0].sendtoaddress(address=address, amount=10, subtractfeefromamount=True)

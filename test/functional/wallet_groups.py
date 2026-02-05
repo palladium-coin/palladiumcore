@@ -7,6 +7,7 @@
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.messages import CTransaction, FromHex, ToHex
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_approx,
     assert_equal,
 )
@@ -24,7 +25,7 @@ class WalletGroupTest(PalladiumTestFramework):
 
     def run_test(self):
         # Mine some coins
-        self.nodes[0].generate(110)
+        self.nodes[0].generate(COINBASE_MATURITY + 100)
 
         # Get some addresses from the two nodes
         addr1 = [self.nodes[1].getnewaddress() for i in range(3)]

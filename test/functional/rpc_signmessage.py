@@ -20,9 +20,9 @@ class SignMessagesTest(PalladiumTestFramework):
         message = 'This is just a test message'
 
         self.log.info('test signing with priv_key')
-        priv_key = 'cUeKHd5orzT3mz8P9pxyREHfsWtVfgsfDjiZZBcjUBAaGk1BTj7N'
-        address = 'mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB'
-        expected_signature = 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='
+        priv_key = 'eqvQSCrCfT7FNGLg13HGA1oTrU6w2PDHpogeWTAFKqDxn3CGZz9F'
+        address = 'tFk4VQ5iWUXDHRHsk1qLGB5fRu5DuWpFSr'
+        expected_signature = 'IDIxAPhTn+ZnRVK6enKua6H5PtgSGJ8aDrgJ4vSSLll3W/oLT705Q0P5ZoaQoPoKoSTubEYAzjYb7ZATrbj/3Sc='
         signature = self.nodes[0].signmessagewithprivkey(priv_key, message)
         assert_equal(expected_signature, signature)
         assert self.nodes[0].verifymessage(address, signature, message)

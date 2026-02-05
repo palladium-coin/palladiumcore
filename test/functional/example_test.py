@@ -166,15 +166,24 @@ class ExampleTest(PalladiumTestFramework):
 
         height = self.nodes[0].getblockcount()
 
+        def set_block_nbits(block, block_time):
+            self.nodes[0].setmocktime(block_time)
+            block.nTime = block_time
+            block.nBits = int(self.nodes[0].getblocktemplate({"rules": ["segwit"]})["bits"], 16)
+            block.rehash()
+            self.nodes[0].setmocktime(0)
+
         for i in range(10):
             # Use the mininode and blocktools functionality to manually build a block
             # Calling the generate() rpc is easier, but this allows us to exactly
             # control the blocks and transactions.
             block = create_block(self.tip, create_coinbase(height+1), self.block_time)
+            block.nVersion = 4
+            set_block_nbits(block, self.block_time)
             block.solve()
             block_message = msg_block(block)
             # Send message is used to send a P2P message to the node over our P2PInterface
-            self.nodes[0].p2p.send_message(block_message)
+            self.nodes[0].p2p.send_and_ping(block_message)
             self.tip = block.sha256
             blocks.append(self.tip)
             self.block_time += 1

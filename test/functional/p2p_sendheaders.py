@@ -236,6 +236,13 @@ class SendHeadersTest(PalladiumTestFramework):
         self.sync_blocks(self.nodes, wait=0.1)
         return [int(x, 16) for x in all_hashes]
 
+    def make_block(self, prev_hash, height, block_time):
+        block = create_block(prev_hash, create_coinbase(height), block_time)
+        block.nVersion = 4
+        block.nBits = int(self.nodes[0].getblocktemplate({"rules": ["segwit"]})["bits"], 16)
+        block.solve()
+        return block
+
     def run_test(self):
         # Setup the p2p connections
         inv_node = self.nodes[0].add_p2p_connection(BaseNode())
@@ -259,8 +266,7 @@ class SendHeadersTest(PalladiumTestFramework):
         test_node.check_last_headers_announcement(headers=[tip_hash])
 
         self.log.info("Verify getheaders with null locator and invalid hashstop does not return headers.")
-        block = create_block(int(tip["hash"], 16), create_coinbase(tip["height"] + 1), tip["mediantime"] + 1)
-        block.solve()
+        block = self.make_block(int(tip["hash"], 16), tip["height"] + 1, tip["mediantime"] + 1)
         test_node.send_header_for_blocks([block])
         test_node.clear_block_announcements()
         test_node.send_get_headers(locator=[], hashstop=int(block.hash, 16))
@@ -299,8 +305,7 @@ class SendHeadersTest(PalladiumTestFramework):
                 height = self.nodes[0].getblockcount()
                 last_time = self.nodes[0].getblock(self.nodes[0].getbestblockhash())['time']
                 block_time = last_time + 1
-                new_block = create_block(tip, create_coinbase(height + 1), block_time)
-                new_block.solve()
+                new_block = self.make_block(tip, height + 1, block_time)
                 test_node.send_header_for_blocks([new_block])
                 test_node.wait_for_getdata([new_block.sha256])
                 test_node.send_and_ping(msg_block(new_block))  # make sure this block is processed
@@ -335,7 +340,7 @@ class SendHeadersTest(PalladiumTestFramework):
                 self.log.debug("Part 2.{}.{}: starting...".format(i, j))
                 blocks = []
                 for b in range(i + 1):
-                    blocks.append(create_block(tip, create_coinbase(height), block_time))
+                    blocks.append(self.make_block(tip, height, block_time))
                     blocks[-1].solve()
                     tip = blocks[-1].sha256
                     block_time += 1
@@ -450,7 +455,7 @@ class SendHeadersTest(PalladiumTestFramework):
         # Create 2 blocks.  Send the blocks, then send the headers.
         blocks = []
         for b in range(2):
-            blocks.append(create_block(tip, create_coinbase(height), block_time))
+            blocks.append(self.make_block(tip, height, block_time))
             blocks[-1].solve()
             tip = blocks[-1].sha256
             block_time += 1
@@ -468,7 +473,7 @@ class SendHeadersTest(PalladiumTestFramework):
         # This time, direct fetch should work
         blocks = []
         for b in range(3):
-            blocks.append(create_block(tip, create_coinbase(height), block_time))
+            blocks.append(self.make_block(tip, height, block_time))
             blocks[-1].solve()
             tip = blocks[-1].sha256
             block_time += 1
@@ -489,7 +494,7 @@ class SendHeadersTest(PalladiumTestFramework):
 
         # Create extra blocks for later
         for b in range(20):
-            blocks.append(create_block(tip, create_coinbase(height), block_time))
+            blocks.append(self.make_block(tip, height, block_time))
             blocks[-1].solve()
             tip = blocks[-1].sha256
             block_time += 1
@@ -536,7 +541,7 @@ class SendHeadersTest(PalladiumTestFramework):
             blocks = []
             # Create two more blocks.
             for j in range(2):
-                blocks.append(create_block(tip, create_coinbase(height), block_time))
+                blocks.append(self.make_block(tip, height, block_time))
                 blocks[-1].solve()
                 tip = blocks[-1].sha256
                 block_time += 1
@@ -557,7 +562,7 @@ class SendHeadersTest(PalladiumTestFramework):
         # don't go into an infinite loop trying to get them to connect.
         MAX_UNCONNECTING_HEADERS = 10
         for j in range(MAX_UNCONNECTING_HEADERS + 1):
-            blocks.append(create_block(tip, create_coinbase(height), block_time))
+            blocks.append(self.make_block(tip, height, block_time))
             blocks[-1].solve()
             tip = blocks[-1].sha256
             block_time += 1

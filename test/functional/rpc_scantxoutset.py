@@ -4,7 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the scantxoutset rpc call."""
 from test_framework.test_framework import PalladiumTestFramework
-from test_framework.util import assert_equal, assert_raises_rpc_error
+from test_framework.util import assert_equal, assert_raises_rpc_error, COINBASE_MATURITY
 
 from decimal import Decimal
 import shutil
@@ -23,7 +23,7 @@ class ScantxoutsetTest(PalladiumTestFramework):
 
     def run_test(self):
         self.log.info("Mining blocks...")
-        self.nodes[0].generate(110)
+        self.nodes[0].generate(COINBASE_MATURITY + 1)
 
         addr_P2SH_SEGWIT = self.nodes[0].getnewaddress("", "p2sh-segwit")
         pubk1 = self.nodes[0].getaddressinfo(addr_P2SH_SEGWIT)['pubkey']
@@ -36,18 +36,18 @@ class ScantxoutsetTest(PalladiumTestFramework):
         self.nodes[0].sendtoaddress(addr_BECH32, 0.004)
 
         #send to child keys of tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK
-        self.nodes[0].sendtoaddress("mkHV1C6JLheLoUSSZYk7x3FH5tnx9bu7yc", 0.008) # (m/0'/0'/0')
-        self.nodes[0].sendtoaddress("mipUSRmJAj2KrjSvsPQtnP8ynUon7FhpCR", 0.016) # (m/0'/0'/1')
-        self.nodes[0].sendtoaddress("n37dAGe6Mq1HGM9t4b6rFEEsDGq7Fcgfqg", 0.032) # (m/0'/0'/1500')
-        self.nodes[0].sendtoaddress("mqS9Rpg8nNLAzxFExsgFLCnzHBsoQ3PRM6", 0.064) # (m/0'/0'/0)
-        self.nodes[0].sendtoaddress("mnTg5gVWr3rbhHaKjJv7EEEc76ZqHgSj4S", 0.128) # (m/0'/0'/1)
-        self.nodes[0].sendtoaddress("mketCd6B9U9Uee1iCsppDJJBHfvi6U6ukC", 0.256) # (m/0'/0'/1500)
-        self.nodes[0].sendtoaddress("mj8zFzrbBcdaWXowCQ1oPZ4qioBVzLzAp7", 0.512) # (m/1/1/0')
-        self.nodes[0].sendtoaddress("mfnKpKQEftniaoE1iXuMMePQU3PUpcNisA", 1.024) # (m/1/1/1')
-        self.nodes[0].sendtoaddress("mou6cB1kaP1nNJM1sryW6YRwnd4shTbXYQ", 2.048) # (m/1/1/1500')
-        self.nodes[0].sendtoaddress("mtfUoUax9L4tzXARpw1oTGxWyoogp52KhJ", 4.096) # (m/1/1/0)
-        self.nodes[0].sendtoaddress("mxp7w7j8S1Aq6L8StS2PqVvtt4HGxXEvdy", 8.192) # (m/1/1/1)
-        self.nodes[0].sendtoaddress("mpQ8rokAhp1TAtJQR6F6TaUmjAWkAWYYBq", 16.384) # (m/1/1/1500)
+        self.nodes[0].sendtoaddress("tBh8kvruhb4MtQfpxG5Di3bs9xv3aDqAK8", 0.008) # (m/0'/0'/0')
+        self.nodes[0].sendtoaddress("tAE8CAXuXcSLwfgKG6jzYPVZrYvsVhAwRt", 0.016) # (m/0'/0'/1')
+        self.nodes[0].sendtoaddress("tUXGv1QhiiRJMHPGTJRx1EbTHLxCeTGuD7", 0.032) # (m/0'/0'/1500')
+        self.nodes[0].sendtoaddress("tGqoBZSk9FkC5tUdMb1M6D9aMFztnTCwey", 0.064) # (m/0'/0'/0)
+        self.nodes[0].sendtoaddress("tDsKqRG8CwGcnDoi82FCzEbCBAgvbXkXss", 0.128) # (m/0'/0'/1)
+        self.nodes[0].sendtoaddress("tC4XxMrnWMZVjaF6bb9uyJemMk3oVb9mAk", 0.256) # (m/0'/0'/1500)
+        self.nodes[0].sendtoaddress("tAYe1jdCYW3bbU3Kb7Lu9ZRRnsJbN1mnwD", 0.512) # (m/1/1/0')
+        self.nodes[0].sendtoaddress("t7Bya4Ar2nCjfjTQ7FET7ejzY7WaAfrBjo", 1.024) # (m/1/1/1')
+        self.nodes[0].sendtoaddress("tFJkMunMwGRoTEaQGaJbrYnXrhBy8q9GP8", 2.048) # (m/1/1/1500')
+        self.nodes[0].sendtoaddress("tL58ZDMZWDUv5TPpDeLuDHK73svnB5NJZ6", 4.096) # (m/1/1/0)
+        self.nodes[0].sendtoaddress("tQDmgrVjntarBGMqH9MVbWHUx8QNPitqcp", 8.192) # (m/1/1/1)
+        self.nodes[0].sendtoaddress("tFoncYWn4hRUFpXnooaCDaqMoEdqazr3bY", 16.384) # (m/1/1/1500)
 
 
         self.nodes[0].generate(1)
@@ -56,7 +56,7 @@ class ScantxoutsetTest(PalladiumTestFramework):
         self.stop_node(0)
         shutil.rmtree(os.path.join(self.nodes[0].datadir, self.chain, 'wallets'))
         self.start_node(0)
-        self.nodes[0].generate(110)
+        self.nodes[0].generate(COINBASE_MATURITY + 1)
 
         scan = self.nodes[0].scantxoutset("start", [])
         info = self.nodes[0].gettxoutsetinfo()

@@ -51,8 +51,8 @@ class MaxUploadTest(PalladiumTestFramework):
         old_time = int(time.time() - 2*60*60*24*7)
         self.nodes[0].setmocktime(old_time)
 
-        # Generate some old blocks
-        self.nodes[0].generate(130)
+        # Generate some old blocks (past resilience fork height so larger OP_RETURN is allowed)
+        self.nodes[0].generate(200)
 
         # p2p_conns[0] will only request old blocks
         # p2p_conns[1] will only request new blocks

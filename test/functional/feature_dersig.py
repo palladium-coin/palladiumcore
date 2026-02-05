@@ -59,6 +59,10 @@ class BIP66Test(PalladiumTestFramework):
         )
 
     def run_test(self):
+        bip66_info = self.nodes[0].getblockchaininfo()['softforks']['bip66']
+        if bip66_info.get('height', None) == 0:
+            self.log.info("bip66 is always active on this chain; skipping activation test")
+            return
         self.nodes[0].add_p2p_connection(P2PInterface())
 
         self.test_dersig_info(is_active=False)

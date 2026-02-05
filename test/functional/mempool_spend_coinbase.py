@@ -14,7 +14,7 @@ but less mature coinbase spends are NOT.
 
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.blocktools import create_raw_transaction
-from test_framework.util import assert_equal, assert_raises_rpc_error
+from test_framework.util import COINBASE_MATURITY, assert_equal, assert_raises_rpc_error
 
 
 class MempoolSpendCoinbaseTest(PalladiumTestFramework):
@@ -26,13 +26,14 @@ class MempoolSpendCoinbaseTest(PalladiumTestFramework):
 
     def run_test(self):
         chain_height = self.nodes[0].getblockcount()
-        assert_equal(chain_height, 200)
+        assert_equal(chain_height, COINBASE_MATURITY + 100)
         node0_address = self.nodes[0].getnewaddress()
 
-        # Coinbase at height chain_height-100+1 ok in mempool, should
-        # get mined. Coinbase at height chain_height-100+2 is
+        # Coinbase at height chain_height-COINBASE_MATURITY+1 ok in mempool, should
+        # get mined. Coinbase at height chain_height-COINBASE_MATURITY+2 is
         # is too immature to spend.
-        b = [self.nodes[0].getblockhash(n) for n in range(101, 103)]
+        mature_height = chain_height - COINBASE_MATURITY + 1
+        b = [self.nodes[0].getblockhash(n) for n in range(mature_height, mature_height + 2)]
         coinbase_txids = [self.nodes[0].getblock(h)['tx'][0] for h in b]
         spends_raw = [create_raw_transaction(self.nodes[0], txid, node0_address, amount=49.99) for txid in coinbase_txids]
 

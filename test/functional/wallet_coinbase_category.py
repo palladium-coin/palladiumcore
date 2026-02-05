@@ -9,6 +9,7 @@ Tests listtransactions, listsinceblock, and gettransaction.
 
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_array_result
 )
 
@@ -40,20 +41,20 @@ class CoinbaseCategoryTest(PalladiumTestFramework):
         # Coinbase transaction is immature after 1 confirmation
         self.assert_category("immature", address, txid, 0)
 
-        # Mine another 99 blocks on top
-        self.nodes[0].generate(99)
-        # Coinbase transaction is still immature after 100 confirmations
-        self.assert_category("immature", address, txid, 99)
+        # Mine another COINBASE_MATURITY-1 blocks on top
+        self.nodes[0].generate(COINBASE_MATURITY - 1)
+        # Coinbase transaction is still immature after COINBASE_MATURITY confirmations
+        self.assert_category("immature", address, txid, COINBASE_MATURITY - 1)
 
         # Mine one more block
         self.nodes[0].generate(1)
         # Coinbase transaction is now matured, so category is "generate"
-        self.assert_category("generate", address, txid, 100)
+        self.assert_category("generate", address, txid, COINBASE_MATURITY)
 
         # Orphan block that paid to address
         self.nodes[0].invalidateblock(hash)
         # Coinbase transaction is now orphaned
-        self.assert_category("orphan", address, txid, 100)
+        self.assert_category("orphan", address, txid, COINBASE_MATURITY)
 
 if __name__ == '__main__':
     CoinbaseCategoryTest().main()

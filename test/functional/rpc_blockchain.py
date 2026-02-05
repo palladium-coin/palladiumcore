@@ -125,10 +125,10 @@ class BlockchainTest(PalladiumTestFramework):
         assert_greater_than(res['size_on_disk'], 0)
 
         assert_equal(res['softforks'], {
-            'bip34': {'type': 'buried', 'active': False, 'height': 500},
-            'bip66': {'type': 'buried', 'active': False, 'height': 1251},
-            'bip65': {'type': 'buried', 'active': False, 'height': 1351},
-            'csv': {'type': 'buried', 'active': False, 'height': 432},
+            'bip34': {'type': 'buried', 'active': True, 'height': 0},
+            'bip66': {'type': 'buried', 'active': True, 'height': 0},
+            'bip65': {'type': 'buried', 'active': True, 'height': 0},
+            'csv': {'type': 'buried', 'active': True, 'height': 0},
             'segwit': {'type': 'buried', 'active': True, 'height': 0},
             'testdummy': {
                 'type': 'bip9',
@@ -314,8 +314,14 @@ class BlockchainTest(PalladiumTestFramework):
 
         def solve_and_send_block(prevhash, height, time):
             b = create_block(prevhash, create_coinbase(height), time)
+            b.nVersion = 4
+            node.setmocktime(time)
+            b.nTime = time
+            b.nBits = 0x207fffff
+            b.rehash()
             b.solve()
             node.p2p.send_and_ping(msg_block(b))
+            node.setmocktime(0)
             return b
 
         b21f = solve_and_send_block(int(b20hash, 16), 21, b20['time'] + 1)

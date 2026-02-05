@@ -17,6 +17,7 @@ import time
 from test_framework.blocktools import create_coinbase, create_block, create_transaction, add_witness_commitment
 from test_framework.messages import CTransaction
 from test_framework.script import CScript
+from test_framework.mininode import P2PDataStore
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import assert_equal, assert_raises_rpc_error
 
@@ -50,6 +51,7 @@ class NULLDUMMYTest(PalladiumTestFramework):
         self.skip_if_no_wallet()
 
     def run_test(self):
+        self.nodes[0].add_p2p_connection(P2PDataStore())
         self.address = self.nodes[0].getnewaddress()
         self.ms_address = self.nodes[0].addmultisigaddress(1, [self.address])['address']
         self.wit_address = self.nodes[0].getnewaddress(address_type='p2sh-segwit')
@@ -102,8 +104,12 @@ class NULLDUMMYTest(PalladiumTestFramework):
         self.block_submit(self.nodes[0], test6txs, True, True)
 
     def block_submit(self, node, txs, witness=False, accept=False):
-        block = create_block(self.tip, create_coinbase(self.lastblockheight + 1), self.lastblocktime + 1)
+        block_time = self.lastblocktime + 1
+        block = create_block(self.tip, create_coinbase(self.lastblockheight + 1), block_time)
         block.nVersion = 4
+        node.setmocktime(block_time)
+        block.nTime = block_time
+        block.nBits = int(node.getblocktemplate({"rules": ["segwit"]})["bits"], 16)
         for tx in txs:
             tx.rehash()
             block.vtx.append(tx)
@@ -112,6 +118,7 @@ class NULLDUMMYTest(PalladiumTestFramework):
         block.rehash()
         block.solve()
         node.submitblock(block.serialize().hex())
+        node.setmocktime(0)
         if (accept):
             assert_equal(node.getbestblockhash(), block.hash)
             self.tip = block.sha256

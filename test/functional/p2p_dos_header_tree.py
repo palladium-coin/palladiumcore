@@ -12,7 +12,7 @@ from test_framework.mininode import (
     P2PInterface,
     msg_headers,
 )
-from test_framework.test_framework import PalladiumTestFramework
+from test_framework.test_framework import PalladiumTestFramework, SkipTest
 
 import os
 
@@ -32,7 +32,10 @@ class RejectLowDifficultyHeadersTest(PalladiumTestFramework):
 
     def run_test(self):
         self.log.info("Read headers data")
-        self.headers_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), self.options.datafile)
+        base_dir = os.path.dirname(os.path.realpath(__file__))
+        self.headers_file_path = os.path.join(base_dir, self.options.datafile)
+        if not os.path.exists(self.headers_file_path):
+            raise SkipTest("header data file not available for this chain")
         with open(self.headers_file_path, encoding='utf-8') as headers_data:
             h_lines = [l.strip() for l in headers_data.readlines()]
 

@@ -9,6 +9,7 @@ from test_framework.address import ADDRESS_BCRT1_UNSPENDABLE, keyhash_to_p2pkh
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
     assert_equal,
+    COINBASE_MATURITY,
     wait_until,
     connect_nodes,
     disconnect_nodes,
@@ -92,7 +93,7 @@ class NotificationsTest(PalladiumTestFramework):
             self.log.info("test -walletnotify with conflicting transactions")
             self.nodes[0].sethdseed(seed=self.nodes[1].dumpprivkey(keyhash_to_p2pkh(hex_str_to_bytes(self.nodes[1].getwalletinfo()['hdseedid'])[::-1])))
             self.nodes[0].rescanblockchain()
-            self.nodes[0].generatetoaddress(100, ADDRESS_BCRT1_UNSPENDABLE)
+            self.nodes[0].generatetoaddress(COINBASE_MATURITY, ADDRESS_BCRT1_UNSPENDABLE)
 
             # Generate transaction on node 0, sync mempools, and check for
             # notification on node 1.

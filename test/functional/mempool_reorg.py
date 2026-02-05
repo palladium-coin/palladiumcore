@@ -10,7 +10,7 @@ that spend (directly or indirectly) coinbase transactions.
 
 from test_framework.blocktools import create_raw_transaction
 from test_framework.test_framework import PalladiumTestFramework
-from test_framework.util import assert_equal, assert_raises_rpc_error
+from test_framework.util import COINBASE_MATURITY, assert_equal, assert_raises_rpc_error
 
 
 class MempoolCoinbaseTest(PalladiumTestFramework):
@@ -24,10 +24,10 @@ class MempoolCoinbaseTest(PalladiumTestFramework):
 
     def run_test(self):
         # Start with a 200 block chain
-        assert_equal(self.nodes[0].getblockcount(), 200)
+        assert_equal(self.nodes[0].getblockcount(), COINBASE_MATURITY + 100)
 
-        # Mine four blocks. After this, nodes[0] blocks
-        # 101, 102, and 103 are spend-able.
+        # Mine four blocks. After this, nodes[0] blocks at
+        # chain_height-COINBASE_MATURITY+1 .. +3 are spendable.
         new_blocks = self.nodes[1].generate(4)
         self.sync_all()
 
@@ -40,7 +40,10 @@ class MempoolCoinbaseTest(PalladiumTestFramework):
         # 3. Indirect (coinbase and child both in chain) : spend_103 and spend_103_1
         # Use invalidatblock to make all of the above coinbase spends invalid (immature coinbase),
         # and make sure the mempool code behaves correctly.
-        b = [ self.nodes[0].getblockhash(n) for n in range(101, 105) ]
+        chain_height = self.nodes[0].getblockcount()
+        mature_start = chain_height - COINBASE_MATURITY + 1
+        # Pick four coinbases that are definitely mature.
+        b = [ self.nodes[0].getblockhash(n) for n in range(mature_start - 3, mature_start + 1) ]
         coinbase_txids = [ self.nodes[0].getblock(h)['tx'][0] for h in b ]
         spend_101_raw = create_raw_transaction(self.nodes[0], coinbase_txids[1], node1_address, amount=49.99)
         spend_102_raw = create_raw_transaction(self.nodes[0], coinbase_txids[2], node0_address, amount=49.99)

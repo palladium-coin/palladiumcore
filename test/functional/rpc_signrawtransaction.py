@@ -6,7 +6,7 @@
 
 from test_framework.address import check_script, script_to_p2sh
 from test_framework.test_framework import PalladiumTestFramework
-from test_framework.util import assert_equal, assert_raises_rpc_error, find_vout_for_address, hex_str_to_bytes
+from test_framework.util import COINBASE_MATURITY, assert_equal, assert_raises_rpc_error, find_vout_for_address, hex_str_to_bytes
 from test_framework.messages import sha256
 from test_framework.script import CScript, OP_0, OP_CHECKSIG
 
@@ -27,7 +27,7 @@ class SignRawTransactionsTest(PalladiumTestFramework):
 
         1) The transaction has a complete set of signatures
         2) No script verification error occurred"""
-        privKeys = ['cUeKHd5orzT3mz8P9pxyREHfsWtVfgsfDjiZZBcjUBAaGk1BTj7N', 'cVKpPfVKSJxKqVpE9awvXNWuLHCa5j5tiE7K6zbUSptFpTEtiFrA']
+        privKeys = ['eqvQSCrCfT7FNGLg13HGA1oTrU6w2PDHpogeWTAFKqDxn3CGZz9F', 'erbuYFFiEmcXRn2WzoGDGA2hKER1SRRXKJ5Q4G8zJUweKkTaLcwQ']
 
         inputs = [
             # Valid pay-to-pubkey scripts
@@ -37,7 +37,7 @@ class SignRawTransactionsTest(PalladiumTestFramework):
              'scriptPubKey': '76a914669b857c03a5ed269d5d85a1ffac9ed5d663072788ac'},
         ]
 
-        outputs = {'mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB': 0.1}
+        outputs = {'tFk4VQ5iWUXDHRHsk1qLGB5fRu5DuWpFSr': 0.1}
 
         rawTx = self.nodes[0].createrawtransaction(inputs, outputs)
         rawTxSigned = self.nodes[0].signrawtransactionwithkey(rawTx, privKeys, inputs)
@@ -65,7 +65,7 @@ class SignRawTransactionsTest(PalladiumTestFramework):
         4) Two script verification errors occurred
         5) Script verification errors have certain properties ("txid", "vout", "scriptSig", "sequence", "error")
         6) The verification errors refer to the invalid (vin 1) and missing input (vin 2)"""
-        privKeys = ['cUeKHd5orzT3mz8P9pxyREHfsWtVfgsfDjiZZBcjUBAaGk1BTj7N']
+        privKeys = ['eqvQSCrCfT7FNGLg13HGA1oTrU6w2PDHpogeWTAFKqDxn3CGZz9F']
 
         inputs = [
             # Valid pay-to-pubkey script
@@ -85,7 +85,7 @@ class SignRawTransactionsTest(PalladiumTestFramework):
              'scriptPubKey': 'badbadbadbad'}
         ]
 
-        outputs = {'mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB': 0.1}
+        outputs = {'tFk4VQ5iWUXDHRHsk1qLGB5fRu5DuWpFSr': 0.1}
 
         rawTx = self.nodes[0].createrawtransaction(inputs, outputs)
 
@@ -153,7 +153,7 @@ class SignRawTransactionsTest(PalladiumTestFramework):
         embedded_privkey = self.nodes[1].dumpprivkey(embedded_address["address"])
         p2sh_p2wsh_address = self.nodes[1].addmultisigaddress(1, [embedded_address["pubkey"]], "", "p2sh-segwit")
         # send transaction to P2SH-P2WSH 1-of-1 multisig address
-        self.nodes[0].generate(101)
+        self.nodes[0].generate(COINBASE_MATURITY + 1)
         self.nodes[0].sendtoaddress(p2sh_p2wsh_address["address"], 49.999)
         self.nodes[0].generate(1)
         self.sync_all()

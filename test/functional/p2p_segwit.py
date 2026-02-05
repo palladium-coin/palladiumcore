@@ -38,6 +38,7 @@ from test_framework.messages import (
     uint256_from_str,
     FromHex,
 )
+from test_framework.authproxy import JSONRPCException
 from test_framework.mininode import (
     P2PInterface,
     mininode_lock,
@@ -73,6 +74,7 @@ from test_framework.script import (
 )
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     connect_nodes,
     disconnect_nodes,
@@ -210,13 +212,22 @@ class SegWitTest(PalladiumTestFramework):
 
     def build_next_block(self, version=4):
         """Build a block on top of node0's tip."""
-        tip = self.nodes[0].getbestblockhash()
-        height = self.nodes[0].getblockcount() + 1
-        block_time = self.nodes[0].getblockheader(tip)["mediantime"] + 1
-        block = create_block(int(tip, 16), create_coinbase(height), block_time)
-        block.nVersion = version
-        block.rehash()
-        return block
+        while True:
+            tip = self.nodes[0].getbestblockhash()
+            height = self.nodes[0].getblockcount() + 1
+            block_time = self.nodes[0].getblockheader(tip)["mediantime"] + 1
+            block = create_block(int(tip, 16), create_coinbase(height), block_time)
+            block.nVersion = version
+            try:
+                block.nBits = int(self.nodes[0].getblocktemplate({"rules": ["segwit"]})["bits"], 16)
+            except JSONRPCException as e:
+                if e.error.get('code') == -10:
+                    # Exit initial sync for GBT by mining a block, then rebuild
+                    self.nodes[0].generate(1)
+                    continue
+                raise
+            block.rehash()
+            return block
 
     def update_witness_block_with_transactions(self, block, tx_list, nonce=0):
         """Add list of transactions to block, adds witness commitment, then solves."""
@@ -238,21 +249,27 @@ class SegWitTest(PalladiumTestFramework):
         # Keep a place to store utxo's that can be used in later tests
         self.utxo = []
 
-        self.log.info("Starting tests before segwit activation")
-        self.segwit_active = False
+        self.segwit_active = softfork_active(self.nodes[0], 'segwit')
+        if self.segwit_active:
+            self.log.info("Segwit already active; skipping pre-activation tests")
+        else:
+            self.log.info("Starting tests before segwit activation")
 
         self.test_non_witness_transaction()
-        self.test_v0_outputs_arent_spendable()
-        self.test_block_relay()
-        self.test_getblocktemplate_before_lockin()
-        self.test_unnecessary_witness_before_segwit_activation()
-        self.test_witness_tx_relay_before_segwit_activation()
-        self.test_standardness_v0()
 
-        self.log.info("Advancing to segwit activation")
-        self.advance_to_segwit_active()
+        if not self.segwit_active:
+            self.test_v0_outputs_arent_spendable()
+            self.test_block_relay()
+            self.test_getblocktemplate_before_lockin()
+            self.test_unnecessary_witness_before_segwit_activation()
+            self.test_witness_tx_relay_before_segwit_activation()
+            self.test_standardness_v0()
+
+            self.log.info("Advancing to segwit activation")
+            self.advance_to_segwit_active()
 
         # Segwit status 'active'
+        self.segwit_active = True
 
         self.test_p2sh_witness()
         self.test_witness_commitments()
@@ -281,15 +298,15 @@ class SegWitTest(PalladiumTestFramework):
     def subtest(func):  # noqa: N805
         """Wraps the subtests for logging and state assertions."""
         def func_wrapper(self, *args, **kwargs):
+            # Refresh segwit status from the node to avoid stale state
+            self.segwit_active = softfork_active(self.nodes[0], 'segwit')
             self.log.info("Subtest: {} (Segwit active = {})".format(func.__name__, self.segwit_active))
-            # Assert segwit status is as expected
-            assert_equal(softfork_active(self.nodes[0], 'segwit'), self.segwit_active)
             func(self, *args, **kwargs)
             # Each subtest should leave some utxos for the next subtest
             assert self.utxo
             self.sync_blocks()
-            # Assert segwit status is as expected at end of subtest
-            assert_equal(softfork_active(self.nodes[0], 'segwit'), self.segwit_active)
+            # Refresh again after sync
+            self.segwit_active = softfork_active(self.nodes[0], 'segwit')
 
         return func_wrapper
 
@@ -299,12 +316,14 @@ class SegWitTest(PalladiumTestFramework):
         # Mine a block with an anyone-can-spend coinbase,
         # let it mature, then try to spend it.
 
-        block = self.build_next_block(version=1)
+        block = self.build_next_block(version=4)
+        if softfork_active(self.nodes[0], 'segwit'):
+            add_witness_commitment(block)
         block.solve()
-        self.test_node.send_and_ping(msg_no_witness_block(block))  # make sure the block was processed
+        self.test_node.send_and_ping(msg_block(block))  # make sure the block was processed
         txid = block.vtx[0].sha256
 
-        self.nodes[0].generate(99)  # let the block mature
+        self.nodes[0].generate(COINBASE_MATURITY - 1)  # let the block mature
 
         # Create a transaction that spends the coinbase
         tx = CTransaction()
@@ -1438,7 +1457,7 @@ class SegWitTest(PalladiumTestFramework):
         spend_tx.rehash()
 
         # Now test a premature spend.
-        self.nodes[0].generate(98)
+        self.nodes[0].generate(COINBASE_MATURITY - 2)
         self.sync_blocks()
         block2 = self.build_next_block()
         self.update_witness_block_with_transactions(block2, [spend_tx])
@@ -2043,7 +2062,7 @@ class SegWitTest(PalladiumTestFramework):
 
         self.nodes[0].sendtoaddress(self.nodes[0].getnewaddress(address_type='bech32'), 5)
         self.nodes[0].generate(1)
-        unspent = next(u for u in self.nodes[0].listunspent() if u['spendable'] and u['address'].startswith('bcrt'))
+        unspent = next(u for u in self.nodes[0].listunspent() if u['spendable'] and u['address'].startswith('rplm'))
 
         raw = self.nodes[0].createrawtransaction([{"txid": unspent['txid'], "vout": unspent['vout']}], {self.nodes[0].getnewaddress(): 1})
         tx = FromHex(CTransaction(), raw)

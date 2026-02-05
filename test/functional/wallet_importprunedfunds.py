@@ -7,6 +7,7 @@ from decimal import Decimal
 
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     assert_raises_rpc_error,
 )
@@ -21,7 +22,7 @@ class ImportPrunedFundsTest(PalladiumTestFramework):
 
     def run_test(self):
         self.log.info("Mining blocks...")
-        self.nodes[0].generate(101)
+        self.nodes[0].generate(COINBASE_MATURITY + 1)
 
         self.sync_all()
 
@@ -40,7 +41,7 @@ class ImportPrunedFundsTest(PalladiumTestFramework):
         self.sync_all()
 
         # Node 1 sync test
-        assert_equal(self.nodes[1].getblockcount(), 101)
+        assert_equal(self.nodes[1].getblockcount(), COINBASE_MATURITY + 1)
 
         # Address Test - before import
         address_info = self.nodes[1].getaddressinfo(address1)

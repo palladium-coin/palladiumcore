@@ -14,7 +14,7 @@ from test_framework.messages import BlockTransactions, BlockTransactionsRequest,
 from test_framework.mininode import mininode_lock, P2PInterface
 from test_framework.script import CScript, OP_TRUE, OP_DROP
 from test_framework.test_framework import PalladiumTestFramework
-from test_framework.util import assert_equal, wait_until, softfork_active
+from test_framework.util import COINBASE_MATURITY, assert_equal, wait_until, softfork_active
 
 # TestP2PConn: A peer we use to send messages to palladiumd, and store responses.
 class TestP2PConn(P2PInterface):
@@ -106,8 +106,11 @@ class CompactBlocksTest(PalladiumTestFramework):
     def build_block_on_tip(self, node, segwit=False):
         height = node.getblockcount()
         tip = node.getbestblockhash()
-        mtp = node.getblockheader(tip)['mediantime']
+        tip_header = node.getblockheader(tip)
+        mtp = tip_header['mediantime']
         block = create_block(int(tip, 16), create_coinbase(height + 1), mtp + 1)
+        # Use next-work bits from GBT to satisfy Palladium's PoW rules
+        block.nBits = int(node.getblocktemplate({"rules": ["segwit"]})['bits'], 16)
         block.nVersion = 4
         if segwit:
             add_witness_commitment(block)
@@ -116,10 +119,13 @@ class CompactBlocksTest(PalladiumTestFramework):
 
     # Create 10 more anyone-can-spend utxo's for testing.
     def make_utxos(self):
+        # Ensure node is out of initial sync so getblocktemplate is available
+        if self.nodes[0].getblockcount() == 0:
+            self.nodes[0].generate(1)
         block = self.build_block_on_tip(self.nodes[0])
         self.segwit_node.send_and_ping(msg_no_witness_block(block))
         assert int(self.nodes[0].getbestblockhash(), 16) == block.sha256
-        self.nodes[0].generatetoaddress(100, self.nodes[0].getnewaddress(address_type="bech32"))
+        self.nodes[0].generatetoaddress(COINBASE_MATURITY, self.nodes[0].getnewaddress(address_type="bech32"))
 
         total_value = block.vtx[0].vout[0].nValue
         out_value = total_value // 10
@@ -243,7 +249,7 @@ class CompactBlocksTest(PalladiumTestFramework):
 
     # This test actually causes palladiumd to (reasonably!) disconnect us, so do this last.
     def test_invalid_cmpctblock_message(self):
-        self.nodes[0].generate(101)
+        self.nodes[0].generate(COINBASE_MATURITY + 1)
         block = self.build_block_on_tip(self.nodes[0])
 
         cmpct_block = P2PHeaderAndShortIDs()
@@ -261,7 +267,7 @@ class CompactBlocksTest(PalladiumTestFramework):
         version = test_node.cmpct_version
         node = self.nodes[0]
         # Generate a bunch of transactions.
-        node.generate(101)
+        node.generate(COINBASE_MATURITY + 1)
         num_transactions = 25
         address = node.getnewaddress()
 
@@ -656,9 +662,13 @@ class CompactBlocksTest(PalladiumTestFramework):
 
         # Generate an old compactblock, and verify that it's not accepted.
         cur_height = node.getblockcount()
-        hashPrevBlock = int(node.getblockhash(cur_height - 5), 16)
-        block = self.build_block_on_tip(node)
-        block.hashPrevBlock = hashPrevBlock
+        prev_hash = node.getblockhash(cur_height - 5)
+        prev_header = node.getblockheader(prev_hash)
+        fork_height = cur_height - 4
+        fork_bits = node.getblockheader(node.getblockhash(fork_height))['bits']
+        block = create_block(int(prev_hash, 16), create_coinbase(fork_height), prev_header['mediantime'] + 1)
+        block.nVersion = 4
+        block.nBits = int(fork_bits, 16)
         block.solve()
 
         comp_block = HeaderAndShortIDs()

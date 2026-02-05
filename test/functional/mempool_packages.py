@@ -9,6 +9,7 @@ from decimal import Decimal
 from test_framework.messages import COIN
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     assert_raises_rpc_error,
     satoshi_round,
@@ -58,7 +59,7 @@ class MempoolPackagesTest(PalladiumTestFramework):
 
     def run_test(self):
         # Mine some blocks and have them mature.
-        self.nodes[0].generate(101)
+        self.nodes[0].generate(COINBASE_MATURITY + 1)
         utxo = self.nodes[0].listunspent(10)
         txid = utxo[0]['txid']
         vout = utxo[0]['vout']

@@ -16,6 +16,7 @@ from test_framework.messages import (
 from test_framework.mininode import P2PDataStore
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     wait_until,
 )
@@ -48,6 +49,14 @@ class InvalidTxRequestTest(PalladiumTestFramework):
     def run_test(self):
         node = self.nodes[0]  # convenience reference to the node
 
+        def set_block_nbits(block, block_time):
+            node.setmocktime(block_time)
+            block.nVersion = 4
+            block.nTime = block_time
+            block.nBits = int(node.getblocktemplate({"rules": ["segwit"]})["bits"], 16)
+            block.rehash()
+            node.setmocktime(0)
+
         self.bootstrap_p2p()  # Add one p2p connection to the node
 
         best_block = self.nodes[0].getbestblockhash()
@@ -58,6 +67,7 @@ class InvalidTxRequestTest(PalladiumTestFramework):
         self.log.info("Create a new block with an anyone-can-spend coinbase.")
         height = 1
         block = create_block(tip, create_coinbase(height), block_time)
+        set_block_nbits(block, block_time)
         block.solve()
         # Save the coinbase for later
         block1 = block
@@ -65,7 +75,9 @@ class InvalidTxRequestTest(PalladiumTestFramework):
         node.p2p.send_blocks_and_test([block], node, success=True)
 
         self.log.info("Mature the block.")
-        self.nodes[0].generatetoaddress(100, self.nodes[0].get_deterministic_priv_key().address)
+        self.nodes[0].generatetoaddress(COINBASE_MATURITY, self.nodes[0].get_deterministic_priv_key().address)
+        # Advance beyond the resilience fork height to avoid OP_RETURN prefork limits.
+        self.nodes[0].generatetoaddress(200, self.nodes[0].get_deterministic_priv_key().address)
 
         # Iterate through a list of known invalid transaction types, ensuring each is
         # rejected. Some are consensus invalid and some just violate policy.

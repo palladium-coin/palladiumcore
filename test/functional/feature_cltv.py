@@ -75,6 +75,10 @@ class BIP65Test(PalladiumTestFramework):
         )
 
     def run_test(self):
+        bip65_info = self.nodes[0].getblockchaininfo()['softforks']['bip65']
+        if bip65_info.get('height', None) == 0:
+            self.log.info("bip65 is always active on this chain; skipping activation test")
+            return
         self.nodes[0].add_p2p_connection(P2PInterface())
 
         self.test_cltv_info(is_active=False)

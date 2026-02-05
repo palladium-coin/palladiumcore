@@ -9,6 +9,7 @@ import struct
 from test_framework.address import ADDRESS_BCRT1_UNSPENDABLE as ADDRESS_WATCHONLY
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     assert_raises_rpc_error,
     connect_nodes,
@@ -72,14 +73,14 @@ class WalletTest(PalladiumTestFramework):
         self.nodes[0].generate(1)
         self.sync_all()
         self.nodes[1].generate(1)
-        self.nodes[1].generatetoaddress(101, ADDRESS_WATCHONLY)
+        self.nodes[1].generatetoaddress(COINBASE_MATURITY + 1, ADDRESS_WATCHONLY)
         self.sync_all()
 
         assert_equal(self.nodes[0].getbalances()['mine']['trusted'], 50)
         assert_equal(self.nodes[0].getwalletinfo()['balance'], 50)
         assert_equal(self.nodes[1].getbalances()['mine']['trusted'], 50)
 
-        assert_equal(self.nodes[0].getbalances()['watchonly']['immature'], 5000)
+        assert_equal(self.nodes[0].getbalances()['watchonly']['immature'], COINBASE_MATURITY * 50)
         assert 'watchonly' not in self.nodes[1].getbalances()
 
         assert_equal(self.nodes[0].getbalance(), 50)
