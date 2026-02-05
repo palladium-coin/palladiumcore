@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+export LC_ALL=C
 set -euo pipefail
 
 IMAGE_NAME="palladium-builder:linux-armv7l-ubuntu20.04"
@@ -27,6 +28,12 @@ docker run --rm --platform=linux/amd64 \
     set -euo pipefail
     cd /src
 
+    echo '[*] cleaning tree (avoid host-built artifacts)...'
+    [[ -f Makefile ]] && make distclean || true
+    rm -rf univalue/.libs
+    rm -rf depends/${HOST_TRIPLE}
+    rm -f config.cache
+
     echo '[*] depends (HOST=${HOST_TRIPLE})...'
     cd depends && make HOST=${HOST_TRIPLE} -j\$(nproc) && cd ..
 
@@ -34,7 +41,11 @@ docker run --rm --platform=linux/amd64 \
     [[ -x ./autogen.sh ]] && ./autogen.sh
     [[ -f ./configure ]] || { echo 'configure not found: autogen failed'; exit 1; }
 
+    # Ensure we use Qt tools (moc/uic/rcc) from depends, not system Qt
+    export PATH=\$PWD/depends/${HOST_TRIPLE}/bin:\$PATH
+
     ./configure --prefix=\$PWD/depends/${HOST_TRIPLE} \
+                --with-qt-bindir=\$PWD/depends/${HOST_TRIPLE}/bin \
                 --host=${HOST_TRIPLE} \
                 --enable-glibc-back-compat \
                 --enable-reduce-exports \

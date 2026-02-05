@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+export LC_ALL=C
 
 ###############################################################################
 # Quick Build Script for Palladium Core
