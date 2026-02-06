@@ -25,6 +25,7 @@
 #include <test/util/transaction_utils.h>
 
 #include <map>
+#include <stdexcept>
 #include <string>
 
 #include <boost/algorithm/string/classification.hpp>
@@ -717,13 +718,21 @@ BOOST_AUTO_TEST_CASE(test_IsStandard)
     BOOST_CHECK(!IsStandardTx(CTransaction(t), reason));
     BOOST_CHECK_EQUAL(reason, "scriptpubkey");
 
+    auto build_op_return_script = [](size_t target_size) {
+        for (size_t data_len = 0; data_len <= target_size; ++data_len) {
+            CScript script = CScript() << OP_RETURN << std::vector<unsigned char>(data_len, 0x42);
+            if (script.size() == target_size) return script;
+        }
+        throw std::runtime_error("Unable to build OP_RETURN script of requested size");
+    };
+
     // MAX_OP_RETURN_RELAY-byte TX_NULL_DATA (standard)
-    t.vout[0].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3804678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
+    t.vout[0].scriptPubKey = build_op_return_script(MAX_OP_RETURN_RELAY);
     BOOST_CHECK_EQUAL(MAX_OP_RETURN_RELAY, t.vout[0].scriptPubKey.size());
     BOOST_CHECK(IsStandardTx(CTransaction(t), reason));
 
     // MAX_OP_RETURN_RELAY+1-byte TX_NULL_DATA (non-standard)
-    t.vout[0].scriptPubKey = CScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3804678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3800");
+    t.vout[0].scriptPubKey = build_op_return_script(MAX_OP_RETURN_RELAY + 1);
     BOOST_CHECK_EQUAL(MAX_OP_RETURN_RELAY + 1, t.vout[0].scriptPubKey.size());
     reason.clear();
     BOOST_CHECK(!IsStandardTx(CTransaction(t), reason));

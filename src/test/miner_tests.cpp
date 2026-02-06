@@ -257,6 +257,25 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         pblock->hashPrevBlock = pblock->GetHash();
     }
 
+    // Palladium uses a higher coinbase maturity than Bitcoin test vectors.
+    // Advance the active chain with dummy block indices so the imported coinbase
+    // outputs referenced later in this test are spendable.
+    {
+        LOCK(cs_main);
+        const int spend_height = baseheight + COINBASE_MATURITY + 3;
+        while (::ChainActive().Tip()->nHeight < spend_height) {
+            CBlockIndex* prev = ::ChainActive().Tip();
+            CBlockIndex* next = new CBlockIndex();
+            next->phashBlock = new uint256(InsecureRand256());
+            next->nTime = prev->nTime + 1;
+            ::ChainstateActive().CoinsTip().SetBestBlock(next->GetBlockHash());
+            next->pprev = prev;
+            next->nHeight = prev->nHeight + 1;
+            next->BuildSkip();
+            ::ChainActive().SetTip(next);
+        }
+    }
+
     LOCK(cs_main);
     LOCK(m_node.mempool->cs);
 
