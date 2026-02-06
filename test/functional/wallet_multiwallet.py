@@ -110,7 +110,9 @@ class MultiWalletTest(PalladiumTestFramework):
             assert_equal(os.path.isfile(wallet_file(wallet_name)), True)
 
         # should not initialize if wallet path can't be created
-        exp_stderr = "boost::filesystem::create_directory:"
+        # Message wording depends on filesystem backend/library versions:
+        # boost may report create_directory/create_directories, std::filesystem uses "filesystem error".
+        exp_stderr = r"(boost::filesystem::create_director(?:y|ies):|filesystem error:)"
         self.nodes[0].assert_start_raises_init_error(['-wallet=wallet.dat/bad'], exp_stderr, match=ErrorMatch.PARTIAL_REGEX)
 
         self.nodes[0].assert_start_raises_init_error(['-walletdir=wallets'], 'Error: Specified -walletdir "wallets" does not exist')

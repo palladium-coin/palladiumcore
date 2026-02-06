@@ -55,9 +55,11 @@ enum
     palladiumconsensus_SCRIPT_FLAGS_VERIFY_CHECKLOCKTIMEVERIFY = (1U << 9), // enable CHECKLOCKTIMEVERIFY (BIP65)
     palladiumconsensus_SCRIPT_FLAGS_VERIFY_CHECKSEQUENCEVERIFY = (1U << 10), // enable CHECKSEQUENCEVERIFY (BIP112)
     palladiumconsensus_SCRIPT_FLAGS_VERIFY_WITNESS             = (1U << 11), // enable WITNESS (BIP141)
+    palladiumconsensus_SCRIPT_FLAGS_VERIFY_TAPROOT             = (1U << 17), // enable TAPROOT (BIP341/BIP342)
     palladiumconsensus_SCRIPT_FLAGS_VERIFY_ALL                 = palladiumconsensus_SCRIPT_FLAGS_VERIFY_P2SH | palladiumconsensus_SCRIPT_FLAGS_VERIFY_DERSIG |
                                                                palladiumconsensus_SCRIPT_FLAGS_VERIFY_NULLDUMMY | palladiumconsensus_SCRIPT_FLAGS_VERIFY_CHECKLOCKTIMEVERIFY |
-                                                               palladiumconsensus_SCRIPT_FLAGS_VERIFY_CHECKSEQUENCEVERIFY | palladiumconsensus_SCRIPT_FLAGS_VERIFY_WITNESS
+                                                               palladiumconsensus_SCRIPT_FLAGS_VERIFY_CHECKSEQUENCEVERIFY | palladiumconsensus_SCRIPT_FLAGS_VERIFY_WITNESS |
+                                                               palladiumconsensus_SCRIPT_FLAGS_VERIFY_TAPROOT
 };
 
 /// Returns 1 if the input nIn of the serialized transaction pointed to by

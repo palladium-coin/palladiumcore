@@ -199,8 +199,9 @@ bool IsWitnessStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
 
         // get the scriptPubKey corresponding to this input:
         CScript prevScript = prev.scriptPubKey;
+        const bool is_p2sh = prevScript.IsPayToScriptHash();
 
-        if (prevScript.IsPayToScriptHash()) {
+        if (is_p2sh) {
             std::vector <std::vector<unsigned char> > stack;
             // If the scriptPubKey is P2SH, we try to extract the redeemScript casually by converting the scriptSig
             // into a stack. We do not check IsPushOnly nor compare the hash as these will be done later anyway.
@@ -229,6 +230,49 @@ bool IsWitnessStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
             for (unsigned int j = 0; j < sizeWitnessStack; j++) {
                 if (tx.vin[i].scriptWitness.stack[j].size() > MAX_STANDARD_P2WSH_STACK_ITEM_SIZE)
                     return false;
+            }
+        } else if (witnessversion == 1 && witnessprogram.size() == WITNESS_V1_TAPROOT_SIZE) {
+            // Taproot spends cannot be wrapped inside P2SH and must have at least one witness element.
+            if (is_p2sh || tx.vin[i].scriptWitness.stack.empty()) {
+                return false;
+            }
+
+            const auto& witness_stack = tx.vin[i].scriptWitness.stack;
+            const bool has_annex = witness_stack.size() >= 2 && !witness_stack.back().empty() && witness_stack.back()[0] == 0x50;
+            const size_t non_annex_items = witness_stack.size() - (has_annex ? 1 : 0);
+            if (non_annex_items == 0) {
+                return false;
+            }
+
+            // Key path spends have one witness element after optional annex stripping.
+            if (non_annex_items == 1) {
+                continue;
+            }
+
+            // Script path spend policy checks.
+            const std::vector<unsigned char>& control_block = witness_stack[non_annex_items - 1];
+            if (control_block.size() < TAPROOT_CONTROL_BASE_SIZE ||
+                control_block.size() > TAPROOT_CONTROL_MAX_SIZE ||
+                ((control_block.size() - TAPROOT_CONTROL_BASE_SIZE) % TAPROOT_CONTROL_NODE_SIZE) != 0) {
+                return false;
+            }
+            if ((control_block[0] & TAPROOT_LEAF_MASK) != TAPROOT_LEAF_TAPSCRIPT) {
+                return false;
+            }
+
+            const std::vector<unsigned char>& tapscript = witness_stack[non_annex_items - 2];
+            if (tapscript.size() > MAX_STANDARD_TAPSCRIPT_SCRIPT_SIZE) {
+                return false;
+            }
+
+            const size_t witness_arg_count = non_annex_items - 2;
+            if (witness_arg_count > MAX_STANDARD_TAPSCRIPT_STACK_ITEMS) {
+                return false;
+            }
+            for (size_t j = 0; j < witness_arg_count; ++j) {
+                if (witness_stack[j].size() > MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE) {
+                    return false;
+                }
             }
         }
     }

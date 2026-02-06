@@ -114,7 +114,7 @@ int palladiumconsensus_verify_script(const unsigned char *scriptPubKey, unsigned
                                    const unsigned char *txTo        , unsigned int txToLen,
                                    unsigned int nIn, unsigned int flags, palladiumconsensus_error* err)
 {
-    if (flags & palladiumconsensus_SCRIPT_FLAGS_VERIFY_WITNESS) {
+    if (flags & (palladiumconsensus_SCRIPT_FLAGS_VERIFY_WITNESS | palladiumconsensus_SCRIPT_FLAGS_VERIFY_TAPROOT)) {
         return set_error(err, palladiumconsensus_ERR_AMOUNT_REQUIRED);
     }
 

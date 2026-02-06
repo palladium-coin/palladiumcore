@@ -1842,6 +1842,11 @@ static bool IsScriptWitnessEnabled(const Consensus::Params& params)
     return params.SegwitHeight != std::numeric_limits<int>::max();
 }
 
+static bool IsTaprootEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& params)
+{
+    return VersionBitsState(pindexPrev, params, Consensus::DEPLOYMENT_TAPROOT, versionbitscache) == ThresholdState::ACTIVE;
+}
+
 static unsigned int GetBlockScriptFlags(const CBlockIndex* pindex, const Consensus::Params& consensusparams) EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
     AssertLockHeld(cs_main);
 
@@ -1883,6 +1888,11 @@ static unsigned int GetBlockScriptFlags(const CBlockIndex* pindex, const Consens
     // Start enforcing BIP147 NULLDUMMY (activated simultaneously with segwit)
     if (IsWitnessEnabled(pindex->pprev, consensusparams)) {
         flags |= SCRIPT_VERIFY_NULLDUMMY;
+    }
+
+    // Enforce BIP341/BIP342 (taproot/tapscript) once the deployment is active.
+    if ((flags & SCRIPT_VERIFY_WITNESS) && IsTaprootEnabled(pindex->pprev, consensusparams)) {
+        flags |= SCRIPT_VERIFY_TAPROOT;
     }
 
     return flags;

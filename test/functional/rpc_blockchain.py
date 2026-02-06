@@ -124,30 +124,35 @@ class BlockchainTest(PalladiumTestFramework):
         assert_equal(res['prune_target_size'], 576716800)
         assert_greater_than(res['size_on_disk'], 0)
 
-        assert_equal(res['softforks'], {
-            'bip34': {'type': 'buried', 'active': True, 'height': 0},
-            'bip66': {'type': 'buried', 'active': True, 'height': 0},
-            'bip65': {'type': 'buried', 'active': True, 'height': 0},
-            'csv': {'type': 'buried', 'active': True, 'height': 0},
-            'segwit': {'type': 'buried', 'active': True, 'height': 0},
-            'testdummy': {
-                'type': 'bip9',
-                'bip9': {
-                    'status': 'started',
-                    'bit': 28,
-                    'start_time': 0,
-                    'timeout': 0x7fffffffffffffff,  # testdummy does not have a timeout so is set to the max int64 value
-                    'since': 144,
-                    'statistics': {
-                        'period': 144,
-                        'threshold': 108,
-                        'elapsed': 57,
-                        'count': 57,
-                        'possible': True,
-                    },
+        softforks = res['softforks']
+        assert_equal(softforks['bip34'], {'type': 'buried', 'active': True, 'height': 0})
+        assert_equal(softforks['bip66'], {'type': 'buried', 'active': True, 'height': 0})
+        assert_equal(softforks['bip65'], {'type': 'buried', 'active': True, 'height': 0})
+        assert_equal(softforks['csv'], {'type': 'buried', 'active': True, 'height': 0})
+        assert_equal(softforks['segwit'], {'type': 'buried', 'active': True, 'height': 0})
+
+        assert_equal(softforks['testdummy'], {
+            'type': 'bip9',
+            'bip9': {
+                'status': 'started',
+                'bit': 28,
+                'start_time': 0,
+                'timeout': 0x7fffffffffffffff,  # testdummy does not have a timeout so is set to the max int64 value
+                'since': 144,
+                'statistics': {
+                    'period': 144,
+                    'threshold': 108,
+                    'elapsed': 57,
+                    'count': 57,
+                    'possible': True,
                 },
-                'active': False}
+            },
+            'active': False
         })
+
+        assert 'taproot' in softforks
+        assert_equal(softforks['taproot']['type'], 'bip9')
+        assert_equal(softforks['taproot']['active'], True)
 
     def _test_getchaintxstats(self):
         self.log.info("Test getchaintxstats")

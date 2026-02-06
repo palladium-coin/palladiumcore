@@ -50,6 +50,7 @@ from test_framework.script import (
     MAX_SCRIPT_ELEMENT_SIZE,
     OP_0,
     OP_1,
+    OP_2,
     OP_16,
     OP_2DROP,
     OP_CHECKMULTISIG,
@@ -1377,12 +1378,15 @@ class SegWitTest(PalladiumTestFramework):
                 self.utxo.append(UTXO(tx.sha256, i, split_value))
 
         self.sync_blocks()
+        taproot_active = self.nodes[0].getblockchaininfo().get('softforks', {}).get('taproot', {}).get('active', False)
         temp_utxo = []
         tx = CTransaction()
         witness_program = CScript([OP_TRUE])
         witness_hash = sha256(witness_program)
         assert_equal(len(self.nodes[1].getrawmempool()), 0)
-        for version in list(range(OP_1, OP_16 + 1)) + [OP_0]:
+        # When taproot is active, OP_1 is no longer a "future" witness version.
+        future_versions = list(range(OP_2, OP_16 + 1)) if taproot_active else list(range(OP_1, OP_16 + 1))
+        for version in future_versions + [OP_0]:
             # First try to spend to a future version segwit script_pubkey.
             script_pubkey = CScript([CScriptOp(version), witness_hash])
             tx.vin = [CTxIn(COutPoint(self.utxo[0].sha256, self.utxo[0].n), b"")]
@@ -1410,7 +1414,8 @@ class SegWitTest(PalladiumTestFramework):
         test_transaction_acceptance(self.nodes[0], self.test_node, tx2, with_witness=True, accepted=True)
         test_transaction_acceptance(self.nodes[1], self.std_node, tx2, with_witness=True, accepted=True)
         temp_utxo.pop()  # last entry in temp_utxo was the output we just spent
-        temp_utxo.append(UTXO(tx2.sha256, 0, tx2.vout[0].nValue))
+        if not taproot_active:
+            temp_utxo.append(UTXO(tx2.sha256, 0, tx2.vout[0].nValue))
 
         # Spend everything in temp_utxo back to an OP_TRUE output.
         tx3 = CTransaction()
