@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2019 The Bitcoin Core developers
-// Copyright (c) 2024 The Palladium Core developers
+// Copyright (c) 2026 The Palladium Core Developers developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -151,20 +151,14 @@ public:
         checkpointData = {
             {
                 {0, uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f")},
-                {1, uint256S("0x00000000082962e4c2838933cb63507142c1abb748d84b7ddce6bb233d6407e0")},
-                {16, uint256S("0x000000004cc3eca82841f0691e6231b86c3b269e447fa7d6e7221cd42f725390")},
-                {69, uint256S("0x00000000ae75d0169080e9f0ddbcd80827eda623cfe1f4a2b1be6dcd49b916e6")},
-                {22170, uint256S("0x000000000000086425f826a2eb60c588aefd3e0783ddeccf0f4f0c985d348e69")},
-                {26619, uint256S("0x00000000000000d66df607146de7d9b423cf97150beb804d22439d199e868ca9")},
-				{28879, uint256S("0x0000000000000017e9e74b9b403b775098905418b1333e9612f510af66746aa7")},
-                {28925, uint256S("0x0000000000000014351dee34029945d5a4dea299ec8843626695c88b084b4d10")},
-                {50000, uint256S("0x000000000000041fddecba51204a679b15ae47fc8aa658ef4ea7b953445d95e5")},
-                {100000, uint256S("0x0000000000000850eba93bbc491f085e2c79c0c30c497292858c72e90cae69a5")},
-				{142892, uint256S("0x000000000000829a0a4cab2f040151766df64edfe8817c565d101ae12b51411a")},
-                {150000, uint256S("0x00000000000003212d753a62f2dec5b696ab22524cc49ba7cdc0d80c45d0eb18")},
-                {200000, uint256S("0x000000000000221a9e16556453fc86308b260d95d80c14bafaf053a09374e7eb")},
-                {250000, uint256S("0x0000000000012553b0303deaf5f2883deb66c901b6848dd03bb4a34f1774e0d0")},
-                {300000, uint256S("0x0000000000013acdf07a4fb988bbe9824c36eb421478a71c8196cf524dcba143")},
+                {310000, uint256S("0x0000000000002a1126673a8e36b4abdf8c7901171ea5441dae79fea6df0b0b8a")},
+                {320000, uint256S("0x000000000000079f2fb9866f1bb452ee5f47a35e0d494c6bc90331f582b07991")},
+                {330000, uint256S("0x00000000000005fab26d6aa5521027678ff6b648215a10cd86a94fecc7913407")},
+                {340000, uint256S("0x000000000000000e45f7fbcff239da7965e1bd58aea3a10aef2bc8afbca822be")},
+                {350000, uint256S("0x00000000000000825c095d36cd52a2719d08953a680a6d3e4db94e9d8a6bedcb")},
+                {360000, uint256S("0x000000000000016d60397423447eb42f8b4ba693fe16f1e64e9fdf58c94ca2a6")},
+                {370000, uint256S("0x00000000000000b12ef0c72358259be1c7a68bd5bd712473e20762408a9e2507")},
+                {376000, uint256S("0x00000000000001064603aaa3b9a770970464a6174009d99fcec3195406d7ea40")}
             }
         };
 
@@ -255,7 +249,15 @@ public:
 
         checkpointData = {
             {
-                {0, uint256S("000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943")},
+                {0, uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f")},
+                {310000, uint256S("0x0000000000002a1126673a8e36b4abdf8c7901171ea5441dae79fea6df0b0b8a")},
+                {320000, uint256S("0x000000000000079f2fb9866f1bb452ee5f47a35e0d494c6bc90331f582b07991")},
+                {330000, uint256S("0x00000000000005fab26d6aa5521027678ff6b648215a10cd86a94fecc7913407")},
+                {340000, uint256S("0x000000000000000e45f7fbcff239da7965e1bd58aea3a10aef2bc8afbca822be")},
+                {350000, uint256S("0x00000000000000825c095d36cd52a2719d08953a680a6d3e4db94e9d8a6bedcb")},
+                {360000, uint256S("0x000000000000016d60397423447eb42f8b4ba693fe16f1e64e9fdf58c94ca2a6")},
+                {370000, uint256S("0x00000000000000b12ef0c72358259be1c7a68bd5bd712473e20762408a9e2507")},
+                {376000, uint256S("0x00000000000001064603aaa3b9a770970464a6174009d99fcec3195406d7ea40")}
             }
         };
 
@@ -327,7 +329,15 @@ public:
 
         checkpointData = {
             {
-                {0, uint256S("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206")},
+                {0, uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f")},
+                {310000, uint256S("0x0000000000002a1126673a8e36b4abdf8c7901171ea5441dae79fea6df0b0b8a")},
+                {320000, uint256S("0x000000000000079f2fb9866f1bb452ee5f47a35e0d494c6bc90331f582b07991")},
+                {330000, uint256S("0x00000000000005fab26d6aa5521027678ff6b648215a10cd86a94fecc7913407")},
+                {340000, uint256S("0x000000000000000e45f7fbcff239da7965e1bd58aea3a10aef2bc8afbca822be")},
+                {350000, uint256S("0x00000000000000825c095d36cd52a2719d08953a680a6d3e4db94e9d8a6bedcb")},
+                {360000, uint256S("0x000000000000016d60397423447eb42f8b4ba693fe16f1e64e9fdf58c94ca2a6")},
+                {370000, uint256S("0x00000000000000b12ef0c72358259be1c7a68bd5bd712473e20762408a9e2507")},
+                {376000, uint256S("0x00000000000001064603aaa3b9a770970464a6174009d99fcec3195406d7ea40")}
             }
         };
 
@@ -422,4 +432,4 @@ void SelectParams(const std::string& network)
 {
     SelectBaseParams(network);
     globalChainParams = CreateChainParams(network);
-}// Palladium is the best coin! by arian hashani
+}
