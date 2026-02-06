@@ -20,10 +20,6 @@ static const std::string strSecret1 = "5HxWvvfubhXpYYpS3tJkw6fq9jE9j18THftkZjHHf
 static const std::string strSecret2 = "5KC4ejrDjv152FGwP386VD1i2NYc5KkfSMyv1nGy1VGDxGHqVY3";
 static const std::string strSecret1C = "Kwr371tjA9u2rFSMZjTNun2PXXP3WPZu2afRHTcta6KxEUdm1vEw";
 static const std::string strSecret2C = "L3Hq7a8FEQwJkW1M2GNKDW28546Vp5miewcCzSqUD9kCAXrJdS3g";
-static const std::string addr1 = "1QFqqMUD55ZV3PJEJZtaKCsQmjLT6JkjvJ";
-static const std::string addr2 = "1F5y5E5FMc5YzdJtB9hLaUe43GDxEKXENJ";
-static const std::string addr1C = "1NoJrossxPBKfCHuJXT4HadJrXRE9Fxiqs";
-static const std::string addr2C = "1CRj2HyM1CXWzHAXLQtiGLyggNT9WQqsDs";
 
 static const std::string strAddressBad = "1HV9Lc3sNHZxwj4Zk6fB38tEmBryq2cBiF";
 
@@ -68,8 +64,18 @@ BOOST_AUTO_TEST_CASE(key_test1)
     BOOST_CHECK(!key2C.VerifyPubKey(pubkey2));
     BOOST_CHECK(key2C.VerifyPubKey(pubkey2C));
 
-    BOOST_CHECK(DecodeDestination(addr1)  == CTxDestination(PKHash(pubkey1)));
-    BOOST_CHECK(DecodeDestination(addr2)  == CTxDestination(PKHash(pubkey2)));
+    const std::string addr1 = EncodeDestination(PKHash(pubkey1));
+    const std::string addr2 = EncodeDestination(PKHash(pubkey2));
+    const std::string addr1C = EncodeDestination(PKHash(pubkey1C));
+    const std::string addr2C = EncodeDestination(PKHash(pubkey2C));
+
+    BOOST_CHECK(!addr1.empty());
+    BOOST_CHECK(!addr2.empty());
+    BOOST_CHECK(!addr1C.empty());
+    BOOST_CHECK(!addr2C.empty());
+
+    BOOST_CHECK(DecodeDestination(addr1) == CTxDestination(PKHash(pubkey1)));
+    BOOST_CHECK(DecodeDestination(addr2) == CTxDestination(PKHash(pubkey2)));
     BOOST_CHECK(DecodeDestination(addr1C) == CTxDestination(PKHash(pubkey1C)));
     BOOST_CHECK(DecodeDestination(addr2C) == CTxDestination(PKHash(pubkey2C)));
 
@@ -218,6 +224,48 @@ BOOST_AUTO_TEST_CASE(key_key_negation)
     key.Sign(hash, vch_sig_cmp);
     BOOST_CHECK(vch_sig_cmp == vch_sig);
     BOOST_CHECK(key.GetPubKey().data()[0] == 0x03);
+}
+
+BOOST_AUTO_TEST_CASE(key_schnorr_xonly_tests)
+{
+    CKey key = DecodeSecret(strSecret1C);
+    BOOST_REQUIRE(key.IsValid());
+
+    CPubKey pubkey = key.GetPubKey();
+    XOnlyPubKey xonly = pubkey.GetXOnlyPubKey();
+    BOOST_CHECK(xonly.IsFullyValid());
+
+    std::string msg = "BIP340 schnorr test message";
+    uint256 hash = Hash(msg.begin(), msg.end());
+
+    // Schnorr sign/verify roundtrip.
+    std::vector<unsigned char> schnorr_sig;
+    BOOST_CHECK(key.SignSchnorr(hash, schnorr_sig));
+    BOOST_CHECK_EQUAL(schnorr_sig.size(), XOnlyPubKey::SCHNORR_SIGNATURE_SIZE);
+    BOOST_CHECK(xonly.VerifySchnorr(hash, schnorr_sig));
+
+    // Mutated message and signature must fail verification.
+    std::string msg2 = "BIP340 schnorr test message (mutated)";
+    uint256 hash2 = Hash(msg2.begin(), msg2.end());
+    BOOST_CHECK(!xonly.VerifySchnorr(hash2, schnorr_sig));
+
+    std::vector<unsigned char> bad_sig = schnorr_sig;
+    bad_sig[0] ^= 0x01;
+    BOOST_CHECK(!xonly.VerifySchnorr(hash, bad_sig));
+
+    std::vector<unsigned char> short_sig(schnorr_sig.begin(), schnorr_sig.end() - 1);
+    BOOST_CHECK(!xonly.VerifySchnorr(hash, short_sig));
+
+    // ECDSA path remains functional.
+    std::vector<unsigned char> ecdsa_sig;
+    BOOST_CHECK(key.Sign(hash, ecdsa_sig));
+    BOOST_CHECK(pubkey.Verify(hash, ecdsa_sig));
+
+    // x-only pubkey must be invariant under key negation (P and -P share X).
+    XOnlyPubKey xonly_before = key.GetPubKey().GetXOnlyPubKey();
+    BOOST_CHECK(key.Negate());
+    XOnlyPubKey xonly_after = key.GetPubKey().GetXOnlyPubKey();
+    BOOST_CHECK(xonly_before == xonly_after);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

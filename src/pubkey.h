@@ -26,6 +26,69 @@ public:
 
 typedef uint256 ChainCode;
 
+/** An encapsulated x-only public key (BIP340). */
+class XOnlyPubKey
+{
+public:
+    static constexpr unsigned int SIZE = 32;
+    static constexpr unsigned int SCHNORR_SIGNATURE_SIZE = 64;
+
+private:
+    unsigned char m_keydata[SIZE];
+
+public:
+    XOnlyPubKey()
+    {
+        memset(m_keydata, 0, SIZE);
+    }
+
+    template <typename T>
+    void Set(const T pbegin, const T pend)
+    {
+        if (size_t(pend - pbegin) == SIZE) {
+            memcpy(m_keydata, (unsigned char*)&pbegin[0], SIZE);
+        } else {
+            memset(m_keydata, 0, SIZE);
+        }
+    }
+
+    template <typename T>
+    XOnlyPubKey(const T pbegin, const T pend)
+    {
+        Set(pbegin, pend);
+    }
+
+    explicit XOnlyPubKey(const std::vector<unsigned char>& _vch)
+    {
+        Set(_vch.begin(), _vch.end());
+    }
+
+    const unsigned char* data() const { return m_keydata; }
+    const unsigned char* begin() const { return m_keydata; }
+    const unsigned char* end() const { return m_keydata + SIZE; }
+
+    friend bool operator==(const XOnlyPubKey& a, const XOnlyPubKey& b)
+    {
+        return memcmp(a.m_keydata, b.m_keydata, SIZE) == 0;
+    }
+    friend bool operator!=(const XOnlyPubKey& a, const XOnlyPubKey& b)
+    {
+        return !(a == b);
+    }
+    friend bool operator<(const XOnlyPubKey& a, const XOnlyPubKey& b)
+    {
+        return memcmp(a.m_keydata, b.m_keydata, SIZE) < 0;
+    }
+
+    uint256 GetHash() const
+    {
+        return Hash(m_keydata, m_keydata + SIZE);
+    }
+
+    bool IsFullyValid() const;
+    bool VerifySchnorr(const uint256& hash, const std::vector<unsigned char>& sig) const;
+};
+
 /** An encapsulated public key. */
 class CPubKey
 {
@@ -198,6 +261,9 @@ public:
 
     //! Turn this public key into an uncompressed public key.
     bool Decompress();
+
+    //! Extract BIP340 x-only public key from this public key.
+    XOnlyPubKey GetXOnlyPubKey() const;
 
     //! Derive BIP32 child pubkey.
     bool Derive(CPubKey& pubkeyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const;

@@ -6,13 +6,18 @@
 #include <pubkey.h>
 
 #include <secp256k1.h>
+#include <secp256k1_extrakeys.h>
 #include <secp256k1_recovery.h>
+#include <secp256k1_schnorrsig.h>
 
 namespace
 {
 /* Global secp256k1_context object used for verification. */
 secp256k1_context* secp256k1_context_verify = nullptr;
 } // namespace
+
+constexpr unsigned int XOnlyPubKey::SIZE;
+constexpr unsigned int XOnlyPubKey::SCHNORR_SIGNATURE_SIZE;
 
 /** This function is taken from the libsecp256k1 distribution and implements
  *  DER parsing for ECDSA signatures, while supporting an arbitrary subset of
@@ -248,6 +253,50 @@ bool CPubKey::Derive(CPubKey& pubkeyChild, ChainCode &ccChild, unsigned int nChi
     secp256k1_ec_pubkey_serialize(secp256k1_context_verify, pub, &publen, &pubkey, SECP256K1_EC_COMPRESSED);
     pubkeyChild.Set(pub, pub + publen);
     return true;
+}
+
+XOnlyPubKey CPubKey::GetXOnlyPubKey() const
+{
+    if (!IsValid()) {
+        return XOnlyPubKey();
+    }
+
+    secp256k1_pubkey pubkey;
+    secp256k1_xonly_pubkey xonly_pubkey;
+    unsigned char keydata[XOnlyPubKey::SIZE];
+    assert(secp256k1_context_verify && "secp256k1_context_verify must be initialized to use CPubKey.");
+
+    if (!secp256k1_ec_pubkey_parse(secp256k1_context_verify, &pubkey, vch, size())) {
+        return XOnlyPubKey();
+    }
+    if (!secp256k1_xonly_pubkey_from_pubkey(secp256k1_context_verify, &xonly_pubkey, nullptr, &pubkey)) {
+        return XOnlyPubKey();
+    }
+    int ret = secp256k1_xonly_pubkey_serialize(secp256k1_context_verify, keydata, &xonly_pubkey);
+    assert(ret);
+    return XOnlyPubKey(keydata, keydata + XOnlyPubKey::SIZE);
+}
+
+bool XOnlyPubKey::IsFullyValid() const
+{
+    secp256k1_xonly_pubkey pubkey;
+    assert(secp256k1_context_verify && "secp256k1_context_verify must be initialized to use XOnlyPubKey.");
+    return secp256k1_xonly_pubkey_parse(secp256k1_context_verify, &pubkey, m_keydata);
+}
+
+bool XOnlyPubKey::VerifySchnorr(const uint256& hash, const std::vector<unsigned char>& sig) const
+{
+    if (sig.size() != SCHNORR_SIGNATURE_SIZE) {
+        return false;
+    }
+
+    secp256k1_xonly_pubkey pubkey;
+    assert(secp256k1_context_verify && "secp256k1_context_verify must be initialized to use XOnlyPubKey.");
+    if (!secp256k1_xonly_pubkey_parse(secp256k1_context_verify, &pubkey, m_keydata)) {
+        return false;
+    }
+
+    return secp256k1_schnorrsig_verify(secp256k1_context_verify, sig.data(), hash.begin(), 32, &pubkey);
 }
 
 void CExtPubKey::Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const {

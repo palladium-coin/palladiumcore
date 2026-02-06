@@ -10,7 +10,9 @@
 #include <random.h>
 
 #include <secp256k1.h>
+#include <secp256k1_extrakeys.h>
 #include <secp256k1_recovery.h>
+#include <secp256k1_schnorrsig.h>
 
 static secp256k1_context* secp256k1_context_sign = nullptr;
 
@@ -226,6 +228,30 @@ bool CKey::Sign(const uint256 &hash, std::vector<unsigned char>& vchSig, bool gr
     assert(ret);
     secp256k1_ecdsa_signature_serialize_der(secp256k1_context_sign, vchSig.data(), &nSigLen, &sig);
     vchSig.resize(nSigLen);
+    return true;
+}
+
+bool CKey::SignSchnorr(const uint256& hash, unsigned char* sig, const unsigned char* aux) const
+{
+    if (!fValid) {
+        return false;
+    }
+
+    secp256k1_keypair keypair;
+    if (!secp256k1_keypair_create(secp256k1_context_sign, &keypair, begin())) {
+        return false;
+    }
+
+    return secp256k1_schnorrsig_sign32(secp256k1_context_sign, sig, hash.begin(), &keypair, aux);
+}
+
+bool CKey::SignSchnorr(const uint256& hash, std::vector<unsigned char>& vchSig, const unsigned char* aux) const
+{
+    vchSig.resize(XOnlyPubKey::SCHNORR_SIGNATURE_SIZE);
+    if (!SignSchnorr(hash, vchSig.data(), aux)) {
+        vchSig.clear();
+        return false;
+    }
     return true;
 }
 
