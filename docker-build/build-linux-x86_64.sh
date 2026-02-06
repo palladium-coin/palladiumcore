@@ -35,18 +35,24 @@ docker run --rm --platform=linux/amd64 \
     rm -rf depends/${HOST_TRIPLE}
     rm -f config.cache
 
-    echo '[*] depends...'
-    cd depends && make HOST=${HOST_TRIPLE} -j\$(nproc) && cd ..
+    echo '[*] depends (forcing Qt packages)...'
+    cd depends && make HOST=${HOST_TRIPLE} NO_QT= -j\$(nproc) && cd ..
 
     echo '[*] autogen/configure...'
     [[ -x ./autogen.sh ]] && ./autogen.sh
     [[ -f ./configure ]] || { echo 'configure not found: autogen failed'; exit 1; }
 
-    # Ensure we use Qt tools (moc/uic/rcc) from depends, not system Qt
-    export PATH=\$PWD/depends/${HOST_TRIPLE}/bin:\$PATH
+    DEPENDS_PREFIX=\$PWD/depends/${HOST_TRIPLE}
 
-    ./configure --prefix=\$PWD/depends/${HOST_TRIPLE} \
-                --with-qt-bindir=\$PWD/depends/${HOST_TRIPLE}/bin \
+    # Qt host tools (moc/uic/rcc) are staged in depends/<host>/native/bin.
+    export PATH=\${DEPENDS_PREFIX}/native/bin:\${DEPENDS_PREFIX}/bin:\$PATH
+
+    CONFIG_SITE=\${DEPENDS_PREFIX}/share/config.site \
+      ./configure --prefix=\${DEPENDS_PREFIX} \
+                --enable-gui=qt5 \
+                --with-gui=qt5 \
+                --with-qrencode \
+                --with-qt-bindir=\${DEPENDS_PREFIX}/native/bin \
                 --enable-glibc-back-compat \
                 --enable-reduce-exports \
                 LDFLAGS='-static-libstdc++'
@@ -54,11 +60,17 @@ docker run --rm --platform=linux/amd64 \
     echo '[*] make...'
     make -j\$(nproc)
 
+    if [[ ! -x src/qt/palladium-qt ]]; then
+      echo '[!] ERROR: src/qt/palladium-qt not produced. Check configure output for \"with gui / qt = yes\".'
+      exit 1
+    fi
+
     echo '[*] copying binaries to /out volume...'
     mkdir -p /out
-    for b in src/palladiumd src/palladium-cli src/palladium-tx src/palladium-wallet src/qt/palladium-qt; do
+    for b in src/palladiumd src/palladium-cli src/palladium-tx src/palladium-wallet; do
       [[ -f \"\$b\" ]] && install -m 0755 \"\$b\" /out/
     done
+    install -m 0755 src/qt/palladium-qt /out/
 
     # Align permissions to host user
     chown -R \${HOST_UID:-0}:\${HOST_GID:-0} /out
