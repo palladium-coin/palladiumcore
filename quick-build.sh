@@ -111,7 +111,7 @@ install_berkeleydb() {
         exit 1
     fi
 
-    ./contrib/install_db4.sh "$SCRIPT_DIR"
+    ./contrib/install_db4.sh "$SCRIPT_DIR" CPPFLAGS="-P -D_GNU_SOURCE" LDFLAGS="-lpthread"
 
     log_info "BerkeleyDB 4.8 installed successfully!"
 }
@@ -169,6 +169,7 @@ build_palladium() {
     # Configure build with optimization flags
     log_info "Configuring build with Qt5 and BerkeleyDB 4.8..."
     ./configure \
+        LDFLAGS="-lpthread" \
         --enable-gui=qt5 \
         --with-gui=qt5 \
         --enable-zmq \
