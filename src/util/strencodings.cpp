@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2019 The Palladium Core developers
+// Copyright (c) 2026 The Palladium Core Developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -74,7 +75,7 @@ std::vector<unsigned char> ParseHex(const char* psz)
     std::vector<unsigned char> vch;
     while (true)
     {
-        while (isspace(*psz))
+        while (IsSpace(*psz))
             psz++;
         signed char c = HexDigit(*psz++);
         if (c == (signed char)-1)
@@ -106,7 +107,7 @@ static bool PrecisionValid(const std::string& str)
         } else if (c == '.') {
             if (decimal) return false;
             decimal = true;
-        } else if (c >= '0' && c <= '9') {
+        } else if (IsDigit(c)) {
             digit = true;
         } else {
             return false;
@@ -121,9 +122,6 @@ bool ParseInt32(const std::string& str, int32_t *out)
     errno = 0; // strtol will not set errno if valid
     long int n = strtol(str.c_str(), &endp, 10);
     if(out) *out = (int32_t)n;
-    // Note: the check for n > INT_MAX is not strictly needed on most
-    // platforms, because long int is often 32-bit. However, on
-    // platforms where long int is 64-bit, we need this check.
     return endp && *endp == 0 && !str.empty() &&
            errno == 0 && n >= std::numeric_limits<int32_t>::min() &&
            n <= std::numeric_limits<int32_t>::max();
@@ -140,7 +138,7 @@ bool ParseInt64(const std::string& str, int64_t *out)
            n <= std::numeric_limits<int64_t>::max();
 }
 
-bool ParseUint32(const std::string& str, uint32_t *out)
+bool ParseUInt32(const std::string& str, uint32_t *out)
 {
     char *endp = nullptr;
     errno = 0; // strtoul will not set errno if valid
@@ -151,7 +149,7 @@ bool ParseUint32(const std::string& str, uint32_t *out)
            errno == 0 && n <= std::numeric_limits<uint32_t>::max();
 }
 
-bool ParseUint64(const std::string& str, uint64_t *out)
+bool ParseUInt64(const std::string& str, uint64_t *out)
 {
     char *endp = nullptr;
     errno = 0; // strtoull will not set errno if valid
@@ -248,9 +246,10 @@ std::vector<unsigned char> DecodeBase64(const char* p, bool* pfInvalid)
     return vchRet;
 }
 
-std::vector<unsigned char> DecodeBase64(const std::string& str, bool* pfInvalid)
+std::string DecodeBase64(const std::string& str, bool* pfInvalid)
 {
-    return DecodeBase64(str.c_str(), pfInvalid);
+    std::vector<unsigned char> vchRet = DecodeBase64(str.c_str(), pfInvalid);
+    return std::string((const char*)vchRet.data(), vchRet.size());
 }
 
 std::string EncodeBase32(const unsigned char* pch, size_t len)
@@ -364,9 +363,10 @@ std::vector<unsigned char> DecodeBase32(const char* p, bool* pfInvalid)
     return vchRet;
 }
 
-std::vector<unsigned char> DecodeBase32(const std::string& str, bool* pfInvalid)
+std::string DecodeBase32(const std::string& str, bool* pfInvalid)
 {
-    return DecodeBase32(str.c_str(), pfInvalid);
+    std::vector<unsigned char> vchRet = DecodeBase32(str.c_str(), pfInvalid);
+    return std::string((const char*)vchRet.data(), vchRet.size());
 }
 
 static std::string DoTimingSafeFormat(const std::string& str) {
@@ -376,4 +376,65 @@ static std::string DoTimingSafeFormat(const std::string& str) {
 std::string TimingSafeFormat(const std::string& str)
 {
     return DoTimingSafeFormat(str);
+}
+
+void SplitHostPort(std::string in, int& portOut, std::string& hostOut)
+{
+    size_t colon = in.find_last_of(':');
+    // if a : is found, and it either isn't the last character, or it is the
+    // last character of a IPv6 address, then it's a port separator
+    bool foundPort = colon != std::string::npos && colon < in.length() - 1;
+    if (foundPort && in[colon - 1] == ']')
+        foundPort = true;
+    if (foundPort)
+    {
+        char *endp = nullptr;
+        int n = strtol(in.substr(colon + 1).c_str(), &endp, 10);
+        if (endp && *endp == 0 && n >= 0 && n <= 65535)
+        {
+            portOut = n;
+            in = in.substr(0, colon);
+        }
+    }
+    if (in.length() > 0 && in[0] == '[' && in[in.length() - 1] == ']')
+        hostOut = in.substr(1, in.length() - 2);
+    else
+        hostOut = in;
+}
+
+int64_t atoi64(const char* psz)
+{
+    if (!psz) return 0;
+    return strtoll(psz, nullptr, 10);
+}
+
+int64_t atoi64(const std::string& str)
+{
+    return atoi64(str.c_str());
+}
+
+int atoi(const std::string& str)
+{
+    return atoi(str.c_str());
+}
+
+std::string ToLower(const std::string& str)
+{
+    std::string r;
+    for (const unsigned char c : str) r += ToLower(c);
+    return r;
+}
+
+std::string ToUpper(const std::string& str)
+{
+    std::string r;
+    for (const unsigned char c : str) r += ToUpper(c);
+    return r;
+}
+
+std::string Capitalize(std::string str)
+{
+    if (str.empty()) return str;
+    str[0] = ToUpper(str[0]);
+    return str;
 }
