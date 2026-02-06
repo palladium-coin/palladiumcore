@@ -193,12 +193,6 @@ std::vector<unsigned char> DecodeBase64(const char* p, bool* pf_invalid)
 
 std::string DecodeBase64(const std::string& str, bool* pf_invalid)
 {
-    if (!ValidAsCString(str)) {
-        if (pf_invalid) {
-            *pf_invalid = true;
-        }
-        return {};
-    }
     std::vector<unsigned char> vchRet = DecodeBase64(str.c_str(), pf_invalid);
     return std::string((const char*)vchRet.data(), vchRet.size());
 }
@@ -268,23 +262,15 @@ std::vector<unsigned char> DecodeBase32(const char* p, bool* pf_invalid)
 
 std::string DecodeBase32(const std::string& str, bool* pf_invalid)
 {
-    if (!ValidAsCString(str)) {
-        if (pf_invalid) {
-            *pf_invalid = true;
-        }
-        return {};
-    }
     std::vector<unsigned char> vchRet = DecodeBase32(str.c_str(), pf_invalid);
     return std::string((const char*)vchRet.data(), vchRet.size());
 }
 
-NODISCARD static bool ParsePrechecks(const std::string& str)
+static bool ParsePrechecks(const std::string& str)
 {
     if (str.empty()) // No empty string allowed
         return false;
     if (str.size() >= 1 && (IsSpace(str[0]) || IsSpace(str[str.size()-1]))) // No padding allowed
-        return false;
-    if (!ValidAsCString(str)) // No embedded NUL characters allowed
         return false;
     return true;
 }
