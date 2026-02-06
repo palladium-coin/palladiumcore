@@ -581,8 +581,8 @@ std::string LicenseInfo()
 {
     const std::string URL_SOURCE_CODE = "<https://github.com/palladium-coin/palladiumcore>";
 
-    return CopyrightHolders(strprintf(_("Copyright (C) %i-%i").translated, 2024, COPYRIGHT_YEAR) + " ") + "\n" +
-           "Copyright (C) 2009-2024 The Bitcoin Core developers" + "\n" +
+    return CopyrightHolders(strprintf(_("Copyright (C) %i-%i").translated, 2026, COPYRIGHT_YEAR) + " ") + "\n" +
+           "Copyright (C) 2009-2026 The Bitcoin Core developers" + "\n" +
            "\n" +
            strprintf(_("Please contribute if you find %s useful. "
                        "Visit %s for further information about the software.").translated,
