@@ -131,6 +131,13 @@ public:
     bool SignSchnorr(const uint256& hash, std::vector<unsigned char>& vchSig, const unsigned char* aux = nullptr) const;
 
     /**
+     * Create a 64-byte BIP340 Schnorr signature for Taproot key-path spending.
+     * This applies the Taproot tweak before signing.
+     * merkle_root: nullptr for key-path only spend (no script tree)
+     */
+    bool SignSchnorrTaproot(const uint256& hash, std::vector<unsigned char>& vchSig, const uint256* merkle_root = nullptr, const unsigned char* aux = nullptr) const;
+
+    /**
      * Create a compact signature (65 bytes), which allows reconstructing the used public key.
      * The format is one header byte, followed by two times 32 bytes for the serialized r and s values.
      * The header byte: 0x1B = first key with even y, 0x1C = first key with odd y,

@@ -79,14 +79,35 @@ bool HaveKeys(const std::vector<valtype>& pubkeys, const LegacyScriptPubKeyMan& 
 bool HaveTaprootKey(const valtype& xonly, const LegacyScriptPubKeyMan& keystore)
 {
     if (xonly.size() != WITNESS_V1_TAPROOT_SIZE) return false;
+    const XOnlyPubKey output_key(xonly.begin(), xonly.end());
+    if (!output_key.IsFullyValid()) return false;
+
+    // First, try the new method: look up the internal key directly from our mapping
+    CPubKey internal_pubkey;
+    if (keystore.GetTaprootInternalKey(output_key, internal_pubkey)) {
+        // Verify we have the private key for this internal pubkey
+        return keystore.HaveKey(internal_pubkey.GetID());
+    }
+
+    // Fallback: for backwards compatibility, also check if we have a key
+    // whose tweak matches the output key. This handles cases where the
+    // mapping wasn't stored (e.g., older wallet versions).
     std::array<unsigned char, CPubKey::COMPRESSED_SIZE> candidate;
     std::copy(xonly.begin(), xonly.end(), candidate.begin() + 1);
-    candidate[0] = 0x02;
-    const CKeyID even_key(Hash160(candidate.begin(), candidate.end()));
-    if (keystore.HaveKey(even_key)) return true;
-    candidate[0] = 0x03;
-    const CKeyID odd_key(Hash160(candidate.begin(), candidate.end()));
-    return keystore.HaveKey(odd_key);
+    for (unsigned char prefix : {0x02, 0x03}) {
+        candidate[0] = prefix;
+        const CKeyID key_id(Hash160(candidate.begin(), candidate.end()));
+        CKey key;
+        if (keystore.GetKey(key_id, key)) {
+            // Found a key, check if its tweaked version matches output_key
+            XOnlyPubKey internal_key = key.GetPubKey().GetXOnlyPubKey();
+            auto [tweaked, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+            if (tweaked == output_key) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 //! Recursively solve script and return spendable/watchonly/invalid status.
@@ -1333,6 +1354,17 @@ void LegacyScriptPubKeyMan::LearnRelatedScripts(const CPubKey& key, OutputType t
         CScript taproot_prog = GetScriptForDestination(taproot_dest);
         if (!taproot_prog.empty()) {
             AddCScript(taproot_prog);
+
+            // Store the mapping from tweaked output key to internal key
+            // This allows us to find the internal key when signing
+            XOnlyPubKey internal_key = key.GetXOnlyPubKey();
+            auto [output_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+            if (output_key.IsFullyValid()) {
+                // Convert XOnlyPubKey to uint256 for storage
+                uint256 output_key_hash;
+                memcpy(output_key_hash.begin(), output_key.data(), XOnlyPubKey::SIZE);
+                m_taproot_internal_keys[output_key_hash] = key;
+            }
         }
     }
 }
@@ -1527,4 +1559,20 @@ std::set<CKeyID> LegacyScriptPubKeyMan::GetKeys() const
         set_address.insert(mi.first);
     }
     return set_address;
+}
+
+bool LegacyScriptPubKeyMan::GetTaprootInternalKey(const XOnlyPubKey& output_key, CPubKey& internal_key) const
+{
+    LOCK(cs_KeyStore);
+
+    // Convert XOnlyPubKey to uint256 for lookup
+    uint256 output_key_hash;
+    memcpy(output_key_hash.begin(), output_key.data(), XOnlyPubKey::SIZE);
+
+    auto it = m_taproot_internal_keys.find(output_key_hash);
+    if (it != m_taproot_internal_keys.end()) {
+        internal_key = it->second;
+        return true;
+    }
+    return false;
 }

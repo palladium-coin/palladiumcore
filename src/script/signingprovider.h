@@ -25,6 +25,7 @@ public:
     virtual bool GetKey(const CKeyID &address, CKey& key) const { return false; }
     virtual bool HaveKey(const CKeyID &address) const { return false; }
     virtual bool GetKeyOrigin(const CKeyID& keyid, KeyOriginInfo& info) const { return false; }
+    virtual bool GetTaprootInternalKey(const XOnlyPubKey& output_key, CPubKey& internal_key) const { return false; }
 };
 
 extern const SigningProvider& DUMMY_SIGNING_PROVIDER;

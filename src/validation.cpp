@@ -1026,7 +1026,12 @@ bool MemPoolAccept::AcceptSingleTransaction(const CTransactionRef& ptx, ATMPArgs
     // scripts (ie, other policy checks pass). We perform the inexpensive
     // checks first and avoid hashing and signature verification unless those
     // checks pass, to mitigate CPU exhaustion denial-of-service attacks.
-    PrecomputedTransactionData txdata(*ptx);
+    std::vector<CTxOut> spent_outputs;
+    spent_outputs.reserve(ptx->vin.size());
+    for (const auto& txin : ptx->vin) {
+        spent_outputs.emplace_back(m_view.AccessCoin(txin.prevout).out);
+    }
+    PrecomputedTransactionData txdata(*ptx, spent_outputs);
 
     if (!PolicyScriptChecks(args, workspace, txdata)) return false;
 

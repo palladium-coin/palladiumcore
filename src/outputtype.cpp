@@ -25,14 +25,21 @@ const std::array<OutputType, 4> OUTPUT_TYPES = {OutputType::LEGACY, OutputType::
 
 static CTxDestination GetDestinationForTaprootKey(const CPubKey& key)
 {
-    XOnlyPubKey xonly = key.GetXOnlyPubKey();
-    if (!xonly.IsFullyValid()) {
+    XOnlyPubKey internal_key = key.GetXOnlyPubKey();
+    if (!internal_key.IsFullyValid()) {
         return CNoDestination();
     }
+
+    // Compute the tweaked output key: output_key = internal_key + H(internal_key) * G
+    auto [output_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+    if (!output_key.IsFullyValid()) {
+        return CNoDestination();
+    }
+
     WitnessUnknown dest;
     dest.version = 1;
     dest.length = WITNESS_V1_TAPROOT_SIZE;
-    std::copy(xonly.begin(), xonly.end(), dest.program);
+    std::copy(output_key.begin(), output_key.end(), dest.program);
     return dest;
 }
 

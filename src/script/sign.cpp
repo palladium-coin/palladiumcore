@@ -11,6 +11,8 @@
 #include <script/signingprovider.h>
 #include <script/standard.h>
 #include <uint256.h>
+#include <logging.h>
+#include <util/strencodings.h>
 
 #include <algorithm>
 #include <array>
@@ -26,10 +28,27 @@ bool MutableTransactionSignatureCreator::CreateSig(const SigningProvider& provid
         return false;
 
     if (sigversion == SigVersion::TAPROOT || sigversion == SigVersion::TAPSCRIPT) {
-        if (!txdata || !txdata->m_bip341_taproot_ready || !key.IsCompressed()) return false;
-        uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount, sigversion, txdata);
-        if (!key.SignSchnorr(hash, vchSig)) {
+        if (!txdata) {
             return false;
+        }
+        if (!txdata->m_bip341_taproot_ready) {
+            return false;
+        }
+        if (!key.IsCompressed()) {
+            return false;
+        }
+        uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount, sigversion, txdata);
+        // For Taproot key-path spending, we need to apply the taproot tweak before signing
+        // For TAPSCRIPT, we sign without the tweak (the script takes care of the commitment)
+        if (sigversion == SigVersion::TAPROOT) {
+            if (!key.SignSchnorrTaproot(hash, vchSig, nullptr)) {
+                return false;
+            }
+        } else {
+            // For script-path (TAPSCRIPT), use regular Schnorr signing
+            if (!key.SignSchnorr(hash, vchSig)) {
+                return false;
+            }
         }
         if (nHashType != SIGHASH_DEFAULT) {
             vchSig.push_back((unsigned char)nHashType);
@@ -84,18 +103,43 @@ static bool GetPubKey(const SigningProvider& provider, const SignatureData& sigd
 
 static bool FindTaprootPubKey(const SigningProvider& provider, const std::vector<unsigned char>& xonly_bytes, CPubKey& pubkey)
 {
-    if (xonly_bytes.size() != WITNESS_V1_TAPROOT_SIZE) return false;
+    if (xonly_bytes.size() != WITNESS_V1_TAPROOT_SIZE) {
+        return false;
+    }
     const XOnlyPubKey output_key(xonly_bytes.begin(), xonly_bytes.end());
-    if (!output_key.IsFullyValid()) return false;
+    if (!output_key.IsFullyValid()) {
+        return false;
+    }
 
+    // First, try to look up the internal key directly from the provider's mapping.
+    // This is the correct and efficient way for wallets that store the mapping.
+    if (provider.GetTaprootInternalKey(output_key, pubkey)) {
+        return true;
+    }
+
+    // Fallback: for backwards compatibility or providers without the mapping,
+    // enumerate keys and check if their tweaked version matches the output key.
+    // This is less efficient but ensures compatibility with older code.
     std::array<unsigned char, CPubKey::COMPRESSED_SIZE> candidate;
     std::copy(xonly_bytes.begin(), xonly_bytes.end(), candidate.begin() + 1);
+
     for (unsigned char prefix : {0x02, 0x03}) {
         candidate[0] = prefix;
         const CPubKey candidate_pubkey(candidate.begin(), candidate.end());
         if (!candidate_pubkey.IsFullyValid()) continue;
+
+        // Try to get a key from the provider
         CPubKey found_pubkey;
-        if (provider.GetPubKey(candidate_pubkey.GetID(), found_pubkey) && found_pubkey.GetXOnlyPubKey() == output_key) {
+        if (!provider.GetPubKey(candidate_pubkey.GetID(), found_pubkey)) continue;
+
+        // Compute the tweaked output key for this internal key
+        XOnlyPubKey internal_key = found_pubkey.GetXOnlyPubKey();
+        if (!internal_key.IsFullyValid()) continue;
+
+        auto [tweaked_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+
+        // Check if tweaked key matches the output key
+        if (tweaked_key == output_key) {
             pubkey = found_pubkey;
             return true;
         }
@@ -213,7 +257,9 @@ static bool SignStep(const SigningProvider& provider, const BaseSignatureCreator
         if (!FindTaprootPubKey(provider, vSolutions[0], pubkey)) {
             return false;
         }
-        if (!CreateSig(creator, sigdata, provider, sig, pubkey, scriptPubKey, SigVersion::TAPROOT)) return false;
+        // For Taproot key-path spending, scriptCode should be empty per BIP341
+        CScript empty_script;
+        if (!CreateSig(creator, sigdata, provider, sig, pubkey, empty_script, SigVersion::TAPROOT)) return false;
         ret.push_back(std::move(sig));
         return true;
     }

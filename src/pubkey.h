@@ -87,6 +87,20 @@ public:
 
     bool IsFullyValid() const;
     bool VerifySchnorr(const uint256& hash, const std::vector<unsigned char>& sig) const;
+
+    /**
+     * Compute the BIP340/BIP341 tagged hash for TapTweak.
+     * tweak = H_TapTweak(xonly_pubkey || merkle_root) if merkle_root is provided
+     * tweak = H_TapTweak(xonly_pubkey) otherwise (key-path only spend)
+     */
+    uint256 ComputeTapTweak(const uint256* merkle_root = nullptr) const;
+
+    /**
+     * Compute the Taproot output key from this internal key.
+     * output_key = internal_key + H_TapTweak(internal_key || merkle_root) * G
+     * Returns the tweaked output key and optionally the parity.
+     */
+    std::pair<XOnlyPubKey, bool> CreatePayToTaprootPubKey(const uint256* merkle_root = nullptr) const;
 };
 
 /** An encapsulated public key. */
