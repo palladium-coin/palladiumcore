@@ -16,6 +16,8 @@
 #include <util/strencodings.h>
 #include <util/vector.h>
 
+#include <algorithm>
+#include <array>
 #include <memory>
 #include <string>
 #include <vector>
@@ -565,12 +567,14 @@ public:
 
     Optional<OutputType> GetOutputType() const override
     {
+        if (const auto* witness = boost::get<WitnessUnknown>(&m_destination)) {
+            return witness->version == 0 ? OutputType::BECH32 : OutputType::BECH32M;
+        }
         switch (m_destination.which()) {
             case 1 /* PKHash */:
             case 2 /* ScriptHash */: return OutputType::LEGACY;
             case 3 /* WitnessV0ScriptHash */:
-            case 4 /* WitnessV0KeyHash */:
-            case 5 /* WitnessUnknown */: return OutputType::BECH32;
+            case 4 /* WitnessV0KeyHash */: return OutputType::BECH32;
             case 0 /* CNoDestination */:
             default: return nullopt;
         }
@@ -592,12 +596,14 @@ public:
     {
         CTxDestination dest;
         ExtractDestination(m_script, dest);
+        if (const auto* witness = boost::get<WitnessUnknown>(&dest)) {
+            return witness->version == 0 ? OutputType::BECH32 : OutputType::BECH32M;
+        }
         switch (dest.which()) {
             case 1 /* PKHash */:
             case 2 /* ScriptHash */: return OutputType::LEGACY;
             case 3 /* WitnessV0ScriptHash */:
-            case 4 /* WitnessV0KeyHash */:
-            case 5 /* WitnessUnknown */: return OutputType::BECH32;
+            case 4 /* WitnessV0KeyHash */: return OutputType::BECH32;
             case 0 /* CNoDestination */:
             default: return nullopt;
         }
@@ -641,6 +647,28 @@ protected:
 public:
     WPKHDescriptor(std::unique_ptr<PubkeyProvider> prov) : DescriptorImpl(Vector(std::move(prov)), {}, "wpkh") {}
     Optional<OutputType> GetOutputType() const override { return OutputType::BECH32; }
+};
+
+/** A parsed tr(P) descriptor. */
+class TRDescriptor final : public DescriptorImpl
+{
+protected:
+    std::vector<CScript> MakeScripts(const std::vector<CPubKey>& keys, const CScript*, FlatSigningProvider& out) const override
+    {
+        const XOnlyPubKey xonly = keys[0].GetXOnlyPubKey();
+        if (!xonly.IsFullyValid()) return {};
+        CKeyID id = keys[0].GetID();
+        out.pubkeys.emplace(id, keys[0]);
+
+        WitnessUnknown taproot;
+        taproot.version = 1;
+        taproot.length = WITNESS_V1_TAPROOT_SIZE;
+        std::copy(xonly.begin(), xonly.end(), taproot.program);
+        return Vector(GetScriptForDestination(taproot));
+    }
+public:
+    TRDescriptor(std::unique_ptr<PubkeyProvider> prov) : DescriptorImpl(Vector(std::move(prov)), {}, "tr") {}
+    Optional<OutputType> GetOutputType() const override { return OutputType::BECH32M; }
 };
 
 /** A parsed combo(P) descriptor. */
@@ -919,6 +947,14 @@ std::unique_ptr<DescriptorImpl> ParseScript(uint32_t key_exp_index, Span<const c
         error = "Cannot have wpkh within wsh";
         return nullptr;
     }
+    if (ctx == ParseScriptContext::TOP && Func("tr", expr)) {
+        auto pubkey = ParsePubkey(key_exp_index, expr, false, out, error);
+        if (!pubkey) return nullptr;
+        return MakeUnique<TRDescriptor>(std::move(pubkey));
+    } else if (ctx != ParseScriptContext::TOP && Func("tr", expr)) {
+        error = "Cannot have tr in non-top level";
+        return nullptr;
+    }
     if (ctx == ParseScriptContext::TOP && Func("sh", expr)) {
         auto desc = ParseScript(key_exp_index, expr, ParseScriptContext::P2SH, out, error);
         if (!desc || expr.size()) return nullptr;
@@ -973,6 +1009,28 @@ std::unique_ptr<PubkeyProvider> InferPubkey(const CPubKey& pubkey, ParseScriptCo
     return key_provider;
 }
 
+bool InferTaprootPubkey(const std::vector<unsigned char>& xonly_bytes, const SigningProvider& provider, CPubKey& pubkey_out)
+{
+    if (xonly_bytes.size() != WITNESS_V1_TAPROOT_SIZE) return false;
+    const XOnlyPubKey output_key(xonly_bytes.begin(), xonly_bytes.end());
+    if (!output_key.IsFullyValid()) return false;
+
+    std::array<unsigned char, CPubKey::COMPRESSED_SIZE> candidate;
+    std::copy(xonly_bytes.begin(), xonly_bytes.end(), candidate.begin() + 1);
+    for (unsigned char prefix : {0x02, 0x03}) {
+        candidate[0] = prefix;
+        const CPubKey candidate_pubkey(candidate.begin(), candidate.end());
+        if (!candidate_pubkey.IsFullyValid()) continue;
+
+        CPubKey found_pubkey;
+        if (provider.GetPubKey(candidate_pubkey.GetID(), found_pubkey) && found_pubkey.GetXOnlyPubKey() == output_key) {
+            pubkey_out = found_pubkey;
+            return true;
+        }
+    }
+    return false;
+}
+
 std::unique_ptr<DescriptorImpl> InferScript(const CScript& script, ParseScriptContext ctx, const SigningProvider& provider)
 {
     std::vector<std::vector<unsigned char>> data;
@@ -998,6 +1056,12 @@ std::unique_ptr<DescriptorImpl> InferScript(const CScript& script, ParseScriptCo
         CPubKey pubkey;
         if (provider.GetPubKey(keyid, pubkey)) {
             return MakeUnique<WPKHDescriptor>(InferPubkey(pubkey, ctx, provider));
+        }
+    }
+    if (txntype == TX_WITNESS_V1_TAPROOT && ctx == ParseScriptContext::TOP) {
+        CPubKey pubkey;
+        if (InferTaprootPubkey(data[0], provider, pubkey)) {
+            return MakeUnique<TRDescriptor>(InferPubkey(pubkey, ctx, provider));
         }
     }
     if (txntype == TX_MULTISIG) {

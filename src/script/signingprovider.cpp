@@ -9,6 +9,9 @@
 
 #include <util/system.h>
 
+#include <algorithm>
+#include <array>
+
 const SigningProvider& DUMMY_SIGNING_PROVIDER = SigningProvider();
 
 template<typename M, typename K, typename V>
@@ -192,6 +195,20 @@ CKeyID GetKeyForDestination(const SigningProvider& store, const CTxDestination& 
         if (store.GetCScript(script_id, script) && ExtractDestination(script, inner_dest)) {
             if (auto inner_witness_id = boost::get<WitnessV0KeyHash>(&inner_dest)) {
                 return CKeyID(*inner_witness_id);
+            }
+        }
+    }
+    if (auto witness = boost::get<WitnessUnknown>(&dest)) {
+        if (witness->version == 1 && witness->length == WITNESS_V1_TAPROOT_SIZE) {
+            std::array<unsigned char, CPubKey::COMPRESSED_SIZE> candidate;
+            std::copy(witness->program, witness->program + witness->length, candidate.begin() + 1);
+            for (unsigned char prefix : {0x02, 0x03}) {
+                candidate[0] = prefix;
+                const CPubKey pubkey(candidate.begin(), candidate.end());
+                if (!pubkey.IsFullyValid()) continue;
+                if (store.HaveKey(pubkey.GetID())) {
+                    return pubkey.GetID();
+                }
             }
         }
     }

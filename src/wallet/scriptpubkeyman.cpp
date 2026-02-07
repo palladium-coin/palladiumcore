@@ -3,6 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <key_io.h>
+#include <hash.h>
 #include <outputtype.h>
 #include <script/descriptor.h>
 #include <script/sign.h>
@@ -11,6 +12,9 @@
 #include <util/string.h>
 #include <util/translation.h>
 #include <wallet/scriptpubkeyman.h>
+
+#include <algorithm>
+#include <array>
 
 bool LegacyScriptPubKeyMan::GetNewDestination(const OutputType type, CTxDestination& dest, std::string& error)
 {
@@ -70,6 +74,19 @@ bool HaveKeys(const std::vector<valtype>& pubkeys, const LegacyScriptPubKeyMan& 
         if (!keystore.HaveKey(keyID)) return false;
     }
     return true;
+}
+
+bool HaveTaprootKey(const valtype& xonly, const LegacyScriptPubKeyMan& keystore)
+{
+    if (xonly.size() != WITNESS_V1_TAPROOT_SIZE) return false;
+    std::array<unsigned char, CPubKey::COMPRESSED_SIZE> candidate;
+    std::copy(xonly.begin(), xonly.end(), candidate.begin() + 1);
+    candidate[0] = 0x02;
+    const CKeyID even_key(Hash160(candidate.begin(), candidate.end()));
+    if (keystore.HaveKey(even_key)) return true;
+    candidate[0] = 0x03;
+    const CKeyID odd_key(Hash160(candidate.begin(), candidate.end()));
+    return keystore.HaveKey(odd_key);
 }
 
 //! Recursively solve script and return spendable/watchonly/invalid status.
@@ -158,6 +175,19 @@ IsMineResult IsMineInner(const LegacyScriptPubKeyMan& keystore, const CScript& s
         CScript subscript;
         if (keystore.GetCScript(scriptID, subscript)) {
             ret = std::max(ret, recurse_scripthash ? IsMineInner(keystore, subscript, IsMineSigVersion::WITNESS_V0) : IsMineResult::SPENDABLE);
+        }
+        break;
+    }
+    case TX_WITNESS_V1_TAPROOT:
+    {
+        if (sigversion != IsMineSigVersion::TOP) {
+            return IsMineResult::INVALID;
+        }
+        if (!keystore.HaveCScript(CScriptID(scriptPubKey))) {
+            break;
+        }
+        if (HaveTaprootKey(vSolutions[0], keystore)) {
+            ret = std::max(ret, IsMineResult::SPENDABLE);
         }
         break;
     }
@@ -1298,6 +1328,12 @@ void LegacyScriptPubKeyMan::LearnRelatedScripts(const CPubKey& key, OutputType t
         // Make sure the resulting program is solvable.
         assert(IsSolvable(*this, witprog));
         AddCScript(witprog);
+    } else if (key.IsCompressed() && type == OutputType::BECH32M) {
+        CTxDestination taproot_dest = GetDestinationForKey(key, type);
+        CScript taproot_prog = GetScriptForDestination(taproot_dest);
+        if (!taproot_prog.empty()) {
+            AddCScript(taproot_prog);
+        }
     }
 }
 

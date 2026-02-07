@@ -1499,11 +1499,26 @@ template PrecomputedTransactionData::PrecomputedTransactionData(const CTransacti
 template PrecomputedTransactionData::PrecomputedTransactionData(const CMutableTransaction& txTo, std::vector<CTxOut> spent_outputs);
 
 template <class T>
+static bool SignatureHashSchnorr(uint256& hash_out, ScriptExecutionData& execdata, const T& txTo, uint32_t in_pos, uint8_t hash_type, SigVersion sigversion, const PrecomputedTransactionData& cache);
+
+template <class T>
 uint256 SignatureHash(const CScript& scriptCode, const T& txTo, unsigned int nIn, int nHashType, const CAmount& amount, SigVersion sigversion, const PrecomputedTransactionData* cache)
 {
     assert(nIn < txTo.vin.size());
 
-    if (sigversion == SigVersion::TAPROOT || sigversion == SigVersion::TAPSCRIPT) {
+    if (sigversion == SigVersion::TAPROOT) {
+        if (cache == nullptr) return uint256();
+        ScriptExecutionData execdata;
+        execdata.m_annex_present = false;
+        execdata.m_annex_init = true;
+        uint256 hash_out;
+        if (!SignatureHashSchnorr(hash_out, execdata, txTo, nIn, nHashType, SigVersion::TAPROOT, *cache)) {
+            return uint256();
+        }
+        return hash_out;
+    }
+
+    if (sigversion == SigVersion::TAPSCRIPT) {
         return uint256();
     }
 
