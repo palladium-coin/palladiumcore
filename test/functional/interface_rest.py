@@ -16,6 +16,7 @@ import urllib.parse
 
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     assert_greater_than,
     assert_greater_than_or_equal,
@@ -80,11 +81,11 @@ class RESTTest (PalladiumTestFramework):
         self.log.info("Mine blocks and send Palladium to node 1")
 
         # Random address so node1's balance doesn't increase
-        not_related_address = "2MxqoHEdNQTyYeX1mHcbrrpzgojbosTpCvJ"
+        not_related_address = "oNTwXSV2trSaQQikJdd3afwxpsjQNjGZpX"
 
         self.nodes[0].generate(1)
         self.sync_all()
-        self.nodes[1].generatetoaddress(100, not_related_address)
+        self.nodes[1].generatetoaddress(COINBASE_MATURITY, not_related_address)
         self.sync_all()
 
         assert_equal(self.nodes[0].getbalance(), 50)
@@ -156,7 +157,7 @@ class RESTTest (PalladiumTestFramework):
         response_hash = output.read(32)[::-1].hex()
 
         assert_equal(bb_hash, response_hash)  # check if getutxo's chaintip during calculation was fine
-        assert_equal(chain_height, 102)  # chain height must be 102
+        assert_equal(chain_height, COINBASE_MATURITY + 2)  # chain height must match maturity setup
 
         self.log.info("Test the /getutxos URI with and without /checkmempool")
         # Create a transaction, check that it's found with /checkmempool, but

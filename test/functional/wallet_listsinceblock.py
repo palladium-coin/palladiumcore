@@ -7,6 +7,7 @@
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.messages import BIP125_SEQUENCE_NUMBER
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_array_result,
     assert_equal,
     assert_raises_rpc_error,
@@ -27,7 +28,7 @@ class ListSinceBlockTest(PalladiumTestFramework):
         # All nodes are in IBD from genesis, so they'll need the miner (node2) to be an outbound connection, or have
         # only one connection. (See fPreferredDownload in net_processing)
         connect_nodes(self.nodes[1], 2)
-        self.nodes[2].generate(101)
+        self.nodes[2].generate(COINBASE_MATURITY + 1)
         self.sync_all()
 
         self.test_no_blockhash()

@@ -22,6 +22,9 @@ from io import BytesIO
 
 logger = logging.getLogger("TestFramework.utils")
 
+# Palladium consensus parameters for functional tests.
+COINBASE_MATURITY = 120
+
 # Assert functions
 ##################
 
@@ -239,6 +242,7 @@ def wait_until(predicate, *, attempts=float('inf'), timeout=float('inf'), lock=N
 
 # The maximum number of nodes a single test can spawn
 MAX_NODES = 12
+MAX_GENERATE_TRIES = 100000000
 # Don't assign rpc or p2p ports lower than this
 PORT_MIN = int(os.getenv('TEST_RUNNER_PORT_MIN', default=11000))
 # The number of ports to "reserve" for p2p and rpc, each
@@ -501,10 +505,10 @@ def random_transaction(nodes, amount, min_fee, fee_increment, fee_variants):
 # Helper to create at least "count" utxos
 # Pass in a fee that is sufficient for relay and mining new transactions.
 def create_confirmed_utxos(fee, node, count):
-    to_generate = int(0.5 * count) + 101
+    to_generate = int(0.5 * count) + COINBASE_MATURITY + 1
     while to_generate > 0:
-        node.generate(min(25, to_generate))
-        to_generate -= 25
+        generated = node.generate(min(25, to_generate), maxtries=MAX_GENERATE_TRIES)
+        to_generate -= len(generated)
     utxos = node.listunspent()
     iterations = count - len(utxos)
     addr1 = node.getnewaddress()
@@ -512,6 +516,10 @@ def create_confirmed_utxos(fee, node, count):
     if iterations <= 0:
         return utxos
     for i in range(iterations):
+        if not utxos:
+            utxos.extend(node.listunspent())
+        if not utxos:
+            raise AssertionError("Insufficient confirmed UTXOs while creating test inputs")
         t = utxos.pop()
         inputs = []
         inputs.append({"txid": t["txid"], "vout": t["vout"]})
@@ -524,7 +532,7 @@ def create_confirmed_utxos(fee, node, count):
         node.sendrawtransaction(signed_tx)
 
     while (node.getmempoolinfo()['size'] > 0):
-        node.generate(1)
+        node.generate(1, maxtries=MAX_GENERATE_TRIES)
 
     utxos = node.listunspent()
     assert len(utxos) >= count
@@ -583,7 +591,7 @@ def mine_large_block(node, utxos=None):
         utxos.extend(node.listunspent())
     fee = 100 * node.getnetworkinfo()["relayfee"]
     create_lots_of_big_transactions(node, txouts, utxos, num, fee=fee)
-    node.generate(1)
+    node.generate(1, maxtries=MAX_GENERATE_TRIES)
 
 def find_vout_for_address(node, txid, addr):
     """

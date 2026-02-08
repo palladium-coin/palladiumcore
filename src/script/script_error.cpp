@@ -71,6 +71,12 @@ const char* ScriptErrorString(const ScriptError serror)
             return "NOPx reserved for soft-fork upgrades";
         case SCRIPT_ERR_DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM:
             return "Witness version reserved for soft-fork upgrades";
+        case SCRIPT_ERR_DISCOURAGE_UPGRADABLE_TAPROOT_VERSION:
+            return "Taproot leaf version reserved for soft-fork upgrades";
+        case SCRIPT_ERR_DISCOURAGE_OP_SUCCESS:
+            return "OP_SUCCESSx reserved for soft-fork upgrades";
+        case SCRIPT_ERR_DISCOURAGE_UPGRADABLE_PUBKEYTYPE:
+            return "Public key version reserved for soft-fork upgrades";
         case SCRIPT_ERR_PUBKEYTYPE:
             return "Public key is neither compressed or uncompressed";
         case SCRIPT_ERR_CLEANSTACK:
@@ -89,6 +95,20 @@ const char* ScriptErrorString(const ScriptError serror)
             return "Witness provided for non-witness script";
         case SCRIPT_ERR_WITNESS_PUBKEYTYPE:
             return "Using non-compressed keys in segwit";
+        case SCRIPT_ERR_SCHNORR_SIG_SIZE:
+            return "Invalid Schnorr signature size";
+        case SCRIPT_ERR_SCHNORR_SIG_HASHTYPE:
+            return "Invalid Schnorr signature hash type";
+        case SCRIPT_ERR_SCHNORR_SIG:
+            return "Invalid Schnorr signature";
+        case SCRIPT_ERR_TAPROOT_WRONG_CONTROL_SIZE:
+            return "Taproot control block has incorrect size";
+        case SCRIPT_ERR_TAPSCRIPT_VALIDATION_WEIGHT:
+            return "Tapscript validation weight limit exceeded";
+        case SCRIPT_ERR_TAPSCRIPT_CHECKMULTISIG:
+            return "OP_CHECKMULTISIG(VERIFY) is not available in tapscript";
+        case SCRIPT_ERR_TAPSCRIPT_MINIMALIF:
+            return "Tapscript requires minimal IF/NOTIF argument";
         case SCRIPT_ERR_OP_CODESEPARATOR:
             return "Using OP_CODESEPARATOR in non-witness script";
         case SCRIPT_ERR_SIG_FINDANDDELETE:

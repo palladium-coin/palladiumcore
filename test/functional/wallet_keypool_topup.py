@@ -15,6 +15,7 @@ import shutil
 
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     connect_nodes,
 )
@@ -32,7 +33,7 @@ class KeypoolRestoreTest(PalladiumTestFramework):
     def run_test(self):
         wallet_path = os.path.join(self.nodes[1].datadir, self.chain, "wallets", "wallet.dat")
         wallet_backup_path = os.path.join(self.nodes[1].datadir, "wallet.bak")
-        self.nodes[0].generate(101)
+        self.nodes[0].generate(COINBASE_MATURITY + 1)
 
         self.log.info("Make backup of wallet")
         self.stop_node(1)

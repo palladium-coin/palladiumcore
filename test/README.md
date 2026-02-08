@@ -92,6 +92,96 @@ options. Run `test/functional/test_runner.py -h` to see them all.
 
 #### Troubleshooting and debugging test failures
 
+##### Palladium consensus differences and their impact on tests
+
+Palladium diverges from Bitcoin Core in several consensus parameters. The test
+framework has been adapted accordingly, but some tests could not be fully
+ported yet. This section documents what changed and what to expect.
+
+**Key parameters (regtest)**
+
+| Parameter | Bitcoin Core | Palladium |
+|-----------|:------------:|:---------:|
+| `COINBASE_MATURITY` | 100 | 120 |
+| P2PKH version (mainnet) | 0 | 55 |
+| P2PKH version (testnet) | 111 | 127 |
+| P2SH version (testnet) | 196 | 115 |
+| Bech32 HRP (mainnet) | `bc` | `plm` |
+| Bech32 HRP (regtest) | `bcrt` | `rplm` |
+| BIP34 / BIP66 / BIP65 / CSV | activated at specific heights | active from height 0 |
+
+Because `COINBASE_MATURITY` is 120 instead of 100, the pre-mined cache chain
+is extended beyond the original 199 blocks to `COINBASE_MATURITY + 99 = 219`
+blocks so that each test node still has enough mature coinbase outputs available
+at startup. Any test that previously hardcoded `generate(101)` or compared
+against a fixed block height of 200 has been updated to use the
+`COINBASE_MATURITY` constant exported by `test_framework.util`.
+
+**Skipped tests and known issues**
+
+The following tests are currently skipped or conditionally bypassed. Each entry
+explains *why* and what would be needed to re-enable it:
+
+- `feature_assumevalid.py` — **skipped entirely**. The test builds blocks in
+  Python and submits them via P2P. Palladium's PoW validation rejects these
+  blocks because the nonce/nBits do not satisfy the chain's difficulty target.
+  Re-enabling requires either a PoW-aware block solver in the test framework or
+  a full rewrite that mines blocks via `generatetoaddress` RPC and then
+  replays the chain.
+
+- `feature_block.py` — **skipped entirely**. Same root cause: the full-block
+  P2P test constructs blocks manually and they do not pass Palladium's
+  consensus rules.
+
+- `p2p_unrequested_blocks.py` — **skipped entirely**. The test relies on
+  specific difficulty-rule behaviour that does not apply to the current
+  Palladium regtest chain.
+
+- `feature_backwards_compatibility.py` — **skipped entirely**. Requires
+  compiled binaries from previous Palladium releases, which are not yet
+  available.
+
+- `feature_versionbits_warning.py` — **skipped at runtime** if the node does
+  not emit the expected versionbits warning. This can happen when soft-forks are
+  already active from genesis on regtest.
+
+- `feature_reindex.py` — **skipped at runtime** if reindex fails to start
+  cleanly. On some Palladium regtest configurations this is a known issue.
+
+- `p2p_dos_header_tree.py` — **skipped at runtime** if the required header-data
+  file is not available for the current chain.
+
+- Several tests in `feature_bip68_sequence.py`, `feature_csv_activation.py`,
+  `feature_cltv.py`, `feature_dersig.py`, and `feature_segwit.py` contain
+  conditional blocks that **skip sub-tests** when the relevant soft-fork is
+  already active at the starting height. On Palladium regtest BIP34/66/65/CSV
+  and SegWit are active from height 0, so their pre-activation test paths are
+  bypassed automatically.
+
+- `wallet_basic.py` — the `-reindex` argument is commented out in one sub-test
+  because reindex crashes on Palladium regtest under certain conditions.
+
+If the full suite appears to stall near the end, run the remaining tests
+separately with `-j1` and allow extra time for completion.
+
+##### Local test updates (Palladium)
+
+Summary of recent test-specific changes in this fork:
+
+- `feature_proxy.py` was made tolerant to non-deterministic SOCKS5 command
+  ordering and onion/DNS timing. The test now matches proxy commands by the
+  expected destination and allows timeouts for onion/DNS checks to avoid hangs.
+- `feature_assumevalid.py` is skipped because Python-constructed blocks do not
+  currently satisfy Palladium's PoW validation, triggering `bad-diffbits` /
+  incorrect proof-of-work.
+
+What still needs to be fixed:
+
+- Implement a PoW-aware block solver in the Python test framework for
+  Palladium, or
+- Rewrite `feature_assumevalid.py` to mine via `generatetoaddress` and rebuild
+  the chain for P2P delivery while keeping the invalid-signature block logic.
+
 ##### Resource contention
 
 The P2P and RPC ports used by the palladiumd nodes-under-test are chosen to make
@@ -122,12 +212,14 @@ pkill -9 palladiumd
 
 ##### Data directory cache
 
-A pre-mined blockchain with 200 blocks is generated the first time a
-functional test is run and is stored in test/cache. This speeds up
-test startup times since new blockchains don't need to be generated for
-each test. However, the cache may get into a bad state, in which case
-tests will fail. If this happens, remove the cache directory (and make
-sure palladiumd processes are stopped as above):
+A pre-mined blockchain is generated the first time a functional test is run
+and is stored in `test/cache`. The chain length is
+`COINBASE_MATURITY + 99` blocks (currently 219) so that every test node has
+enough mature coinbase outputs available immediately. This speeds up test
+startup times since new blockchains don't need to be generated for each test.
+However, the cache may get into a bad state, in which case tests will fail.
+If this happens, remove the cache directory (and make sure palladiumd
+processes are stopped as above):
 
 ```bash
 rm -rf test/cache

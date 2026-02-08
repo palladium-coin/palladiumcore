@@ -189,28 +189,40 @@
            </widget>
           </item>
           <item>
-           <widget class="QCheckBox" name="useBech32">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="maximumSize">
-             <size>
-              <width>1000</width>
-              <height>16777215</height>
-             </size>
-            </property>
-            <property name="focusPolicy">
-             <enum>Qt::StrongFocus</enum>
-            </property>
-            <property name="toolTip">
-             <string>Native segwit addresses (aka Bech32 or BIP-173) reduce your transaction fees later on and offer better protection against typos, but old wallets don't support them. When unchecked, an address compatible with older wallets will be created instead.</string>
-            </property>
+           <widget class="QLabel" name="addressTypeLabel">
             <property name="text">
-             <string>Generate native segwit (Bech32) address</string>
+             <string>Address type:</string>
             </property>
+            <property name="buddy">
+             <cstring>addressType</cstring>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="addressType">
+            <property name="toolTip">
+             <string>Select the address type to generate for this payment request.</string>
+            </property>
+            <item>
+             <property name="text">
+              <string>legacy</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>p2sh-segwit</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>segwit</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>taproot</string>
+             </property>
+            </item>
            </widget>
           </item>
           <item>
@@ -360,7 +372,7 @@
  <tabstops>
   <tabstop>reqLabel</tabstop>
   <tabstop>reqAmount</tabstop>
-  <tabstop>useBech32</tabstop>
+  <tabstop>addressType</tabstop>
   <tabstop>reqMessage</tabstop>
   <tabstop>receiveButton</tabstop>
   <tabstop>clearButton</tabstop>

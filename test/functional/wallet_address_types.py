@@ -59,6 +59,7 @@ from test_framework.descriptors import (
     descsum_check,
 )
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     assert_greater_than,
     assert_raises_rpc_error,
@@ -107,7 +108,7 @@ class AddressTypeTest(PalladiumTestFramework):
     # Quick test of python bech32 implementation
     def test_python_bech32(self, addr):
         hrp = addr[:4]
-        assert_equal(hrp, "bcrt")
+        assert_equal(hrp, "rplm")
         (witver, witprog) = decode(hrp, addr)
         assert_equal(encode(hrp, witver, witprog), addr)
 
@@ -237,7 +238,7 @@ class AddressTypeTest(PalladiumTestFramework):
     def run_test(self):
         # Mine 101 blocks on node5 to bring nodes out of IBD and make sure that
         # no coinbases are maturing for the nodes-under-test during the test
-        self.nodes[5].generate(101)
+        self.nodes[5].generate(COINBASE_MATURITY + 1)
         self.sync_blocks()
 
         uncompressed_1 = "0496b538e853519c726a2c91e61ec11600ae1390813a627c66fb8be7947be63c52da7589379515d4e0a604f8141781e62294721166bf621e73a82cbf2342c858ee"

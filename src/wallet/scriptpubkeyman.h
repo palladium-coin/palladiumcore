@@ -299,6 +299,10 @@ private:
     // Tracks keypool indexes to CKeyIDs of keys that have been taken out of the keypool but may be returned to it
     std::map<int64_t, CKeyID> m_index_to_reserved_key;
 
+    //! Map from tweaked Taproot output key (as XOnlyPubKey bytes stored in uint256) to internal CPubKey
+    //! This allows looking up the internal key needed for signing when given the output key from scriptPubKey
+    std::map<uint256, CPubKey> m_taproot_internal_keys GUARDED_BY(cs_KeyStore);
+
     //! Fetches a key from the keypool
     bool GetKeyFromPool(CPubKey &key, const OutputType type, bool internal = false);
 
@@ -415,6 +419,9 @@ public:
     bool AddCScript(const CScript& redeemScript) override;
     bool GetKeyOrigin(const CKeyID& keyid, KeyOriginInfo& info) const override;
 
+    //! Get the internal key for a Taproot output key (returns false if not found)
+    bool GetTaprootInternalKey(const XOnlyPubKey& output_key, CPubKey& internal_key) const;
+
     //! Load a keypool entry
     void LoadKeyPool(int64_t nIndex, const CKeyPool &keypool);
     bool NewKeyPool();
@@ -477,6 +484,7 @@ public:
     bool GetKey(const CKeyID &address, CKey& key) const override { return false; }
     bool HaveKey(const CKeyID &address) const override { return false; }
     bool GetKeyOrigin(const CKeyID& keyid, KeyOriginInfo& info) const override { return m_spk_man.GetKeyOrigin(keyid, info); }
+    bool GetTaprootInternalKey(const XOnlyPubKey& output_key, CPubKey& internal_key) const override { return m_spk_man.GetTaprootInternalKey(output_key, internal_key); }
 };
 
 #endif // PALLADIUM_WALLET_SCRIPTPUBKEYMAN_H

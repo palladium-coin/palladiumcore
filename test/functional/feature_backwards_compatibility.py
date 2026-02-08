@@ -22,6 +22,7 @@ from test_framework.test_framework import PalladiumTestFramework, SkipTest
 from test_framework.descriptors import descsum_create
 
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     sync_blocks,
     sync_mempools
@@ -76,7 +77,7 @@ class BackwardsCompatibilityTest(PalladiumTestFramework):
         self.start_nodes()
 
     def run_test(self):
-        self.nodes[0].generatetoaddress(101, self.nodes[0].getnewaddress())
+        self.nodes[0].generatetoaddress(COINBASE_MATURITY + 1, self.nodes[0].getnewaddress())
 
         sync_blocks(self.nodes)
 

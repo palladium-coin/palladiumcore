@@ -21,6 +21,7 @@ from test_framework.script import (
 from test_framework.test_node import ErrorMatch
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     connect_nodes,
     p2p_port,
@@ -98,7 +99,7 @@ class P2PPermissionsTests(PalladiumTestFramework):
         self.nodes[1].assert_start_raises_init_error(["-whitebind=noban@127.0.0.1/10"], "Cannot resolve -whitebind address", match=ErrorMatch.PARTIAL_REGEX)
 
     def check_tx_relay(self):
-        block_op_true = self.nodes[0].getblock(self.nodes[0].generatetoaddress(100, ADDRESS_BCRT1_P2WSH_OP_TRUE)[0])
+        block_op_true = self.nodes[0].getblock(self.nodes[0].generatetoaddress(COINBASE_MATURITY, ADDRESS_BCRT1_P2WSH_OP_TRUE)[0])
         self.sync_all()
 
         self.log.debug("Create a connection from a whitelisted wallet that rebroadcasts raw txs")

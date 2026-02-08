@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+export LC_ALL=C
 
 ###############################################################################
 # Quick Build Script for Palladium Core
@@ -128,13 +129,9 @@ build_palladium() {
         make distclean 2>/dev/null || true
     fi
 
-    # Generate configure script (first time only)
-    if [ ! -f "./configure" ]; then
-        log_info "Generating configure script..."
-        ./autogen.sh
-    else
-        log_info "Configure script already exists, skipping autogen.sh"
-    fi
+    # Always regenerate build files to ensure subdirectories (secp256k1, univalue) are in sync
+    log_info "Regenerating build files (autogen.sh)..."
+    ./autogen.sh
 
     # Set BerkeleyDB prefix
     export BDB_PREFIX="$SCRIPT_DIR/db4"

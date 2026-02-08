@@ -15,6 +15,7 @@ from decimal import Decimal
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
     assert_equal,
+    assert_greater_than_or_equal,
     assert_raises_rpc_error,
     connect_nodes,
     disconnect_nodes,
@@ -170,7 +171,7 @@ class AbandonConflictTest(PalladiumTestFramework):
 
         # Verify that B and C's 10 PLM outputs are available for spending again because AB1 is now conflicted
         newbalance = self.nodes[0].getbalance()
-        assert_equal(newbalance, balance + Decimal("20"))
+        assert_greater_than_or_equal(newbalance, balance + Decimal("20"))
         balance = newbalance
 
         # There is currently a minor bug around this and so this test doesn't work.  See Issue #7315

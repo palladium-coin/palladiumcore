@@ -6,7 +6,7 @@
 
 from test_framework.messages import CMerkleBlock, FromHex, ToHex
 from test_framework.test_framework import PalladiumTestFramework
-from test_framework.util import assert_equal, assert_raises_rpc_error, connect_nodes
+from test_framework.util import COINBASE_MATURITY, assert_equal, assert_raises_rpc_error, connect_nodes
 
 class MerkleBlockTest(PalladiumTestFramework):
     def set_test_params(self):
@@ -28,11 +28,11 @@ class MerkleBlockTest(PalladiumTestFramework):
 
     def run_test(self):
         self.log.info("Mining blocks...")
-        self.nodes[0].generate(105)
+        self.nodes[0].generate(COINBASE_MATURITY + 2)
         self.sync_all()
 
         chain_height = self.nodes[1].getblockcount()
-        assert_equal(chain_height, 105)
+        assert_equal(chain_height, COINBASE_MATURITY + 2)
         assert_equal(self.nodes[1].getbalance(), 0)
         assert_equal(self.nodes[2].getbalance(), 0)
 

@@ -7,6 +7,7 @@
 
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     assert_raises_rpc_error
 )
@@ -37,7 +38,7 @@ class CreateWalletWatchonlyTest(PalladiumTestFramework):
         wo_wallet.importpubkey(pubkey=def_wallet.getaddressinfo(wo_change)['pubkey'])
 
         # generate some btc for testing
-        node.generatetoaddress(101, a1)
+        node.generatetoaddress(COINBASE_MATURITY + 1, a1)
 
         # send 1 btc to our watch-only address
         txid = def_wallet.sendtoaddress(wo_addr, 1)

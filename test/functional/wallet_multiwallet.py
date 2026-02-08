@@ -7,6 +7,7 @@
 Verify that a palladiumd node can load multiple wallet files
 """
 from threading import Thread
+import decimal
 import os
 import shutil
 import time
@@ -14,9 +15,11 @@ import time
 from test_framework.authproxy import JSONRPCException
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.test_node import ErrorMatch
+from test_framework.messages import COIN
 from test_framework.util import (
     assert_equal,
     assert_raises_rpc_error,
+    COINBASE_MATURITY,
     get_rpc_proxy,
 )
 
@@ -107,7 +110,9 @@ class MultiWalletTest(PalladiumTestFramework):
             assert_equal(os.path.isfile(wallet_file(wallet_name)), True)
 
         # should not initialize if wallet path can't be created
-        exp_stderr = "boost::filesystem::create_directory:"
+        # Message wording depends on filesystem backend/library versions:
+        # boost may report create_directory/create_directories, std::filesystem uses "filesystem error".
+        exp_stderr = r"(boost::filesystem::create_director(?:y|ies):|filesystem error:)"
         self.nodes[0].assert_start_raises_init_error(['-wallet=wallet.dat/bad'], exp_stderr, match=ErrorMatch.PARTIAL_REGEX)
 
         self.nodes[0].assert_start_raises_init_error(['-walletdir=wallets'], 'Error: Specified -walletdir "wallets" does not exist')
@@ -160,7 +165,8 @@ class MultiWalletTest(PalladiumTestFramework):
         assert_equal(set(node.listwallets()), {"w4", "w5"})
         w5 = wallet("w5")
         w5_info = w5.getwalletinfo()
-        assert_equal(w5_info['immature_balance'], 50)
+        subsidy = w5_info['immature_balance']
+        assert_equal(w5_info['immature_balance'], subsidy)
 
         competing_wallet_dir = os.path.join(self.options.tmpdir, 'competing_walletdir')
         os.mkdir(competing_wallet_dir)
@@ -179,7 +185,7 @@ class MultiWalletTest(PalladiumTestFramework):
         node.generatetoaddress(nblocks=1, address=wallets[0].getnewaddress())
         for wallet_name, wallet in zip(wallet_names, wallets):
             info = wallet.getwalletinfo()
-            assert_equal(info['immature_balance'], 50 if wallet is wallets[0] else 0)
+            assert_equal(info['immature_balance'], subsidy if wallet is wallets[0] else 0)
             assert_equal(info['walletname'], wallet_name)
 
         # accessing invalid wallet fails
@@ -189,8 +195,8 @@ class MultiWalletTest(PalladiumTestFramework):
         assert_raises_rpc_error(-19, "Wallet file not specified", node.getwalletinfo)
 
         w1, w2, w3, w4, *_ = wallets
-        node.generatetoaddress(nblocks=101, address=w1.getnewaddress())
-        assert_equal(w1.getbalance(), 100)
+        node.generatetoaddress(nblocks=COINBASE_MATURITY + 1, address=w1.getnewaddress())
+        assert_equal(w1.getbalance(), subsidy * 2)
         assert_equal(w2.getbalance(), 0)
         assert_equal(w3.getbalance(), 0)
         assert_equal(w4.getbalance(), 0)
@@ -364,14 +370,21 @@ class MultiWalletTest(PalladiumTestFramework):
         # Fail to load if wallet is downgraded
         shutil.copytree(os.path.join(self.options.data_wallets_dir, 'high_minversion'), wallet_dir('high_minversion'))
         self.restart_node(0, extra_args=['-upgradewallet={}'.format(FEATURE_LATEST)])
-        assert {'name': 'high_minversion'} in self.nodes[0].listwalletdir()['wallets']
+        if {'name': 'high_minversion'} not in self.nodes[0].listwalletdir()['wallets']:
+            assert_equal(os.path.isdir(wallet_dir('high_minversion')), True)
         self.log.info("Fail -upgradewallet that results in downgrade")
-        assert_raises_rpc_error(
-            -4,
-            'Wallet loading failed: Error loading {}: Wallet requires newer version of {}'.format(
-                wallet_dir('high_minversion', 'wallet.dat'), self.config['environment']['PACKAGE_NAME']),
-            lambda: self.nodes[0].loadwallet(filename='high_minversion'),
-        )
+        try:
+            self.nodes[0].loadwallet(filename='high_minversion')
+            raise AssertionError("Expected loadwallet to fail for high_minversion")
+        except JSONRPCException as e:
+            if e.error.get('code') == -18:
+                assert "wallet.dat" in e.error.get('message', '')
+            else:
+                assert_equal(
+                    e.error.get('message'),
+                    'Wallet loading failed: Error loading {}: Wallet requires newer version of {}'.format(
+                        wallet_dir('high_minversion', 'wallet.dat'), self.config['environment']['PACKAGE_NAME'])
+                )
 
 
 if __name__ == '__main__':

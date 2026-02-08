@@ -28,6 +28,9 @@ static const int MAX_OPS_PER_SCRIPT = 201;
 // Maximum number of public keys per multisig
 static const int MAX_PUBKEYS_PER_MULTISIG = 20;
 
+/** The limit of keys in OP_CHECKSIGADD-based scripts (BIP342). */
+static const unsigned int MAX_PUBKEYS_PER_MULTI_A = 999;
+
 // Maximum script length in bytes
 static const int MAX_SCRIPT_SIZE = 10000;
 
@@ -43,6 +46,13 @@ static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20
 // checking is disabled (by setting all input sequence numbers to
 // SEQUENCE_FINAL).
 static const uint32_t LOCKTIME_MAX = 0xFFFFFFFFU;
+
+// Annex tag for Taproot witness data (BIP341).
+static const unsigned int ANNEX_TAG = 0x50;
+
+// Validation weight constants for Tapscript (BIP342).
+static const int64_t VALIDATION_WEIGHT_PER_SIGOP_PASSED = 50;
+static const int64_t VALIDATION_WEIGHT_OFFSET = 50;
 
 template <typename T>
 std::vector<unsigned char> ToByteVector(const T& in)
@@ -186,12 +196,13 @@ enum opcodetype
     OP_NOP8 = 0xb7,
     OP_NOP9 = 0xb8,
     OP_NOP10 = 0xb9,
+    OP_CHECKSIGADD = 0xba,
 
     OP_INVALIDOPCODE = 0xff,
 };
 
 // Maximum value that an opcode can be
-static const unsigned int MAX_OPCODE = OP_NOP10;
+static const unsigned int MAX_OPCODE = OP_CHECKSIGADD;
 
 const char* GetOpName(opcodetype opcode);
 
@@ -385,6 +396,15 @@ private:
 typedef prevector<28, unsigned char> CScriptBase;
 
 bool GetScriptOp(CScriptBase::const_iterator& pc, CScriptBase::const_iterator end, opcodetype& opcodeRet, std::vector<unsigned char>* pvchRet);
+
+/** Test for OP_SUCCESSx opcodes as defined by BIP342. */
+static inline bool IsOpSuccess(const opcodetype& opcode)
+{
+    return opcode == 80 || opcode == 98 || (opcode >= 126 && opcode <= 129) ||
+           (opcode >= 131 && opcode <= 134) || (opcode >= 137 && opcode <= 138) ||
+           (opcode >= 141 && opcode <= 142) || (opcode >= 149 && opcode <= 153) ||
+           (opcode >= 187 && opcode <= 254);
+}
 
 /** Serialized script, used inside transaction inputs and outputs */
 class CScript : public CScriptBase

@@ -12,7 +12,7 @@ RPCs tested are:
 from collections import defaultdict
 
 from test_framework.test_framework import PalladiumTestFramework
-from test_framework.util import assert_equal, assert_raises_rpc_error
+from test_framework.util import COINBASE_MATURITY, assert_equal, assert_raises_rpc_error
 from test_framework.wallet_util import test_address
 
 
@@ -32,7 +32,7 @@ class WalletLabelsTest(PalladiumTestFramework):
         # Note each time we call generate, all generated coins go into
         # the same address, so we call twice to get two addresses w/50 each
         node.generatetoaddress(nblocks=1, address=node.getnewaddress(label='coinbase'))
-        node.generatetoaddress(nblocks=101, address=node.getnewaddress(label='coinbase'))
+        node.generatetoaddress(nblocks=COINBASE_MATURITY + 1, address=node.getnewaddress(label='coinbase'))
         assert_equal(node.getbalance(), 100)
 
         # there should be 2 address groups
@@ -50,7 +50,7 @@ class WalletLabelsTest(PalladiumTestFramework):
             linked_addresses.add(address_group[0][0])
 
         # send 50 from each address to a third address not in this wallet
-        common_address = "msf4WtN1YQKXvNtvdFYt9JBnUD2FB41kjr"
+        common_address = "tK4iGd8cuHjZ1K8K1xsyuJYNYH9Laj83Uh"
         node.sendmany(
             amounts={common_address: 100},
             subtractfeefrom=[common_address],
@@ -104,7 +104,7 @@ class WalletLabelsTest(PalladiumTestFramework):
             label.verify(node)
             assert_equal(node.getreceivedbylabel(label.name), 2)
             label.verify(node)
-        node.generate(101)
+        node.generate(COINBASE_MATURITY + 1)
 
         # Check that setlabel can assign a label to a new unused address.
         for label in labels:
@@ -123,7 +123,7 @@ class WalletLabelsTest(PalladiumTestFramework):
             label.add_address(multisig_address)
             label.purpose[multisig_address] = "send"
             label.verify(node)
-        node.generate(101)
+        node.generate(COINBASE_MATURITY + 1)
 
         # Check that setlabel can change the label of an address from a
         # different label.

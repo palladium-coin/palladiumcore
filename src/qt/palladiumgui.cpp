@@ -70,7 +70,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QVersionNumber> // Falls Qt Version >= 5.6, sonst String-Vergleich
-#include "clientversion.h" // Wichtig um die eigene Version zu kennen
+#include <clientversion.h> // Wichtig um die eigene Version zu kennen
 
 const std::string PalladiumGUI::DEFAULT_UIPLATFORM =
 #if defined(Q_OS_MAC)
@@ -470,7 +470,7 @@ void PalladiumGUI::createActions()
 
     themeAction = new QAction(tr("&Dark Mode"), this);
     themeAction->setCheckable(true);
-    connect(themeAction, SIGNAL(triggered()), this, SLOT(toggleTheme()));
+    connect(themeAction, &QAction::triggered, this, &PalladiumGUI::toggleTheme);
 }
 
 void PalladiumGUI::createMenuBar()

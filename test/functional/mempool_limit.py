@@ -24,6 +24,8 @@ class MempoolLimitTest(PalladiumTestFramework):
         self.skip_if_no_wallet()
 
     def run_test(self):
+        # Mine past resilience fork height so larger OP_RETURN outputs are permitted
+        self.nodes[0].generate(200)
         txouts = gen_return_txouts()
         relayfee = self.nodes[0].getnetworkinfo()['relayfee']
 

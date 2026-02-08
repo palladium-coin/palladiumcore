@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+export LC_ALL=C
 set -euo pipefail
 
 # Default to not building the installer
@@ -37,6 +38,14 @@ docker run --rm --platform=linux/amd64 \
   bash -c "
     set -euo pipefail
     cd /src
+
+    echo '[*] cleaning tree (avoid host-built artifacts)...'
+    [[ -f Makefile ]] && make distclean || true
+    (cd univalue && make distclean) || true
+    rm -rf univalue/.libs univalue/lib/.libs
+    rm -f univalue/config.cache univalue/config.status
+    rm -rf depends/${HOST_TRIPLE}
+    rm -f config.cache
 
     echo '[*] depends (Windows cross, HOST=${HOST_TRIPLE})...'
     cd depends && make HOST=${HOST_TRIPLE} -j\$(nproc) && cd ..

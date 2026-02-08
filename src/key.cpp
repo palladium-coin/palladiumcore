@@ -7,10 +7,15 @@
 
 #include <crypto/common.h>
 #include <crypto/hmac_sha512.h>
+#include <crypto/sha256.h>
 #include <random.h>
+#include <util/strencodings.h>
+#include <logging.h>
 
 #include <secp256k1.h>
+#include <secp256k1_extrakeys.h>
 #include <secp256k1_recovery.h>
+#include <secp256k1_schnorrsig.h>
 
 static secp256k1_context* secp256k1_context_sign = nullptr;
 
@@ -165,7 +170,7 @@ void CKey::MakeNewKey(bool fCompressedIn) {
 bool CKey::Negate()
 {
     assert(fValid);
-    return secp256k1_ec_privkey_negate(secp256k1_context_sign, keydata.data());
+    return secp256k1_ec_seckey_negate(secp256k1_context_sign, keydata.data());
 }
 
 CPrivKey CKey::GetPrivKey() const {
@@ -229,6 +234,67 @@ bool CKey::Sign(const uint256 &hash, std::vector<unsigned char>& vchSig, bool gr
     return true;
 }
 
+bool CKey::SignSchnorr(const uint256& hash, unsigned char* sig, const unsigned char* aux) const
+{
+    if (!fValid) {
+        return false;
+    }
+
+    secp256k1_keypair keypair;
+    if (!secp256k1_keypair_create(secp256k1_context_sign, &keypair, begin())) {
+        return false;
+    }
+
+    return secp256k1_schnorrsig_sign32(secp256k1_context_sign, sig, hash.begin(), &keypair, aux);
+}
+
+bool CKey::SignSchnorr(const uint256& hash, std::vector<unsigned char>& vchSig, const unsigned char* aux) const
+{
+    vchSig.resize(XOnlyPubKey::SCHNORR_SIGNATURE_SIZE);
+    if (!SignSchnorr(hash, vchSig.data(), aux)) {
+        vchSig.clear();
+        return false;
+    }
+    return true;
+}
+
+bool CKey::SignSchnorrTaproot(const uint256& hash, std::vector<unsigned char>& vchSig, const uint256* merkle_root, const unsigned char* aux) const
+{
+    if (!fValid) {
+        return false;
+    }
+
+    // BIP341: Create keypair from internal private key
+    secp256k1_keypair keypair;
+    if (!secp256k1_keypair_create(secp256k1_context_sign, &keypair, begin())) {
+        return false;
+    }
+
+    // Get the internal x-only public key to compute the tweak
+    CPubKey internal_pubkey = GetPubKey();
+    XOnlyPubKey internal_xonly = internal_pubkey.GetXOnlyPubKey();
+
+    // Compute BIP341 TapTweak: tagged_hash("TapTweak", internal_xonly || merkle_root)
+    uint256 tweak = internal_xonly.ComputeTapTweak(merkle_root);
+
+    // Apply BIP341 tweak to the keypair
+    // This handles the parity negation automatically:
+    // - If internal pubkey has odd y, it negates the privkey before adding tweak
+    // - Then adds tweak: tweaked_privkey = (possibly_negated_privkey + tweak) mod n
+    if (!secp256k1_keypair_xonly_tweak_add(secp256k1_context_sign, &keypair, tweak.begin())) {
+        return false;
+    }
+
+    // Sign with the tweaked keypair using BIP340 Schnorr
+    vchSig.resize(XOnlyPubKey::SCHNORR_SIGNATURE_SIZE);
+    if (!secp256k1_schnorrsig_sign32(secp256k1_context_sign, vchSig.data(), hash.begin(), &keypair, aux)) {
+        vchSig.clear();
+        return false;
+    }
+
+    return true;
+}
+
 bool CKey::VerifyPubKey(const CPubKey& pubkey) const {
     if (pubkey.IsCompressed() != fCompressed) {
         return false;
@@ -284,7 +350,7 @@ bool CKey::Derive(CKey& keyChild, ChainCode &ccChild, unsigned int nChild, const
     }
     memcpy(ccChild.begin(), vout.data()+32, 32);
     memcpy((unsigned char*)keyChild.begin(), begin(), 32);
-    bool ret = secp256k1_ec_privkey_tweak_add(secp256k1_context_sign, (unsigned char*)keyChild.begin(), vout.data());
+    bool ret = secp256k1_ec_seckey_tweak_add(secp256k1_context_sign, (unsigned char*)keyChild.begin(), vout.data());
     keyChild.fCompressed = true;
     keyChild.fValid = ret;
     return ret;

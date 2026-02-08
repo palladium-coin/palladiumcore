@@ -20,6 +20,7 @@ from test_framework.blocktools import add_witness_commitment, create_block, crea
 from test_framework.messages import BIP125_SEQUENCE_NUMBER, CTransaction
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     assert_greater_than,
     assert_raises_rpc_error,
@@ -63,7 +64,7 @@ class BumpFeeTest(PalladiumTestFramework):
 
         # fund rbf node with 10 coins of 0.001 btc (100,000 satoshis)
         self.log.info("Mining blocks...")
-        peer_node.generate(110)
+        peer_node.generate(COINBASE_MATURITY + 1)
         self.sync_all()
         for i in range(25):
             peer_node.sendtoaddress(rbf_node_address, 0.001)
@@ -213,7 +214,7 @@ def test_small_output_with_feerate_succeeds(self, rbf_node, dest_address):
     self.log.info('Testing small output with feerate bump succeeds')
 
     # Make sure additional inputs exist
-    rbf_node.generatetoaddress(101, rbf_node.getnewaddress())
+    rbf_node.generatetoaddress(COINBASE_MATURITY + 1, rbf_node.getnewaddress())
     rbfid = spend_one_input(rbf_node, dest_address)
     input_list = rbf_node.getrawtransaction(rbfid, 1)["vin"]
     assert_equal(len(input_list), 1)
@@ -439,7 +440,7 @@ def test_unconfirmed_not_spendable(self, rbf_node, rbf_node_address):
 def test_bumpfee_metadata(self, rbf_node, dest_address):
     self.log.info('Test that bumped txn metadata persists to new txn record')
     assert(rbf_node.getbalance() < 49)
-    rbf_node.generatetoaddress(101, rbf_node.getnewaddress())
+    rbf_node.generatetoaddress(COINBASE_MATURITY + 1, rbf_node.getnewaddress())
     rbfid = rbf_node.sendtoaddress(dest_address, 49, "comment value", "to value")
     bumped_tx = rbf_node.bumpfee(rbfid)
     bumped_wtx = rbf_node.gettransaction(bumped_tx["txid"])
@@ -491,8 +492,11 @@ def submit_block_with_tx(node, tx):
 
     tip = node.getbestblockhash()
     height = node.getblockcount() + 1
-    block_time = node.getblockheader(tip)["mediantime"] + 1
+    gbt = node.getblocktemplate({"rules": ["segwit"]})
+    block_time = gbt["curtime"]
     block = create_block(int(tip, 16), create_coinbase(height), block_time)
+    block.nVersion = gbt.get("version", block.nVersion)
+    block.nBits = int(gbt["bits"], 16)
     block.vtx.append(ctx)
     block.rehash()
     block.hashMerkleRoot = block.calc_merkle_root()

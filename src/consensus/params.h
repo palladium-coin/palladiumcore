@@ -14,7 +14,8 @@ namespace Consensus {
 enum DeploymentPos
 {
     DEPLOYMENT_TESTDUMMY,
-    // NOTE: Also add new deployments to VersionBitsDeploymentInfo in versionbits.cpp
+    DEPLOYMENT_TAPROOT,
+    // NOTE: Also add new deployments to VersionBitsDeploymentInfo in versionbitsinfo.cpp
     MAX_VERSION_BITS_DEPLOYMENTS
 };
 

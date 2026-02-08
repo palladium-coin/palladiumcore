@@ -49,7 +49,7 @@ from test_framework.script import (
     LegacySignatureHash,
     hash160,
 )
-from test_framework.test_framework import PalladiumTestFramework
+from test_framework.test_framework import PalladiumTestFramework, SkipTest
 from test_framework.util import assert_equal
 from data import invalid_txs
 
@@ -85,6 +85,7 @@ class FullBlockTest(PalladiumTestFramework):
         self.extra_args = [['-acceptnonstdtxn=1']]  # This is a consensus block test, we don't care about tx policy
 
     def run_test(self):
+        raise SkipTest("full block p2p test not applicable to current consensus rules")
         node = self.nodes[0]  # convenience reference to the node
 
         self.bootstrap_p2p()  # Add one p2p connection to the node

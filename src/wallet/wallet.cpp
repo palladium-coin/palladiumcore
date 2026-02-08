@@ -2742,16 +2742,24 @@ OutputType CWallet::TransactionChangeType(OutputType change_type, const std::vec
         return OutputType::LEGACY;
     }
 
-    // if any destination is P2WPKH or P2WSH, use P2WPKH for the change
-    // output.
+    // If any destination is witness, prefer witness change matching the most
+    // modern witness version encountered.
+    bool use_bech32 = false;
+    bool use_bech32m = false;
     for (const auto& recipient : vecSend) {
         // Check if any destination contains a witness program:
         int witnessversion = 0;
         std::vector<unsigned char> witnessprogram;
         if (recipient.scriptPubKey.IsWitnessProgram(witnessversion, witnessprogram)) {
-            return OutputType::BECH32;
+            if (witnessversion == 0) {
+                use_bech32 = true;
+            } else if (witnessversion == 1 && witnessprogram.size() == WITNESS_V1_TAPROOT_SIZE) {
+                use_bech32m = true;
+            }
         }
     }
+    if (use_bech32m) return OutputType::BECH32M;
+    if (use_bech32) return OutputType::BECH32;
 
     // else use m_default_address_type for change
     return m_default_address_type;

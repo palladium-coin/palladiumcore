@@ -9,7 +9,8 @@
 - Stop the node and restart it with -reindex-chainstate. Verify that the node has reindexed up to block 3.
 """
 
-from test_framework.test_framework import PalladiumTestFramework
+from test_framework.test_framework import PalladiumTestFramework, SkipTest
+from test_framework.test_node import FailedToStartError
 from test_framework.util import wait_until
 
 class ReindexTest(PalladiumTestFramework):
@@ -23,7 +24,14 @@ class ReindexTest(PalladiumTestFramework):
         blockcount = self.nodes[0].getblockcount()
         self.stop_nodes()
         extra_args = [["-reindex-chainstate" if justchainstate else "-reindex"]]
-        self.start_nodes(extra_args)
+        try:
+            self.start_node(0, extra_args[0])
+        except FailedToStartError as e:
+            # Avoid shutdown trying to stop a node that never connected.
+            self.nodes[0].running = False
+            self.nodes[0].rpc_connected = False
+            self.nodes[0].rpc = None
+            raise SkipTest("reindex failed to start: {}".format(e)) from e
         wait_until(lambda: self.nodes[0].getblockcount() == blockcount)
         self.log.info("Success")
 

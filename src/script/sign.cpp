@@ -11,10 +11,15 @@
 #include <script/signingprovider.h>
 #include <script/standard.h>
 #include <uint256.h>
+#include <logging.h>
+#include <util/strencodings.h>
+
+#include <algorithm>
+#include <array>
 
 typedef std::vector<unsigned char> valtype;
 
-MutableTransactionSignatureCreator::MutableTransactionSignatureCreator(const CMutableTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, int nHashTypeIn) : txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), amount(amountIn), checker(txTo, nIn, amountIn) {}
+MutableTransactionSignatureCreator::MutableTransactionSignatureCreator(const CMutableTransaction* txToIn, unsigned int nInIn, const CAmount& amountIn, int nHashTypeIn, const PrecomputedTransactionData* txdataIn) : txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), amount(amountIn), txdata(txdataIn), checker(txdataIn ? MutableTransactionSignatureChecker(txToIn, nInIn, amountIn, *txdataIn) : MutableTransactionSignatureChecker(txToIn, nInIn, amountIn)) {}
 
 bool MutableTransactionSignatureCreator::CreateSig(const SigningProvider& provider, std::vector<unsigned char>& vchSig, const CKeyID& address, const CScript& scriptCode, SigVersion sigversion) const
 {
@@ -22,11 +27,40 @@ bool MutableTransactionSignatureCreator::CreateSig(const SigningProvider& provid
     if (!provider.GetKey(address, key))
         return false;
 
+    if (sigversion == SigVersion::TAPROOT || sigversion == SigVersion::TAPSCRIPT) {
+        if (!txdata) {
+            return false;
+        }
+        if (!txdata->m_bip341_taproot_ready) {
+            return false;
+        }
+        if (!key.IsCompressed()) {
+            return false;
+        }
+        uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount, sigversion, txdata);
+        // For Taproot key-path spending, we need to apply the taproot tweak before signing
+        // For TAPSCRIPT, we sign without the tweak (the script takes care of the commitment)
+        if (sigversion == SigVersion::TAPROOT) {
+            if (!key.SignSchnorrTaproot(hash, vchSig, nullptr)) {
+                return false;
+            }
+        } else {
+            // For script-path (TAPSCRIPT), use regular Schnorr signing
+            if (!key.SignSchnorr(hash, vchSig)) {
+                return false;
+            }
+        }
+        if (nHashType != SIGHASH_DEFAULT) {
+            vchSig.push_back((unsigned char)nHashType);
+        }
+        return true;
+    }
+
     // Signing with uncompressed keys is disabled in witness scripts
     if (sigversion == SigVersion::WITNESS_V0 && !key.IsCompressed())
         return false;
 
-    uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount, sigversion);
+    uint256 hash = SignatureHash(scriptCode, *txTo, nIn, nHashType, amount, sigversion, txdata);
     if (!key.Sign(hash, vchSig))
         return false;
     vchSig.push_back((unsigned char)nHashType);
@@ -65,6 +99,52 @@ static bool GetPubKey(const SigningProvider& provider, const SignatureData& sigd
     }
     // Query the underlying provider
     return provider.GetPubKey(address, pubkey);
+}
+
+static bool FindTaprootPubKey(const SigningProvider& provider, const std::vector<unsigned char>& xonly_bytes, CPubKey& pubkey)
+{
+    if (xonly_bytes.size() != WITNESS_V1_TAPROOT_SIZE) {
+        return false;
+    }
+    const XOnlyPubKey output_key(xonly_bytes.begin(), xonly_bytes.end());
+    if (!output_key.IsFullyValid()) {
+        return false;
+    }
+
+    // First, try to look up the internal key directly from the provider's mapping.
+    // This is the correct and efficient way for wallets that store the mapping.
+    if (provider.GetTaprootInternalKey(output_key, pubkey)) {
+        return true;
+    }
+
+    // Fallback: for backwards compatibility or providers without the mapping,
+    // enumerate keys and check if their tweaked version matches the output key.
+    // This is less efficient but ensures compatibility with older code.
+    std::array<unsigned char, CPubKey::COMPRESSED_SIZE> candidate;
+    std::copy(xonly_bytes.begin(), xonly_bytes.end(), candidate.begin() + 1);
+
+    for (unsigned char prefix : {0x02, 0x03}) {
+        candidate[0] = prefix;
+        const CPubKey candidate_pubkey(candidate.begin(), candidate.end());
+        if (!candidate_pubkey.IsFullyValid()) continue;
+
+        // Try to get a key from the provider
+        CPubKey found_pubkey;
+        if (!provider.GetPubKey(candidate_pubkey.GetID(), found_pubkey)) continue;
+
+        // Compute the tweaked output key for this internal key
+        XOnlyPubKey internal_key = found_pubkey.GetXOnlyPubKey();
+        if (!internal_key.IsFullyValid()) continue;
+
+        auto [tweaked_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+
+        // Check if tweaked key matches the output key
+        if (tweaked_key == output_key) {
+            pubkey = found_pubkey;
+            return true;
+        }
+    }
+    return false;
 }
 
 static bool CreateSig(const BaseSignatureCreator& creator, SignatureData& sigdata, const SigningProvider& provider, std::vector<unsigned char>& sig_out, const CPubKey& pubkey, const CScript& scriptcode, SigVersion sigversion)
@@ -172,6 +252,17 @@ static bool SignStep(const SigningProvider& provider, const BaseSignatureCreator
         // Could not find witnessScript, add to missing
         sigdata.missing_witness_script = uint256(vSolutions[0]);
         return false;
+    case TX_WITNESS_V1_TAPROOT: {
+        CPubKey pubkey;
+        if (!FindTaprootPubKey(provider, vSolutions[0], pubkey)) {
+            return false;
+        }
+        // For Taproot key-path spending, scriptCode should be empty per BIP341
+        CScript empty_script;
+        if (!CreateSig(creator, sigdata, provider, sig, pubkey, empty_script, SigVersion::TAPROOT)) return false;
+        ret.push_back(std::move(sig));
+        return true;
+    }
 
     default:
         return false;
@@ -232,6 +323,10 @@ bool ProduceSignature(const SigningProvider& provider, const BaseSignatureCreato
         txnouttype subType;
         solved = solved && SignStep(provider, creator, witnessscript, result, subType, SigVersion::WITNESS_V0, sigdata) && subType != TX_SCRIPTHASH && subType != TX_WITNESS_V0_SCRIPTHASH && subType != TX_WITNESS_V0_KEYHASH;
         result.push_back(std::vector<unsigned char>(witnessscript.begin(), witnessscript.end()));
+        sigdata.scriptWitness.stack = result;
+        sigdata.witness = true;
+        result.clear();
+    } else if (solved && whichType == TX_WITNESS_V1_TAPROOT) {
         sigdata.scriptWitness.stack = result;
         sigdata.witness = true;
         result.clear();
@@ -374,7 +469,13 @@ bool SignSignature(const SigningProvider &provider, const CScript& fromPubKey, C
 {
     assert(nIn < txTo.vin.size());
 
-    MutableTransactionSignatureCreator creator(&txTo, nIn, amount, nHashType);
+    std::vector<CTxOut> spent_outputs;
+    if (txTo.vin.size() == 1) {
+        spent_outputs.resize(1);
+        spent_outputs[0] = CTxOut(amount, fromPubKey);
+    }
+    const PrecomputedTransactionData txdata(txTo, std::move(spent_outputs));
+    MutableTransactionSignatureCreator creator(&txTo, nIn, amount, nHashType, &txdata);
 
     SignatureData sigdata;
     bool ret = ProduceSignature(provider, creator, fromPubKey, sigdata);
@@ -399,6 +500,7 @@ class DummySignatureChecker final : public BaseSignatureChecker
 public:
     DummySignatureChecker() {}
     bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CScript& scriptCode, SigVersion sigversion) const override { return true; }
+    bool CheckSchnorrSignature(const std::vector<unsigned char>& sig, const std::vector<unsigned char>& pubkey, SigVersion sigversion, ScriptExecutionData& execdata, ScriptError* serror = nullptr) const override { return true; }
 };
 const DummySignatureChecker DUMMY_CHECKER;
 
@@ -411,6 +513,10 @@ public:
     const BaseSignatureChecker& Checker() const override { return DUMMY_CHECKER; }
     bool CreateSig(const SigningProvider& provider, std::vector<unsigned char>& vchSig, const CKeyID& keyid, const CScript& scriptCode, SigVersion sigversion) const override
     {
+        if (sigversion == SigVersion::TAPROOT || sigversion == SigVersion::TAPSCRIPT) {
+            vchSig.assign(XOnlyPubKey::SCHNORR_SIGNATURE_SIZE, '\000');
+            return true;
+        }
         // Create a dummy signature that is a valid DER-encoding
         vchSig.assign(m_r_len + m_s_len + 7, '\000');
         vchSig[0] = 0x30;
@@ -454,13 +560,13 @@ bool IsSegWitOutput(const SigningProvider& provider, const CScript& script)
 {
     std::vector<valtype> solutions;
     auto whichtype = Solver(script, solutions);
-    if (whichtype == TX_WITNESS_V0_SCRIPTHASH || whichtype == TX_WITNESS_V0_KEYHASH || whichtype == TX_WITNESS_UNKNOWN) return true;
+    if (whichtype == TX_WITNESS_V0_SCRIPTHASH || whichtype == TX_WITNESS_V0_KEYHASH || whichtype == TX_WITNESS_V1_TAPROOT || whichtype == TX_WITNESS_UNKNOWN) return true;
     if (whichtype == TX_SCRIPTHASH) {
         auto h160 = uint160(solutions[0]);
         CScript subscript;
         if (provider.GetCScript(h160, subscript)) {
             whichtype = Solver(subscript, solutions);
-            if (whichtype == TX_WITNESS_V0_SCRIPTHASH || whichtype == TX_WITNESS_V0_KEYHASH || whichtype == TX_WITNESS_UNKNOWN) return true;
+            if (whichtype == TX_WITNESS_V0_SCRIPTHASH || whichtype == TX_WITNESS_V0_KEYHASH || whichtype == TX_WITNESS_V1_TAPROOT || whichtype == TX_WITNESS_UNKNOWN) return true;
         }
     }
     return false;
@@ -473,6 +579,22 @@ bool SignTransaction(CMutableTransaction& mtx, const SigningProvider* keystore, 
     // Use CTransaction for the constant parts of the
     // transaction to avoid rehashing.
     const CTransaction txConst(mtx);
+
+    std::vector<CTxOut> spent_outputs(mtx.vin.size());
+    bool have_all_spent_outputs = !mtx.vin.empty();
+    for (unsigned int i = 0; i < mtx.vin.size(); ++i) {
+        auto coin = coins.find(mtx.vin[i].prevout);
+        if (coin != coins.end() && !coin->second.IsSpent()) {
+            spent_outputs[i] = coin->second.out;
+        } else {
+            have_all_spent_outputs = false;
+        }
+    }
+    if (!have_all_spent_outputs) {
+        spent_outputs.clear();
+    }
+    const PrecomputedTransactionData txdata(mtx, std::move(spent_outputs));
+
     // Sign what we can:
     for (unsigned int i = 0; i < mtx.vin.size(); i++) {
         CTxIn& txin = mtx.vin[i];
@@ -487,7 +609,7 @@ bool SignTransaction(CMutableTransaction& mtx, const SigningProvider* keystore, 
         SignatureData sigdata = DataFromTransaction(mtx, i, coin->second.out);
         // Only sign SIGHASH_SINGLE if there's a corresponding output:
         if (!fHashSingle || (i < mtx.vout.size())) {
-            ProduceSignature(*keystore, MutableTransactionSignatureCreator(&mtx, i, amount, nHashType), prevPubKey, sigdata);
+            ProduceSignature(*keystore, MutableTransactionSignatureCreator(&mtx, i, amount, nHashType, &txdata), prevPubKey, sigdata);
         }
 
         UpdateInput(txin, sigdata);
@@ -499,7 +621,7 @@ bool SignTransaction(CMutableTransaction& mtx, const SigningProvider* keystore, 
         }
 
         ScriptError serror = SCRIPT_ERR_OK;
-        if (!VerifyScript(txin.scriptSig, prevPubKey, &txin.scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TransactionSignatureChecker(&txConst, i, amount), &serror)) {
+        if (!VerifyScript(txin.scriptSig, prevPubKey, &txin.scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, TransactionSignatureChecker(&txConst, i, amount, txdata), &serror)) {
             if (serror == SCRIPT_ERR_INVALID_STACK_OPERATION) {
                 // Unable to sign input and verification failed (possible attempt to partially sign).
                 input_errors[i] = "Unable to sign input, invalid stack size (possibly missing key)";

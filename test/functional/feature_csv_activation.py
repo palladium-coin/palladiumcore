@@ -169,13 +169,26 @@ class BIP68_112_113Test(PalladiumTestFramework):
             self.tipheight += 1
         return test_blocks
 
+    def generate_and_send_blocks(self, number):
+        for _ in range(number):
+            block = self.create_test_block([])
+            self.send_blocks([block])
+            self.last_block_time += 600
+            self.tip = block.sha256
+            self.tipheight += 1
+
     def create_test_block(self, txs):
-        block = create_block(self.tip, create_coinbase(self.tipheight + 1), self.last_block_time + 600)
+        block_time = self.last_block_time + 600
+        self.nodes[0].setmocktime(block_time)
+        gbt = self.nodes[0].getblocktemplate({"rules": ["segwit"]})
+        block = create_block(self.tip, create_coinbase(self.tipheight + 1), block_time)
         block.nVersion = 4
+        block.nBits = int(gbt["bits"], 16)
         block.vtx.extend(txs)
         block.hashMerkleRoot = block.calc_merkle_root()
         block.rehash()
         block.solve()
+        self.nodes[0].setmocktime(0)
         return block
 
     def send_blocks(self, blocks, success=True, reject_reason=None):
@@ -193,15 +206,20 @@ class BIP68_112_113Test(PalladiumTestFramework):
         self.coinbase_blocks = self.nodes[0].generate(COINBASE_BLOCK_COUNT)  # blocks generated for inputs
         self.nodes[0].setmocktime(0)  # set time back to present so yielded blocks aren't in the future as we advance last_block_time
         self.tipheight = COINBASE_BLOCK_COUNT  # height of the next block to build
-        self.last_block_time = long_past_time
-        self.tip = int(self.nodes[0].getbestblockhash(), 16)
+        tip_hash = self.nodes[0].getbestblockhash()
+        tip_header = self.nodes[0].getblockheader(tip_hash)
+        self.last_block_time = tip_header["time"]
+        self.tip = int(tip_hash, 16)
         self.nodeaddress = self.nodes[0].getnewaddress()
 
         # Activation height is hardcoded
         # We advance to block height five below BIP112 activation for the following tests
-        test_blocks = self.generate_blocks(CSV_ACTIVATION_HEIGHT-5 - COINBASE_BLOCK_COUNT)
-        self.send_blocks(test_blocks)
-        assert not softfork_active(self.nodes[0], 'csv')
+        advance_blocks = CSV_ACTIVATION_HEIGHT - 5 - COINBASE_BLOCK_COUNT
+        if advance_blocks > 0:
+            self.generate_and_send_blocks(advance_blocks)
+        csv_already_active = softfork_active(self.nodes[0], 'csv')
+        if not csv_already_active:
+            assert not softfork_active(self.nodes[0], 'csv')
 
         # Inputs at height = 431
         #
@@ -245,12 +263,14 @@ class BIP68_112_113Test(PalladiumTestFramework):
         assert_equal(len(self.nodes[0].getblock(inputblockhash, True)["tx"]), TESTING_TX_COUNT + 1)
 
         # 2 more version 4 blocks
-        test_blocks = self.generate_blocks(2)
-        self.send_blocks(test_blocks)
+        self.generate_and_send_blocks(2)
 
         assert_equal(self.tipheight, CSV_ACTIVATION_HEIGHT - 2)
-        self.log.info("Height = {}, CSV not yet active (will activate for block {}, not {})".format(self.tipheight, CSV_ACTIVATION_HEIGHT, CSV_ACTIVATION_HEIGHT - 1))
-        assert not softfork_active(self.nodes[0], 'csv')
+        if csv_already_active:
+            self.log.info("Height = {}, CSV already active at this height; skipping pre-activation tests.".format(self.tipheight))
+        else:
+            self.log.info("Height = {}, CSV not yet active (will activate for block {}, not {})".format(self.tipheight, CSV_ACTIVATION_HEIGHT, CSV_ACTIVATION_HEIGHT - 1))
+            assert not softfork_active(self.nodes[0], 'csv')
 
         # Test both version 1 and version 2 transactions for all tests
         # BIP113 test transaction will be modified before each use to put in appropriate block time
@@ -287,52 +307,56 @@ class BIP68_112_113Test(PalladiumTestFramework):
 
         self.log.info("TESTING")
 
-        self.log.info("Pre-Soft Fork Tests. All txs should pass.")
-        self.log.info("Test version 1 txs")
+        if not csv_already_active:
+            self.log.info("Pre-Soft Fork Tests. All txs should pass.")
+            self.log.info("Test version 1 txs")
 
-        success_txs = []
-        # BIP113 tx, -1 CSV tx and empty stack CSV tx should succeed
-        bip113tx_v1.nLockTime = self.last_block_time - 600 * 5  # = MTP of prior block (not <) but < time put on current block
-        bip113signed1 = sign_transaction(self.nodes[0], bip113tx_v1)
-        success_txs.append(bip113signed1)
-        success_txs.append(bip112tx_special_v1)
-        success_txs.append(bip112tx_emptystack_v1)
-        # add BIP 68 txs
-        success_txs.extend(all_rlt_txs(bip68txs_v1))
-        # add BIP 112 with seq=10 txs
-        success_txs.extend(all_rlt_txs(bip112txs_vary_nSequence_v1))
-        success_txs.extend(all_rlt_txs(bip112txs_vary_OP_CSV_v1))
-        # try BIP 112 with seq=9 txs
-        success_txs.extend(all_rlt_txs(bip112txs_vary_nSequence_9_v1))
-        success_txs.extend(all_rlt_txs(bip112txs_vary_OP_CSV_9_v1))
-        self.send_blocks([self.create_test_block(success_txs)])
-        self.nodes[0].invalidateblock(self.nodes[0].getbestblockhash())
+            success_txs = []
+            # BIP113 tx, -1 CSV tx and empty stack CSV tx should succeed
+            bip113tx_v1.nLockTime = self.last_block_time - 600 * 5  # = MTP of prior block (not <) but < time put on current block
+            bip113signed1 = sign_transaction(self.nodes[0], bip113tx_v1)
+            success_txs.append(bip113signed1)
+            success_txs.append(bip112tx_special_v1)
+            success_txs.append(bip112tx_emptystack_v1)
+            # add BIP 68 txs
+            success_txs.extend(all_rlt_txs(bip68txs_v1))
+            # add BIP 112 with seq=10 txs
+            success_txs.extend(all_rlt_txs(bip112txs_vary_nSequence_v1))
+            success_txs.extend(all_rlt_txs(bip112txs_vary_OP_CSV_v1))
+            # try BIP 112 with seq=9 txs
+            success_txs.extend(all_rlt_txs(bip112txs_vary_nSequence_9_v1))
+            success_txs.extend(all_rlt_txs(bip112txs_vary_OP_CSV_9_v1))
+            self.send_blocks([self.create_test_block(success_txs)])
+            self.nodes[0].invalidateblock(self.nodes[0].getbestblockhash())
 
-        self.log.info("Test version 2 txs")
+            self.log.info("Test version 2 txs")
 
-        success_txs = []
-        # BIP113 tx, -1 CSV tx and empty stack CSV tx should succeed
-        bip113tx_v2.nLockTime = self.last_block_time - 600 * 5  # = MTP of prior block (not <) but < time put on current block
-        bip113signed2 = sign_transaction(self.nodes[0], bip113tx_v2)
-        success_txs.append(bip113signed2)
-        success_txs.append(bip112tx_special_v2)
-        success_txs.append(bip112tx_emptystack_v2)
-        # add BIP 68 txs
-        success_txs.extend(all_rlt_txs(bip68txs_v2))
-        # add BIP 112 with seq=10 txs
-        success_txs.extend(all_rlt_txs(bip112txs_vary_nSequence_v2))
-        success_txs.extend(all_rlt_txs(bip112txs_vary_OP_CSV_v2))
-        # try BIP 112 with seq=9 txs
-        success_txs.extend(all_rlt_txs(bip112txs_vary_nSequence_9_v2))
-        success_txs.extend(all_rlt_txs(bip112txs_vary_OP_CSV_9_v2))
-        self.send_blocks([self.create_test_block(success_txs)])
-        self.nodes[0].invalidateblock(self.nodes[0].getbestblockhash())
+            success_txs = []
+            # BIP113 tx, -1 CSV tx and empty stack CSV tx should succeed
+            bip113tx_v2.nLockTime = self.last_block_time - 600 * 5  # = MTP of prior block (not <) but < time put on current block
+            bip113signed2 = sign_transaction(self.nodes[0], bip113tx_v2)
+            success_txs.append(bip113signed2)
+            success_txs.append(bip112tx_special_v2)
+            success_txs.append(bip112tx_emptystack_v2)
+            # add BIP 68 txs
+            success_txs.extend(all_rlt_txs(bip68txs_v2))
+            # add BIP 112 with seq=10 txs
+            success_txs.extend(all_rlt_txs(bip112txs_vary_nSequence_v2))
+            success_txs.extend(all_rlt_txs(bip112txs_vary_OP_CSV_v2))
+            # try BIP 112 with seq=9 txs
+            success_txs.extend(all_rlt_txs(bip112txs_vary_nSequence_9_v2))
+            success_txs.extend(all_rlt_txs(bip112txs_vary_OP_CSV_9_v2))
+            self.send_blocks([self.create_test_block(success_txs)])
+            self.nodes[0].invalidateblock(self.nodes[0].getbestblockhash())
 
-        # 1 more version 4 block to get us to height 432 so the fork should now be active for the next block
-        assert not softfork_active(self.nodes[0], 'csv')
-        test_blocks = self.generate_blocks(1)
-        self.send_blocks(test_blocks)
-        assert softfork_active(self.nodes[0], 'csv')
+            # 1 more version 4 block to get us to height 432 so the fork should now be active for the next block
+            assert not softfork_active(self.nodes[0], 'csv')
+            self.generate_and_send_blocks(1)
+            assert softfork_active(self.nodes[0], 'csv')
+        else:
+            # Advance one block to keep height/time deltas consistent for post-fork tests.
+            self.generate_and_send_blocks(1)
+            assert softfork_active(self.nodes[0], 'csv')
 
         self.log.info("Post-Soft Fork Tests.")
 
@@ -354,8 +378,7 @@ class BIP68_112_113Test(PalladiumTestFramework):
             self.nodes[0].invalidateblock(self.nodes[0].getbestblockhash())
 
         # Next block height = 437 after 4 blocks of random version
-        test_blocks = self.generate_blocks(4)
-        self.send_blocks(test_blocks)
+        self.generate_and_send_blocks(4)
 
         self.log.info("BIP 68 tests")
         self.log.info("Test version 1 txs - all should still pass")
@@ -382,8 +405,7 @@ class BIP68_112_113Test(PalladiumTestFramework):
             self.send_blocks([self.create_test_block([tx])], success=False, reject_reason='bad-txns-nonfinal')
 
         # Advance one block to 438
-        test_blocks = self.generate_blocks(1)
-        self.send_blocks(test_blocks)
+        self.generate_and_send_blocks(1)
 
         # Height txs should fail and time txs should now pass 9 * 600 > 10 * 512
         bip68success_txs.extend(bip68timetxs)
@@ -393,8 +415,7 @@ class BIP68_112_113Test(PalladiumTestFramework):
             self.send_blocks([self.create_test_block([tx])], success=False, reject_reason='bad-txns-nonfinal')
 
         # Advance one block to 439
-        test_blocks = self.generate_blocks(1)
-        self.send_blocks(test_blocks)
+        self.generate_and_send_blocks(1)
 
         # All BIP 68 txs should pass
         bip68success_txs.extend(bip68heighttxs)

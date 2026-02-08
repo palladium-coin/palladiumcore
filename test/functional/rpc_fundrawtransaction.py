@@ -7,6 +7,7 @@
 from decimal import Decimal
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     assert_fee_amount,
     assert_greater_than,
@@ -61,7 +62,8 @@ class RawTransactionsTest(PalladiumTestFramework):
 
         self.nodes[2].generate(1)
         self.sync_all()
-        self.nodes[0].generate(121)
+        # Mine enough blocks so node0 has 21 mature coinbases
+        self.nodes[0].generate(COINBASE_MATURITY + 21)
         self.sync_all()
 
         self.test_change_position()

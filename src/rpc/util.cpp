@@ -182,6 +182,10 @@ CTxDestination AddAndGetMultisigDestination(const int required, const std::vecto
         }
     }
 
+    if (type == OutputType::BECH32M) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Taproot multisig output generation is not supported by this RPC");
+    }
+
     // Make the address
     CTxDestination dest = AddAndGetDestinationForScript(keystore, script_out, type);
 

@@ -37,12 +37,18 @@ class P2PFingerprintTest(PalladiumTestFramework):
             coinbase = create_coinbase(prev_height + 1)
             block_time = prev_median_time + 1
             block = create_block(int(prev_hash, 16), coinbase, block_time)
+            block.nVersion = 4
+            self.nodes[0].setmocktime(block_time)
+            block.nTime = block_time
+            block.nBits = int(self.nodes[0].getblocktemplate({"rules": ["segwit"]})["bits"], 16)
+            block.rehash()
             block.solve()
 
             blocks.append(block)
             prev_hash = block.hash
             prev_height += 1
             prev_median_time = block_time
+        self.nodes[0].setmocktime(0)
         return blocks
 
     # Send a getdata request for a given block hash

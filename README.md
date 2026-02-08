@@ -1,25 +1,61 @@
 # Palladium Core
 
-**Official Websites:** [palladiumblockchain.net](https://palladiumblockchain.net) and [palladium-coin.com](https://palladium-coin.com)
-## Overview
+[![Release](https://img.shields.io/github/v/release/palladium-coin/palladiumcore)](https://github.com/palladium-coin/palladiumcore/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](COPYING)
 
-Palladium Core is a decentralized digital currency forked from Bitcoin, specifically designed to serve the palladium market ecosystem. Built upon the proven Bitcoin protocol foundation, Palladium Core delivers enhanced security, efficiency, and transparency for palladium-related transactions.
+**Official Websites:** [palladiumblockchain.net](https://palladiumblockchain.net) | [palladium-coin.com](https://palladium-coin.com)
+
+## Table of Contents
+
+- [What is Palladium Core?](#what-is-palladium-core)
+- [Quick Start](#quick-start)
+- [Building from Source](#building-from-source)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Version History](#version-history)
+- [Support](#support)
+- [License](#license)
+
+## What is Palladium Core?
+
+Palladium Core is a decentralized cryptocurrency built on Bitcoin's proven codebase, enhanced with modern features including **Taproot support** (BIP340/341/342/350). Designed for the palladium market ecosystem, it delivers enterprise-grade security, efficiency, and privacy for digital transactions.
 
 ### Key Features
 
+- **Taproot Support (v2.0.0)**: Enhanced privacy with Schnorr signatures and bech32m addresses
 - **Security**: Advanced cryptographic techniques ensure transaction security and fund protection
 - **Efficiency**: Optimized blockchain parameters provide fast and reliable transaction processing
 - **Transparency**: Open-source architecture enables community inspection and contribution
 - **Market-Focused**: Tailored features specifically designed for palladium industry requirements
 - **Decentralized**: Peer-to-peer network with no central authority
 
+### What's New in v2.0.0
+
+Palladium Core 2.0.0 introduces **full Taproot support**, bringing cutting-edge privacy and efficiency improvements:
+
+- **Schnorr Signatures**: More efficient and secure than traditional ECDSA signatures
+- **Bech32m Addresses**: New address format (`plm1p...`) for Taproot outputs
+- **Enhanced Privacy**: Complex smart contracts appear as simple transactions on-chain
+- **Smaller Transactions**: Lower fees through more efficient signature schemes
+
+**Learn More**: [Taproot User Guide](doc/taproot-guide.md) | [Technical Specification](doc/TAPROOT.md) | [Release Notes](doc/release-notes/release-notes-2.0.0.md)
+
 ## Quick Start
 
-### Installation
+### Pre-built Binaries
 
-1. **Download and Install**: Get the latest Palladium Core wallet from our [releases page](https://github.com/palladium-coin/palladiumcore/releases)
-2. **Configure**: Create the `palladium.conf` configuration file (see [Configuration](#configuration) section below)
-3. **Launch the Core**: Start the Palladium Core application (includes automatic network synchronization)
+Download the latest Palladium Core release:
+
+**[Download Latest Release (v2.0.0)](https://github.com/palladium-coin/palladiumcore/releases/latest)**
+
+**Installation Steps:**
+
+1. **Download**: Get the appropriate binary for your operating system
+2. **Install**: Extract and run the installer
+3. **Configure**: Create `palladium.conf` (see [Configuration](#configuration) below)
+4. **Launch**: Start Palladium Core and sync with the network
+
+**First-time users?** Check out the [Taproot User Guide](doc/taproot-guide.md) to learn about creating modern Taproot addresses with enhanced privacy.
 
 ### Configuration
 
@@ -158,6 +194,26 @@ Security is paramount in cryptocurrency development. Please report security vuln
 
 Palladium Core is released under the terms of the MIT license. See [COPYING](COPYING) for more information.
 
+## Documentation
+
+### Core Documentation
+- **[CHANGELOG](CHANGELOG.md)** - Complete version history and release notes
+- **[Taproot User Guide](doc/taproot-guide.md)** - How to use Taproot addresses (v2.0.0)
+- **[Taproot Technical Specification](doc/TAPROOT.md)** - Deep dive into Taproot implementation
+- **[Release Notes](doc/release-notes/)** - Detailed release notes for each version
+- **[Configuration Guide](doc/configuration-file.md)** - Complete configuration reference
+- **[BIP Implementation Status](doc/bips.md)** - Bitcoin Improvement Proposals implemented
+
+### Build Documentation
+- **[Build Instructions](doc/)** - Platform-specific build guides
+- **[Dependencies](doc/dependencies.md)** - Complete dependency list
+- **[Developer Notes](doc/developer-notes.md)** - Advanced development setup
+
+### API Documentation
+- **[JSON-RPC API](doc/JSON-RPC-interface.md)** - Complete RPC command reference
+- **[REST Interface](doc/REST-interface.md)** - RESTful API documentation
+- **[ZMQ Interface](doc/zmq.md)** - ZeroMQ notification interface
+
 ## Support
 
 - **Documentation**: [Wiki](https://github.com/palladium-coin/palladium/wiki)
@@ -165,9 +221,23 @@ Palladium Core is released under the terms of the MIT license. See [COPYING](COP
 - **Community**: [Discord](https://discord.gg/palladium) | [Telegram](https://t.me/palladiumcoin)
 - **Website**: [palladiumblockchain.net](https://palladiumblockchain.net/)
 
+## Version History
+
+For a complete history of changes, improvements, and bug fixes across all versions, see the **[CHANGELOG](CHANGELOG.md)**.
+
+**Recent Releases:**
+- **[v2.0.0](doc/release-notes/release-notes-2.0.0.md)** (2026-02-08) - Taproot support (BIP340/341/342/350)
+- **[v1.5.1](https://github.com/palladium-coin/palladiumcore/releases/tag/v1.5.1)** (2026-01-26) - UI improvements and bug fixes
+- **[v1.5.0](https://github.com/palladium-coin/palladiumcore/releases/tag/v1.5.0)** (2025-12-10) - Hard fork with DAA improvements
+- **[v1.4.1](https://github.com/palladium-coin/palladiumcore/releases/tag/v1.4.1)** (2025-11-11) - Docker build system and sync fixes
+
+[View all releases →](https://github.com/palladium-coin/palladiumcore/releases)
+
 ## Acknowledgments
 
 Palladium Core is built upon the Bitcoin Core codebase. We thank the Bitcoin Core developers and the broader cryptocurrency community for their foundational work.
+
+**Taproot Implementation**: The Taproot implementation (v2.0.0) is based on Bitcoin Core v24.2, adapted for Palladium's chain parameters and consensus rules.
 
 ---
 

@@ -24,6 +24,10 @@ class PrioritiseTransactionTest(PalladiumTestFramework):
         self.skip_if_no_wallet()
 
     def run_test(self):
+        # Ensure OP_RETURN limits are lifted post-resilience fork on regtest.
+        self.nodes[0].generate(200)
+        self.sync_all()
+
         # Test `prioritisetransaction` required parameters
         assert_raises_rpc_error(-1, "prioritisetransaction", self.nodes[0].prioritisetransaction)
         assert_raises_rpc_error(-1, "prioritisetransaction", self.nodes[0].prioritisetransaction, '')

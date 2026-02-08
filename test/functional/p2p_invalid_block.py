@@ -16,7 +16,7 @@ from test_framework.blocktools import create_block, create_coinbase, create_tx_w
 from test_framework.messages import COIN
 from test_framework.mininode import P2PDataStore
 from test_framework.test_framework import PalladiumTestFramework
-from test_framework.util import assert_equal
+from test_framework.util import COINBASE_MATURITY, assert_equal
 
 class InvalidBlockRequestTest(PalladiumTestFramework):
     def set_test_params(self):
@@ -25,6 +25,14 @@ class InvalidBlockRequestTest(PalladiumTestFramework):
         self.extra_args = [["-whitelist=noban@127.0.0.1"]]
 
     def run_test(self):
+        def set_block_nbits(block, block_time):
+            node.setmocktime(block_time)
+            block.nVersion = 4
+            block.nTime = block_time
+            block.nBits = int(node.getblocktemplate({"rules": ["segwit"]})["bits"], 16)
+            block.rehash()
+            node.setmocktime(0)
+
         # Add p2p connection to node0
         node = self.nodes[0]  # convenience reference to the node
         node.add_p2p_connection(P2PDataStore())
@@ -38,6 +46,7 @@ class InvalidBlockRequestTest(PalladiumTestFramework):
 
         height = 1
         block = create_block(tip, create_coinbase(height), block_time)
+        set_block_nbits(block, block_time)
         block.solve()
         # Save the coinbase for later
         block1 = block
@@ -45,7 +54,7 @@ class InvalidBlockRequestTest(PalladiumTestFramework):
         node.p2p.send_blocks_and_test([block1], node, success=True)
 
         self.log.info("Mature the block.")
-        node.generatetoaddress(100, node.get_deterministic_priv_key().address)
+        node.generatetoaddress(COINBASE_MATURITY, node.get_deterministic_priv_key().address)
 
         best_block = node.getblock(node.getbestblockhash())
         tip = int(node.getbestblockhash(), 16)
@@ -61,6 +70,7 @@ class InvalidBlockRequestTest(PalladiumTestFramework):
         self.log.info("Test merkle root malleability.")
 
         block2 = create_block(tip, create_coinbase(height), block_time)
+        set_block_nbits(block2, block_time)
         block_time += 1
 
         # b'0x51' is OP_TRUE
@@ -96,6 +106,7 @@ class InvalidBlockRequestTest(PalladiumTestFramework):
         self.log.info("Test very broken block.")
 
         block3 = create_block(tip, create_coinbase(height), block_time)
+        set_block_nbits(block3, block_time)
         block_time += 1
         block3.vtx[0].vout[0].nValue = 100 * COIN  # Too high!
         block3.vtx[0].sha256 = None
@@ -121,6 +132,7 @@ class InvalidBlockRequestTest(PalladiumTestFramework):
         # Complete testing of CVE-2018-17144, by checking for the inflation bug.
         # Create a block that spends the output of a tx in a previous block.
         block4 = create_block(tip, create_coinbase(height), block_time)
+        set_block_nbits(block4, block_time)
         tx3 = create_tx_with_script(tx2, 0, script_sig=b'\x51', amount=50 * COIN)
 
         # Duplicates input

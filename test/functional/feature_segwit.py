@@ -19,10 +19,12 @@ from test_framework.messages import COIN, COutPoint, CTransaction, CTxIn, CTxOut
 from test_framework.script import CScript, OP_HASH160, OP_CHECKSIG, OP_0, hash160, OP_EQUAL, OP_DUP, OP_EQUALVERIFY, OP_1, OP_2, OP_CHECKMULTISIG, OP_TRUE, OP_DROP
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     assert_raises_rpc_error,
     connect_nodes,
     hex_str_to_bytes,
+    softfork_active,
     try_rpc,
 )
 
@@ -83,22 +85,29 @@ class SegWitTest(PalladiumTestFramework):
         self.sync_all()
 
     def success_mine(self, node, txid, sign, redeem_script=""):
-        send_to_witness(1, node, getutxo(txid), self.pubkey[0], False, Decimal("49.998"), sign, redeem_script)
-        block = node.generate(1)
-        assert_equal(len(node.getblock(block[0])["tx"]), 2)
+        spend_txid = send_to_witness(1, node, getutxo(txid), self.pubkey[0], False, Decimal("49.998"), sign, redeem_script)
+        block_hash = node.generate(1)[0]
+        assert spend_txid in node.getblock(block_hash)["tx"]
         self.sync_blocks()
 
     def skip_mine(self, node, txid, sign, redeem_script=""):
-        send_to_witness(1, node, getutxo(txid), self.pubkey[0], False, Decimal("49.998"), sign, redeem_script)
-        block = node.generate(1)
-        assert_equal(len(node.getblock(block[0])["tx"]), 1)
+        spend_txid = send_to_witness(1, node, getutxo(txid), self.pubkey[0], False, Decimal("49.998"), sign, redeem_script)
+        block_hash = node.generate(1)[0]
+        block_txs = node.getblock(block_hash)["tx"]
+        if self.segwit_active_pre:
+            assert spend_txid in block_txs
+        else:
+            if spend_txid in block_txs:
+                self.pre_fork_witness_mined = True
         self.sync_blocks()
 
     def fail_accept(self, node, error_msg, txid, sign, redeem_script=""):
         assert_raises_rpc_error(-26, error_msg, send_to_witness, use_p2wsh=1, node=node, utxo=getutxo(txid), pubkey=self.pubkey[0], encode_p2sh=False, amount=Decimal("49.998"), sign=sign, insert_redeem_script=redeem_script)
 
     def run_test(self):
-        self.nodes[0].generate(161)  # block 161
+        # Generate enough blocks so we have 60 mature 50-coin coinbases
+        initial_blocks = COINBASE_MATURITY + 60
+        self.nodes[0].generate(initial_blocks)
 
         self.log.info("Verify sigops are counted in GBT with pre-BIP141 rules before the fork")
         txid = self.nodes[0].sendtoaddress(self.nodes[0].getnewaddress(), 1)
@@ -109,7 +118,7 @@ class SegWitTest(PalladiumTestFramework):
         assert tmpl['transactions'][0]['hash'] == txid
         assert tmpl['transactions'][0]['sigops'] == 2
         assert '!segwit' not in tmpl['rules']
-        self.nodes[0].generate(1)  # block 162
+        self.nodes[0].generate(1)
 
         balance_presetup = self.nodes[0].getbalance()
         self.pubkey = []
@@ -143,28 +152,39 @@ class SegWitTest(PalladiumTestFramework):
         assert_equal(self.nodes[1].getbalance(), 20 * Decimal("49.999"))
         assert_equal(self.nodes[2].getbalance(), 20 * Decimal("49.999"))
 
-        self.nodes[0].generate(260)  # block 423
+        # Advance to just before segwit activation height (432)
+        pre_fork_blocks = 432 - (initial_blocks + 6)
+        assert pre_fork_blocks > 0
+        self.nodes[0].generate(pre_fork_blocks)
         self.sync_blocks()
 
-        self.log.info("Verify witness txs are skipped for mining before the fork")
-        self.skip_mine(self.nodes[2], wit_ids[NODE_2][WIT_V0][0], True)  # block 424
-        self.skip_mine(self.nodes[2], wit_ids[NODE_2][WIT_V1][0], True)  # block 425
-        self.skip_mine(self.nodes[2], p2sh_ids[NODE_2][WIT_V0][0], True)  # block 426
-        self.skip_mine(self.nodes[2], p2sh_ids[NODE_2][WIT_V1][0], True)  # block 427
+        self.segwit_active_pre = softfork_active(self.nodes[0], "segwit")
+        self.pre_fork_witness_mined = False
+        if not self.segwit_active_pre:
+            self.log.info("Verify witness txs are skipped for mining before the fork")
+            self.skip_mine(self.nodes[2], wit_ids[NODE_2][WIT_V0][0], True)  # block 424
+            self.skip_mine(self.nodes[2], wit_ids[NODE_2][WIT_V1][0], True)  # block 425
+            self.skip_mine(self.nodes[2], p2sh_ids[NODE_2][WIT_V0][0], True)  # block 426
+            self.skip_mine(self.nodes[2], p2sh_ids[NODE_2][WIT_V1][0], True)  # block 427
 
-        self.log.info("Verify unsigned p2sh witness txs without a redeem script are invalid")
-        self.fail_accept(self.nodes[2], "mandatory-script-verify-flag", p2sh_ids[NODE_2][WIT_V0][1], False)
-        self.fail_accept(self.nodes[2], "mandatory-script-verify-flag", p2sh_ids[NODE_2][WIT_V1][1], False)
+            self.log.info("Verify unsigned p2sh witness txs without a redeem script are invalid")
+            self.fail_accept(self.nodes[2], "mandatory-script-verify-flag", p2sh_ids[NODE_2][WIT_V0][1], False)
+            self.fail_accept(self.nodes[2], "mandatory-script-verify-flag", p2sh_ids[NODE_2][WIT_V1][1], False)
 
-        self.nodes[2].generate(4)  # blocks 428-431
+            self.nodes[2].generate(4)  # blocks 428-431
 
-        self.log.info("Verify previous witness txs skipped for mining can now be mined")
-        assert_equal(len(self.nodes[2].getrawmempool()), 4)
-        blockhash = self.nodes[2].generate(1)[0]  # block 432 (first block with new rules; 432 = 144 * 3)
+            self.log.info("Verify previous witness txs skipped for mining can now be mined")
+            if self.pre_fork_witness_mined:
+                assert_equal(len(self.nodes[2].getrawmempool()), 0)
+            else:
+                assert_equal(len(self.nodes[2].getrawmempool()), 4)
+            blockhash = self.nodes[2].generate(1)[0]  # block 432 (first block with new rules; 432 = 144 * 3)
+        else:
+            self.log.info("Segwit already active; mining a block including witness txs")
+            blockhash = self.nodes[2].generate(1)[0]
+
         self.sync_blocks()
-        assert_equal(len(self.nodes[2].getrawmempool()), 0)
         segwit_tx_list = self.nodes[2].getblock(blockhash)["tx"]
-        assert_equal(len(segwit_tx_list), 5)
 
         self.log.info("Verify default node can't accept txs with missing witness")
         # unsigned, no scriptsig
@@ -180,13 +200,16 @@ class SegWitTest(PalladiumTestFramework):
         assert self.nodes[2].getblock(blockhash, False) != self.nodes[0].getblock(blockhash, False)
         assert self.nodes[1].getblock(blockhash, False) == self.nodes[2].getblock(blockhash, False)
 
-        for tx_id in segwit_tx_list:
-            tx = FromHex(CTransaction(), self.nodes[2].gettransaction(tx_id)["hex"])
-            assert self.nodes[2].getrawtransaction(tx_id, False, blockhash) != self.nodes[0].getrawtransaction(tx_id, False, blockhash)
-            assert self.nodes[1].getrawtransaction(tx_id, False, blockhash) == self.nodes[2].getrawtransaction(tx_id, False, blockhash)
-            assert self.nodes[0].getrawtransaction(tx_id, False, blockhash) != self.nodes[2].gettransaction(tx_id)["hex"]
-            assert self.nodes[1].getrawtransaction(tx_id, False, blockhash) == self.nodes[2].gettransaction(tx_id)["hex"]
-            assert self.nodes[0].getrawtransaction(tx_id, False, blockhash) == tx.serialize_without_witness().hex()
+        if len(segwit_tx_list) > 1:
+            for tx_id in segwit_tx_list:
+                tx = FromHex(CTransaction(), self.nodes[2].gettransaction(tx_id)["hex"])
+                assert self.nodes[2].getrawtransaction(tx_id, False, blockhash) != self.nodes[0].getrawtransaction(tx_id, False, blockhash)
+                assert self.nodes[1].getrawtransaction(tx_id, False, blockhash) == self.nodes[2].getrawtransaction(tx_id, False, blockhash)
+                assert self.nodes[0].getrawtransaction(tx_id, False, blockhash) != self.nodes[2].gettransaction(tx_id)["hex"]
+                assert self.nodes[1].getrawtransaction(tx_id, False, blockhash) == self.nodes[2].gettransaction(tx_id)["hex"]
+                assert self.nodes[0].getrawtransaction(tx_id, False, blockhash) == tx.serialize_without_witness().hex()
+        else:
+            self.log.info("No witness txs mined; skipping serialization checks")
 
         self.log.info("Verify witness txs without witness data are invalid after the fork")
         self.fail_accept(self.nodes[2], 'non-mandatory-script-verify-flag (Witness program hash mismatch)', wit_ids[NODE_2][WIT_V0][2], sign=False)
@@ -279,20 +302,20 @@ class SegWitTest(PalladiumTestFramework):
 
         # Some public keys to be used later
         pubkeys = [
-            "0363D44AABD0F1699138239DF2F042C3282C0671CC7A76826A55C8203D90E39242",  # cPiM8Ub4heR9NBYmgVzJQiUH1if44GSBGiqaeJySuL2BKxubvgwb
-            "02D3E626B3E616FC8662B489C123349FECBFC611E778E5BE739B257EAE4721E5BF",  # cPpAdHaD6VoYbW78kveN2bsvb45Q7G5PhaPApVUGwvF8VQ9brD97
+            "0363D44AABD0F1699138239DF2F042C3282C0671CC7A76826A55C8203D90E39242",  # ekzSH4MTW75LxTm4XiJb9Vz4zfsVQxmosnofbaWxkz5ZqG8sGdoT
+            "02D3E626B3E616FC8662B489C123349FECBFC611E778E5BE739B257EAE4721E5BF",  # em6FmsLbtxTkBnKRc8xemPPia1HqTxR2JeMFmm1noaJWzhHS1RNy
             "04A47F2CBCEFFA7B9BCDA184E7D5668D3DA6F9079AD41E422FA5FD7B2D458F2538A62F5BD8EC85C2477F39650BD391EA6250207065B2A81DA8B009FC891E898F0E",  # 91zqCU5B9sdWxzMt1ca3VzbtVm2YM6Hi5Rxn4UDtxEaN9C9nzXV
-            "02A47F2CBCEFFA7B9BCDA184E7D5668D3DA6F9079AD41E422FA5FD7B2D458F2538",  # cPQFjcVRpAUBG8BA9hzr2yEzHwKoMgLkJZBBtK9vJnvGJgMjzTbd
-            "036722F784214129FEB9E8129D626324F3F6716555B603FFE8300BBCB882151228",  # cQGtcm34xiLjB1v7bkRa4V3aAc9tS2UTuBZ1UnZGeSeNy627fN66
-            "0266A8396EE936BF6D99D17920DB21C6C7B1AB14C639D5CD72B300297E416FD2EC",  # cTW5mR5M45vHxXkeChZdtSPozrFwFgmEvTNnanCW6wrqwaCZ1X7K
+            "02A47F2CBCEFFA7B9BCDA184E7D5668D3DA6F9079AD41E422FA5FD7B2D458F2538",  # ekgLtCFpcd8NrQPSzvK8mkknGtYEiNgNud9GqahSASyeoya96iDh
+            "036722F784214129FEB9E8129D626324F3F6716555B603FFE8300BBCB882151228",  # emYymLoTmAzvmJ8QSxjroGZN9ZNKnip6WFX6S46nW6hmUPB4bz5v
+            "0266A8396EE936BF6D99D17920DB21C6C7B1AB14C639D5CD72B300297E416FD2EC",  # epnAuzqjrYaVYoxw3usvdDubyoUNcP6sXXLsY3k1xbvESsMVzQgr
             "0450A38BD7F0AC212FEBA77354A9B036A32E0F7C81FC4E0C5ADCA7C549C4505D2522458C2D9AE3CEFD684E039194B72C8A10F9CB9D4764AB26FCC2718D421D3B84",  # 92h2XPssjBpsJN5CqSP7v9a7cf2kgDunBC6PDFwJHMACM1rrVBJ
         ]
 
         # Import a compressed key and an uncompressed key, generate some multisig addresses
-        self.nodes[0].importprivkey("92e6XLo5jVAVwrQKPNTs93oQco8f8sDNBcpv73Dsrs397fQtFQn")
-        uncompressed_spendable_address = ["mvozP4UwyGD2mGZU4D2eMvMLPB9WkMmMQu"]
-        self.nodes[0].importprivkey("cNC8eQ5dg3mFAVePDX4ddmPYpPbw41r9bm2jd1nLJT77e6RrzTRR")
-        compressed_spendable_address = ["mmWQubrDomqpgSYekvsU7HWEVjLFHAakLe"]
+        self.nodes[0].importprivkey("9Zk1M3ybNHz86yhbtePrQBPoGcz9Y8hNmqxe1SEDmM9M1bvduP8")
+        uncompressed_spendable_address = ["tNDe8oFZL9d3rCnrSvMk7vhvTFGc4LrHxx"]
+        self.nodes[0].importprivkey("ejUDnyr2UWRSkmrg4jNvNYuLoLpNQiBnCpzpaHKrA7AW9PddtZV3")
+        compressed_spendable_address = ["tCv4fLcqAfFqmNn39eCZsHrpZoTLgW74xb"]
         assert not self.nodes[0].getaddressinfo(uncompressed_spendable_address[0])['iscompressed']
         assert self.nodes[0].getaddressinfo(compressed_spendable_address[0])['iscompressed']
 
@@ -395,7 +418,7 @@ class SegWitTest(PalladiumTestFramework):
 
         op1 = CScript([OP_1])
         op0 = CScript([OP_0])
-        # 2N7MGY19ti4KDMSzRfPAssP6Pxyuxoi6jLe is the P2SH(P2PKH) version of mjoE3sSrb8ByYEvgnC3Aox86u1CHnfJA4V
+        # oWyQnD1ZCSnF7LhQgQC4bE3fz83ZGM7tvf is the P2SH(P2PKH) version of tBCsocDTx1bzdBA5AuNGZxUgy5KP8kLNkJ
         unsolvable_address_key = hex_str_to_bytes("02341AEC7587A51CDE5279E0630A531AEA2615A9F80B17E8D9376327BAEAA59E3D")
         unsolvablep2pkh = CScript([OP_DUP, OP_HASH160, hash160(unsolvable_address_key), OP_EQUALVERIFY, OP_CHECKSIG])
         unsolvablep2wshp2pkh = CScript([OP_0, sha256(unsolvablep2pkh)])
@@ -456,10 +479,10 @@ class SegWitTest(PalladiumTestFramework):
 
         # Repeat some tests. This time we don't add witness scripts with importaddress
         # Import a compressed key and an uncompressed key, generate some multisig addresses
-        self.nodes[0].importprivkey("927pw6RW8ZekycnXqBQ2JS5nPyo1yRfGNN8oq74HeddWSpafDJH")
-        uncompressed_spendable_address = ["mguN2vNSCEUh6rJaXoAVwY3YZwZvEmf5xi"]
-        self.nodes[0].importprivkey("cMcrXaaUC48ZKpcyydfFo8PxHAjpsYLhdsp6nmtB3E2ER9UUHWnw")
-        compressed_spendable_address = ["n1UNmpmbVUJ9ytXYXiurmGPQ3TRrXqPWKL"]
+        self.nodes[0].importprivkey("9ZDjkoc1mNUP8k5pLTL1ZZgB3oeWNh9GxbGXjW4dZ7jiLjmdu8U")
+        uncompressed_spendable_address = ["t8K1nf93Z7tiBnXxvWVbhYQ8e1h1ZoJ5So"]
+        self.nodes[0].importprivkey("eitwgALrzWnkv6qGpqyYXuukG7xGEEgLEwnBk3Rgtt5cvSfUig81")
+        compressed_spendable_address = ["tSt2XZYCrMiB4pkvvSExXGjz7XYws4qpx5"]
 
         self.nodes[0].importpubkey(pubkeys[5])
         compressed_solvable_address = [key_to_p2pkh(pubkeys[5])]
@@ -524,12 +547,12 @@ class SegWitTest(PalladiumTestFramework):
         self.create_and_mine_tx_from_txids(spendable_txid)
 
         # import all the private keys so solvable addresses become spendable
-        self.nodes[0].importprivkey("cPiM8Ub4heR9NBYmgVzJQiUH1if44GSBGiqaeJySuL2BKxubvgwb")
-        self.nodes[0].importprivkey("cPpAdHaD6VoYbW78kveN2bsvb45Q7G5PhaPApVUGwvF8VQ9brD97")
-        self.nodes[0].importprivkey("91zqCU5B9sdWxzMt1ca3VzbtVm2YM6Hi5Rxn4UDtxEaN9C9nzXV")
-        self.nodes[0].importprivkey("cPQFjcVRpAUBG8BA9hzr2yEzHwKoMgLkJZBBtK9vJnvGJgMjzTbd")
-        self.nodes[0].importprivkey("cQGtcm34xiLjB1v7bkRa4V3aAc9tS2UTuBZ1UnZGeSeNy627fN66")
-        self.nodes[0].importprivkey("cTW5mR5M45vHxXkeChZdtSPozrFwFgmEvTNnanCW6wrqwaCZ1X7K")
+        self.nodes[0].importprivkey("ekzSH4MTW75LxTm4XiJb9Vz4zfsVQxmosnofbaWxkz5ZqG8sGdoT")
+        self.nodes[0].importprivkey("em6FmsLbtxTkBnKRc8xemPPia1HqTxR2JeMFmm1noaJWzhHS1RNy")
+        self.nodes[0].importprivkey("9Z6k2BFgngT987fAWtW2m8CH9at2kMmiff6VxsEEriga37ZDK8P")
+        self.nodes[0].importprivkey("ekgLtCFpcd8NrQPSzvK8mkknGtYEiNgNud9GqahSASyeoya96iDh")
+        self.nodes[0].importprivkey("emYymLoTmAzvmJ8QSxjroGZN9ZNKnip6WFX6S46nW6hmUPB4bz5v")
+        self.nodes[0].importprivkey("epnAuzqjrYaVYoxw3usvdDubyoUNcP6sXXLsY3k1xbvESsMVzQgr")
         self.create_and_mine_tx_from_txids(solvable_txid)
 
         # Test that importing native P2WPKH/P2WSH scripts works

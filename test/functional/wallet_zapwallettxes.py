@@ -16,6 +16,7 @@
 """
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
+    COINBASE_MATURITY,
     assert_equal,
     assert_raises_rpc_error,
     wait_until,
@@ -33,7 +34,7 @@ class ZapWalletTXesTest (PalladiumTestFramework):
         self.log.info("Mining blocks...")
         self.nodes[0].generate(1)
         self.sync_all()
-        self.nodes[1].generate(100)
+        self.nodes[1].generate(COINBASE_MATURITY)
         self.sync_all()
 
         # This transaction will be confirmed

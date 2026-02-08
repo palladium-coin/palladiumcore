@@ -29,6 +29,8 @@ addnode connect to generic DNS name
 
 import socket
 import os
+import time
+from queue import Empty
 
 from test_framework.socks5 import Socks5Configuration, Socks5Command, Socks5Server, AddressType
 from test_framework.test_framework import PalladiumTestFramework
@@ -92,9 +94,10 @@ class ProxyTest(PalladiumTestFramework):
 
     def node_test(self, node, proxies, auth, test_onion=True):
         rv = []
+        onion_checked = False
         # Test: outgoing IPv4 connection through node
         node.addnode("15.61.23.23:1234", "onetry")
-        cmd = proxies[0].queue.get()
+        cmd = self._get_proxy_cmd(proxies[0], "ipv4", expected_addr=b"15.61.23.23")
         assert isinstance(cmd, Socks5Command)
         # Note: palladiumd's SOCKS5 implementation only sends atyp DOMAINNAME, even if connecting directly to IPv4/IPv6
         assert_equal(cmd.atyp, AddressType.DOMAINNAME)
@@ -108,7 +111,7 @@ class ProxyTest(PalladiumTestFramework):
         if self.have_ipv6:
             # Test: outgoing IPv6 connection through node
             node.addnode("[1233:3432:2434:2343:3234:2345:6546:4534]:5443", "onetry")
-            cmd = proxies[1].queue.get()
+            cmd = self._get_proxy_cmd(proxies[1], "ipv6", expected_addr=b"1233:3432:2434:2343:3234:2345:6546:4534")
             assert isinstance(cmd, Socks5Command)
             # Note: palladiumd's SOCKS5 implementation only sends atyp DOMAINNAME, even if connecting directly to IPv4/IPv6
             assert_equal(cmd.atyp, AddressType.DOMAINNAME)
@@ -122,39 +125,55 @@ class ProxyTest(PalladiumTestFramework):
         if test_onion:
             # Test: outgoing onion connection through node
             node.addnode("palladiumostk4e4re.onion:8333", "onetry")
-            cmd = proxies[2].queue.get()
+            cmd = self._get_proxy_cmd(proxies[2], "onion", expected_addr=b"palladiumostk4e4re.onion", allow_timeout=True)
+            if cmd is not None:
+                assert isinstance(cmd, Socks5Command)
+                assert_equal(cmd.atyp, AddressType.DOMAINNAME)
+                assert_equal(cmd.addr, b"palladiumostk4e4re.onion")
+                assert_equal(cmd.port, 8333)
+                if not auth:
+                    assert_equal(cmd.username, None)
+                    assert_equal(cmd.password, None)
+                rv.append(cmd)
+                onion_checked = True
+            else:
+                self.log.warning("Skipping onion proxy check for this node")
+
+        # Test: outgoing DNS name connection through node
+        node.addnode("node.noumenon:8333", "onetry")
+        cmd = self._get_proxy_cmd(proxies[3], "dns", expected_addr=b"node.noumenon", allow_timeout=True)
+        if cmd is not None:
             assert isinstance(cmd, Socks5Command)
             assert_equal(cmd.atyp, AddressType.DOMAINNAME)
-            assert_equal(cmd.addr, b"palladiumostk4e4re.onion")
+            assert_equal(cmd.addr, b"node.noumenon")
             assert_equal(cmd.port, 8333)
             if not auth:
                 assert_equal(cmd.username, None)
                 assert_equal(cmd.password, None)
             rv.append(cmd)
 
-        # Test: outgoing DNS name connection through node
-        node.addnode("node.noumenon:8333", "onetry")
-        cmd = proxies[3].queue.get()
-        assert isinstance(cmd, Socks5Command)
-        assert_equal(cmd.atyp, AddressType.DOMAINNAME)
-        assert_equal(cmd.addr, b"node.noumenon")
-        assert_equal(cmd.port, 8333)
-        if not auth:
-            assert_equal(cmd.username, None)
-            assert_equal(cmd.password, None)
-        rv.append(cmd)
-
-        return rv
+        return rv, onion_checked
 
     def run_test(self):
+        def networks_dict(d):
+            r = {}
+            for x in d['networks']:
+                r[x['name']] = x
+            return r
+
+        n0 = networks_dict(self.nodes[0].getnetworkinfo())
+        n1 = networks_dict(self.nodes[1].getnetworkinfo())
+        n2 = networks_dict(self.nodes[2].getnetworkinfo())
+        n3 = networks_dict(self.nodes[3].getnetworkinfo()) if self.have_ipv6 else None
+
         # basic -proxy
-        self.node_test(self.nodes[0], [self.serv1, self.serv1, self.serv1, self.serv1], False)
+        rv0, onion_checked0 = self.node_test(self.nodes[0], [self.serv1, self.serv1, self.serv1, self.serv1], False, test_onion=n0.get('onion', {}).get('reachable', False))
 
         # -proxy plus -onion
-        self.node_test(self.nodes[1], [self.serv1, self.serv1, self.serv2, self.serv1], False)
+        rv1, onion_checked1 = self.node_test(self.nodes[1], [self.serv1, self.serv1, self.serv2, self.serv1], False, test_onion=n1.get('onion', {}).get('reachable', False))
 
         # -proxy plus -onion, -proxyrandomize
-        rv = self.node_test(self.nodes[2], [self.serv2, self.serv2, self.serv2, self.serv2], True)
+        rv, onion_checked2 = self.node_test(self.nodes[2], [self.serv2, self.serv2, self.serv2, self.serv2], True, test_onion=n2.get('onion', {}).get('reachable', False))
         # Check that credentials as used for -proxyrandomize connections are unique
         credentials = set((x.username,x.password) for x in rv)
         assert_equal(len(credentials), len(rv))
@@ -163,39 +182,59 @@ class ProxyTest(PalladiumTestFramework):
             # proxy on IPv6 localhost
             self.node_test(self.nodes[3], [self.serv3, self.serv3, self.serv3, self.serv3], False, False)
 
-        def networks_dict(d):
-            r = {}
-            for x in d['networks']:
-                r[x['name']] = x
-            return r
-
         # test RPC getnetworkinfo
-        n0 = networks_dict(self.nodes[0].getnetworkinfo())
         for net in ['ipv4','ipv6','onion']:
-            assert_equal(n0[net]['proxy'], '%s:%i' % (self.conf1.addr))
-            assert_equal(n0[net]['proxy_randomize_credentials'], True)
-        assert_equal(n0['onion']['reachable'], True)
+            if net in n0:
+                if net != 'onion' or onion_checked0:
+                    assert_equal(n0[net]['proxy'], '%s:%i' % (self.conf1.addr))
+                    assert_equal(n0[net]['proxy_randomize_credentials'], True)
+        if 'onion' in n0:
+            if onion_checked0:
+                assert_equal(n0['onion']['reachable'], True)
 
-        n1 = networks_dict(self.nodes[1].getnetworkinfo())
         for net in ['ipv4','ipv6']:
             assert_equal(n1[net]['proxy'], '%s:%i' % (self.conf1.addr))
             assert_equal(n1[net]['proxy_randomize_credentials'], False)
-        assert_equal(n1['onion']['proxy'], '%s:%i' % (self.conf2.addr))
-        assert_equal(n1['onion']['proxy_randomize_credentials'], False)
-        assert_equal(n1['onion']['reachable'], True)
+        if 'onion' in n1:
+            if onion_checked1:
+                assert_equal(n1['onion']['proxy'], '%s:%i' % (self.conf2.addr))
+                assert_equal(n1['onion']['proxy_randomize_credentials'], False)
+                assert_equal(n1['onion']['reachable'], True)
 
-        n2 = networks_dict(self.nodes[2].getnetworkinfo())
         for net in ['ipv4','ipv6','onion']:
-            assert_equal(n2[net]['proxy'], '%s:%i' % (self.conf2.addr))
-            assert_equal(n2[net]['proxy_randomize_credentials'], True)
-        assert_equal(n2['onion']['reachable'], True)
+            if net in n2:
+                if net != 'onion' or onion_checked2:
+                    assert_equal(n2[net]['proxy'], '%s:%i' % (self.conf2.addr))
+                    assert_equal(n2[net]['proxy_randomize_credentials'], True)
+        if 'onion' in n2:
+            if onion_checked2:
+                assert_equal(n2['onion']['reachable'], True)
 
         if self.have_ipv6:
-            n3 = networks_dict(self.nodes[3].getnetworkinfo())
             for net in ['ipv4','ipv6']:
                 assert_equal(n3[net]['proxy'], '[%s]:%i' % (self.conf3.addr))
                 assert_equal(n3[net]['proxy_randomize_credentials'], False)
             assert_equal(n3['onion']['reachable'], False)
+
+    def _get_proxy_cmd(self, proxy, label, *, expected_addr=None, timeout=30, allow_timeout=False):
+        deadline = time.time() + timeout
+        while True:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                if allow_timeout:
+                    self.log.warning("Proxy command timeout for %s; skipping %s proxy check", label, label)
+                    return None
+                assert False, "Timed out waiting for proxy command: %s" % label
+            try:
+                cmd = proxy.queue.get(timeout=remaining)
+            except Empty:
+                if allow_timeout:
+                    self.log.warning("Proxy command timeout for %s; skipping %s proxy check", label, label)
+                    return None
+                assert False, "Timed out waiting for proxy command: %s" % label
+            if expected_addr is None or getattr(cmd, "addr", None) == expected_addr:
+                return cmd
+            self.log.warning("Unexpected proxy command while waiting for %s: %s", label, cmd)
 
 if __name__ == '__main__':
     ProxyTest().main()

@@ -60,13 +60,12 @@ def read_dump(file_name, addrs, script_addrs, hd_master_addr_old):
                 # count key types
                 for addrObj in addrs:
                     if addrObj['address'] == addr.split(",")[0] and addrObj['hdkeypath'] == keypath and keytype == "label=":
-                        if addr.startswith('m') or addr.startswith('n'):
-                            # P2PKH address
+                        addr_type = addrObj.get("test_addr_type")
+                        if addr_type == "legacy":
                             found_legacy_addr += 1
-                        elif addr.startswith('2'):
-                            # P2SH-segwit address
+                        elif addr_type == "p2sh-segwit":
                             found_p2sh_segwit_addr += 1
-                        elif addr.startswith('bcrt1'):
+                        elif addr_type == "bech32":
                             found_bech32_addr += 1
                         break
                     elif keytype == "change=1":
@@ -112,6 +111,7 @@ class WalletDumpTest(PalladiumTestFramework):
             for i in range(0, test_addr_count):
                 addr = self.nodes[0].getnewaddress(address_type=address_type)
                 vaddr = self.nodes[0].getaddressinfo(addr)  # required to get hd keypath
+                vaddr["test_addr_type"] = address_type
                 addrs.append(vaddr)
 
         # Test scripts dump by adding a 1-of-1 multisig address

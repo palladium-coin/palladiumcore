@@ -10,16 +10,15 @@ This test takes 30 mins or more (up to 2 hours)
 """
 import os
 
-from test_framework.blocktools import create_coinbase
-from test_framework.messages import CBlock, ToHex
-from test_framework.script import CScript, OP_RETURN, OP_NOP
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
     assert_equal,
     assert_greater_than,
     assert_raises_rpc_error,
+    create_lots_of_big_transactions,
     connect_nodes,
     disconnect_nodes,
+    gen_return_txouts,
     wait_until,
 )
 
@@ -27,49 +26,28 @@ from test_framework.util import (
 # the manual prune RPC avoids pruning blocks in the same window to be
 # compatible with pruning based on key creation time.
 TIMESTAMP_WINDOW = 2 * 60 * 60
+MAX_GENERATE_TRIES = 100000000
+
+def generate_blocks(node, n):
+    return node.generate(n, maxtries=MAX_GENERATE_TRIES)
 
 def mine_large_blocks(node, n):
-    # Make a large scriptPubKey for the coinbase transaction. This is OP_RETURN
-    # followed by 950k of OP_NOP. This would be non-standard in a non-coinbase
-    # transaction but is consensus valid.
-
-    # Set the nTime if this is the first time this function has been called.
-    # A static variable ensures that time is monotonicly increasing and is therefore
-    # different for each block created => blockhash is unique.
-    if "nTimes" not in mine_large_blocks.__dict__:
-        mine_large_blocks.nTime = 0
-
-    # Get the block parameters for the first block
-    big_script = CScript([OP_RETURN] + [OP_NOP] * 950000)
-    best_block = node.getblock(node.getbestblockhash())
-    height = int(best_block["height"]) + 1
-    mine_large_blocks.nTime = max(mine_large_blocks.nTime, int(best_block["time"])) + 1
-    previousblockhash = int(best_block["hash"], 16)
+    # Mine "large" blocks using many ~66k transactions and built-in mining.
+    # Use a larger tx count than the generic helper to keep prune thresholds
+    # aligned with Palladium's block/weight behavior.
+    txouts = gen_return_txouts()
+    utxos = []
+    fee = 100 * node.getnetworkinfo()["relayfee"]
+    tx_per_block = 24
 
     for _ in range(n):
-        # Build the coinbase transaction (with large scriptPubKey)
-        coinbase_tx = create_coinbase(height)
-        coinbase_tx.vin[0].nSequence = 2 ** 32 - 1
-        coinbase_tx.vout[0].scriptPubKey = big_script
-        coinbase_tx.rehash()
-
-        # Build the block
-        block = CBlock()
-        block.nVersion = best_block["version"]
-        block.hashPrevBlock = previousblockhash
-        block.nTime = mine_large_blocks.nTime
-        block.nBits = int('207fffff', 16)
-        block.nNonce = 0
-        block.vtx = [coinbase_tx]
-        block.hashMerkleRoot = block.calc_merkle_root()
-        block.solve()
-
-        # Submit to the node
-        node.submitblock(ToHex(block))
-
-        previousblockhash = block.sha256
-        height += 1
-        mine_large_blocks.nTime += 1
+        if len(utxos) < tx_per_block:
+            utxos.clear()
+            utxos.extend(node.listunspent())
+        if not utxos:
+            raise AssertionError("No spendable UTXOs available for large-block mining")
+        create_lots_of_big_transactions(node, txouts, utxos, min(tx_per_block, len(utxos)), fee=fee)
+        generate_blocks(node, 1)
 
 def calc_usage(blockdir):
     return sum(os.path.getsize(blockdir + f) for f in os.listdir(blockdir) if os.path.isfile(os.path.join(blockdir, f))) / (1024. * 1024.)
@@ -82,7 +60,7 @@ class PruneTest(PalladiumTestFramework):
 
         # Create nodes 0 and 1 to mine.
         # Create node 2 to test pruning.
-        self.full_node_default_args = ["-maxreceivebuffer=20000", "-checkblocks=5"]
+        self.full_node_default_args = ["-maxreceivebuffer=20000", "-checkblocks=5", "-acceptnonstdtxn=1"]
         # Create nodes 3 and 4 to test manual pruning (they will be re-started with manual pruning later)
         # Create nodes 5 to test wallet in prune mode, but do not connect
         self.extra_args = [
@@ -118,12 +96,12 @@ class PruneTest(PalladiumTestFramework):
 
     def create_big_chain(self):
         # Start by creating some coinbases we can spend later
-        self.nodes[1].generate(200)
+        generate_blocks(self.nodes[1], 200)
         self.sync_blocks(self.nodes[0:2])
-        self.nodes[0].generate(150)
+        generate_blocks(self.nodes[0], 200)
 
         # Then mine enough full blocks to create more than 550MiB of data
-        mine_large_blocks(self.nodes[0], 645)
+        mine_large_blocks(self.nodes[0], 595)
 
         self.sync_blocks(self.nodes[0:5])
 
@@ -193,7 +171,7 @@ class PruneTest(PalladiumTestFramework):
         disconnect_nodes(self.nodes[1], 2)
 
         self.log.info("Generating new longer chain of 300 more blocks")
-        self.nodes[1].generate(300)
+        generate_blocks(self.nodes[1], 300)
 
         self.log.info("Reconnect nodes")
         connect_nodes(self.nodes[0], 1)
@@ -245,7 +223,7 @@ class PruneTest(PalladiumTestFramework):
             self.nodes[0].invalidateblock(curchainhash)
             assert_equal(self.nodes[0].getblockcount(), self.mainchainheight)
             assert_equal(self.nodes[0].getbestblockhash(), self.mainchainhash2)
-            goalbesthash = self.nodes[0].generate(blocks_to_mine)[-1]
+            goalbesthash = generate_blocks(self.nodes[0], blocks_to_mine)[-1]
             goalbestheight = first_reorg_height + 1
 
         self.log.info("Verify node 2 reorged back to the main chain, some blocks of which it had to redownload")
@@ -289,7 +267,7 @@ class PruneTest(PalladiumTestFramework):
         assert_equal(block1_details["nTx"], len(block1_details["tx"]))
 
         # mine 6 blocks so we are at height 1001 (i.e., above PruneAfterHeight)
-        node.generate(6)
+        generate_blocks(node, 6)
         assert_equal(node.getblockchaininfo()["blocks"], 1001)
 
         # Pruned block should still know the number of transactions
@@ -320,7 +298,7 @@ class PruneTest(PalladiumTestFramework):
         assert has_block(2), "blk00002.dat is still there, should be pruned by now"
 
         # advance the tip so blk00002.dat and blk00003.dat can be pruned (the last 288 blocks should now be in blk00004.dat)
-        node.generate(288)
+        generate_blocks(node, 288)
         prune(1000)
         assert not has_block(2), "blk00002.dat is still there, should be pruned by now"
         assert not has_block(3), "blk00003.dat is still there, should be pruned by now"
