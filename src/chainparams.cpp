@@ -92,7 +92,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 1199145601;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = 1230767999;
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].bit = 2;
-        consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].nStartTime = 1772323200; // March 1st, 2026
+        consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].nStartTime = 1771027200; // February 14th, 2026
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].nTimeout = 1803859200; // March 1st, 2027
 
 
@@ -219,7 +219,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nStartTime = 0;
         consensus.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].nTimeout = Consensus::BIP9Deployment::NO_TIMEOUT;
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].bit = 2;
-        consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].nStartTime = 1772323200;
+        consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].nStartTime = 1771027200;
         consensus.vDeployments[Consensus::DEPLOYMENT_TAPROOT].nTimeout = 1803859200;
 
 

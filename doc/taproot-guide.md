@@ -224,7 +224,7 @@ Taproot uses Schnorr signatures instead of ECDSA:
 ### Mainnet Deployment
 
 Taproot activates via miner signaling (BIP9):
-- **Signaling period**: March 1, 2026 - March 1, 2027
+- **Signaling period**: February 14, 2026 - March 1, 2027
 - **Activation threshold**: 90% of blocks in a 2016-block period (1815 blocks)
 - **Activation method**: BIP9 soft fork using bit 2
 
@@ -371,7 +371,7 @@ Taproot brings important privacy and efficiency improvements to Palladium:
 - **Sending and receiving** work the same as with other address types
 - **Completely optional**: Your existing addresses continue to work
 - **Compatible** with modern wallets after they add bech32m support
-- **Activated via miner signaling**: Expected March 2026 on mainnet
+- **Activated via miner signaling**: Expected February 2026 on mainnet
 
 Enjoy the enhanced privacy and efficiency of Taproot!
 

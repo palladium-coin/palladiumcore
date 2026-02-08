@@ -81,7 +81,7 @@ blockchain through:
 Taproot will activate via BIP9 miner signaling:
 
 - **Mainnet**: BIP9 soft fork activation using bit 2
-  - Signaling starts: March 1, 2026 00:00:00 UTC (block time 1772323200)
+  - Signaling starts: February 14, 2026 00:00:00 UTC (block time 1771027200)
   - Signaling timeout: March 1, 2027 00:00:00 UTC (block time 1803859200)
   - Activation threshold: 1815 of 2016 blocks (90%) must signal readiness
   - Status: Once locked in, Taproot activates in the next period

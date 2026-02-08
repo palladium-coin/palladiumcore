@@ -202,7 +202,7 @@ This implementation is a backport of Taproot functionality from **Bitcoin Core v
 **Mainnet**:
 - Deployment: BIP9 soft fork
 - Bit: 2
-- Start time: 1772323200 (March 1, 2026 00:00:00 UTC)
+- Start time: 1771027200 (February 14, 2026 00:00:00 UTC)
 - Timeout: 1803859200 (March 1, 2027 00:00:00 UTC)
 - Min activation height: Not specified (activation determined by signaling threshold)
 

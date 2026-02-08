@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Address type dropdown in GUI Receive tab for selecting legacy/P2SH-SegWit/bech32/bech32m
 - `getnewaddress` RPC support for "bech32m" address type parameter
 - XOnlyPubKey class for 32-byte x-only public key representation
-- Taproot deployment via BIP9 soft fork (bit 2, mainnet activation March 2026-2027)
+- Taproot deployment via BIP9 soft fork (bit 2, mainnet activation February 2026-March 2027)
 - Functional test `feature_taproot.py` for end-to-end Taproot lifecycle validation
 - Comprehensive technical documentation in doc/TAPROOT.md
 - User-friendly Taproot guide in doc/taproot-guide.md
