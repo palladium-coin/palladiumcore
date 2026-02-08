@@ -273,9 +273,11 @@ This implementation is a backport of Taproot functionality from **Bitcoin Core v
 
 Taproot activates via BIP9 signaling:
 1. Miners signal readiness by setting bit 2 in block version
-2. When 1815 of 2016 blocks in a retarget period signal (90% threshold), deployment is LOCKED_IN
+2. When 540 of 720 blocks in a confirmation window signal (75% threshold), deployment is LOCKED_IN
 3. After LOCKED_IN period ends, deployment becomes ACTIVE for all subsequent blocks
 4. Timeout on March 1, 2027 if insufficient signaling
+
+**Note**: Palladium uses a 75% activation threshold (540/720 blocks) compared to Bitcoin's 90% (1815/2016 blocks), with a shorter confirmation window to facilitate faster network coordination while maintaining security.
 
 ### Script Verification Flags
 

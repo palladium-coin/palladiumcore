@@ -83,8 +83,10 @@ Taproot will activate via BIP9 miner signaling:
 - **Mainnet**: BIP9 soft fork activation using bit 2
   - Signaling starts: February 14, 2026 00:00:00 UTC (block time 1771027200)
   - Signaling timeout: March 1, 2027 00:00:00 UTC (block time 1803859200)
-  - Activation threshold: 1815 of 2016 blocks (90%) must signal readiness
+  - Activation threshold: 540 of 720 blocks (75%) must signal readiness
+  - Confirmation window: 720 blocks (vs Bitcoin's 2016)
   - Status: Once locked in, Taproot activates in the next period
+  - Note: Palladium uses a 75% threshold to facilitate faster network coordination
 
 - **Testnet**: Same parameters as mainnet for realistic testing
 

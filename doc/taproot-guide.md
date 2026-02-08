@@ -225,11 +225,11 @@ Taproot uses Schnorr signatures instead of ECDSA:
 
 Taproot activates via miner signaling (BIP9):
 - **Signaling period**: February 14, 2026 - March 1, 2027
-- **Activation threshold**: 90% of blocks in a 2016-block period (1815 blocks)
+- **Activation threshold**: 75% of blocks in a 720-block period (540 blocks)
 - **Activation method**: BIP9 soft fork using bit 2
 
 **What this means**:
-- Once 90% of miners signal readiness, Taproot will "lock in"
+- Once 75% of miners signal readiness, Taproot will "lock in"
 - After lock-in, there's a grace period before activation
 - Once activated, everyone must follow Taproot consensus rules
 
