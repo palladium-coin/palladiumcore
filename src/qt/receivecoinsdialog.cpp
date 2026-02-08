@@ -39,7 +39,7 @@ QString AddressTypeDisplayName(OutputType type)
     case OutputType::LEGACY: return QStringLiteral("legacy");
     case OutputType::P2SH_SEGWIT: return QStringLiteral("p2sh-segwit");
     case OutputType::BECH32: return QStringLiteral("segwit");
-    case OutputType::BECH32M: return QStringLiteral("traproot");
+    case OutputType::BECH32M: return QStringLiteral("taproot");
     default: return QStringLiteral("legacy");
     }
 }
