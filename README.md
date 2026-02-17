@@ -22,7 +22,7 @@ Palladium Core is a decentralized cryptocurrency built on Bitcoin's proven codeb
 
 ### Key Features
 
-- **Taproot Support (v2.0.0)**: Enhanced privacy with Schnorr signatures and bech32m addresses
+- **Taproot Support**: Enhanced privacy with Schnorr signatures and bech32m addresses
 - **Security**: Advanced cryptographic techniques ensure transaction security and fund protection
 - **Efficiency**: Optimized blockchain parameters provide fast and reliable transaction processing
 - **Transparency**: Open-source architecture enables community inspection and contribution
@@ -46,7 +46,7 @@ Palladium Core 2.0.0 introduces **full Taproot support**, bringing cutting-edge 
 
 Download the latest Palladium Core release:
 
-**[Download Latest Release (v2.0.0)](https://github.com/palladium-coin/palladiumcore/releases/latest)**
+**[Download Latest Release](https://github.com/palladium-coin/palladiumcore/releases/latest)**
 
 **Installation Steps:**
 
@@ -225,13 +225,7 @@ Palladium Core is released under the terms of the MIT license. See [COPYING](COP
 
 For a complete history of changes, improvements, and bug fixes across all versions, see the **[CHANGELOG](CHANGELOG.md)**.
 
-**Recent Releases:**
-- **[v2.0.0](doc/release-notes/release-notes-2.0.0.md)** (2026-02-08) - Taproot support (BIP340/341/342/350)
-- **[v1.5.1](https://github.com/palladium-coin/palladiumcore/releases/tag/v1.5.1)** (2026-01-26) - UI improvements and bug fixes
-- **[v1.5.0](https://github.com/palladium-coin/palladiumcore/releases/tag/v1.5.0)** (2025-12-10) - Hard fork with DAA improvements
-- **[v1.4.1](https://github.com/palladium-coin/palladiumcore/releases/tag/v1.4.1)** (2025-11-11) - Docker build system and sync fixes
-
-[View all releases →](https://github.com/palladium-coin/palladiumcore/releases)
+[View all releases](https://github.com/palladium-coin/palladiumcore/releases)
 
 ## Acknowledgments
 

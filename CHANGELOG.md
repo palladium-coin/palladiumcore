@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-02-17
+
+### Fixed
+- **Critical Taproot consensus fix**: `ConnectBlock` now provides `spent_outputs` to `PrecomputedTransactionData` so BIP341 sighash verification works during block validation
+- Fixed Taproot annex hashing to use the BIP341 tagged hash `TapAnnex`
+- Fixed wallet script learning to include `BECH32M` in `LearnAllRelatedScripts`
+- Fixed Taproot internal key persistence across wallet restarts by storing and loading output-key to internal-pubkey mappings in wallet DB
+- Added Taproot mapping/script backfill on wallet load to restore ownership/signing behavior for existing wallets created before the persistence fix
+
+### Changed
+- Updated version to `2.0.1` in build/version metadata (`configure.ac`, `build_msvc/palladium_config.h`, man pages)
+
+### Documentation
+- Corrected Taproot activation threshold documentation from 90% to 75%
+
+### Tests
+- Strengthened `feature_taproot.py` with address ownership checks (`ismine`), restart persistence coverage, and explicit mempool-to-block confirmation checks
+- Registered `feature_taproot.py` in `test/functional/test_runner.py`
+
 ## [2.0.0] - 2026-02-08
 
 ### Added
@@ -252,7 +271,8 @@ Initial public release of Palladium Core.
 
 ---
 
-[Unreleased]: https://github.com/palladium-coin/palladiumcore/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/palladium-coin/palladiumcore/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/palladium-coin/palladiumcore/releases/tag/v2.0.1
 [2.0.0]: https://github.com/palladium-coin/palladiumcore/releases/tag/v2.0.0
 [1.5.1]: https://github.com/palladium-coin/palladiumcore/releases/tag/v1.5.1
 [1.5.0]: https://github.com/palladium-coin/palladiumcore/releases/tag/v1.5.0
