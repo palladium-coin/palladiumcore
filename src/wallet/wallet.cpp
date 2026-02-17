@@ -3187,6 +3187,10 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
     if (nLoadWalletRet != DBErrors::LOAD_OK)
         return nLoadWalletRet;
 
+    if (auto spk_man = GetLegacyScriptPubKeyMan()) {
+        spk_man->BackfillTaprootScriptsAndKeys();
+    }
+
     return DBErrors::LOAD_OK;
 }
 

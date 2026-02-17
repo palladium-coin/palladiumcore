@@ -2155,7 +2155,14 @@ bool CChainState::ConnectBlock(const CBlock& block, BlockValidationState& state,
             return state.Invalid(BlockValidationResult::BLOCK_CONSENSUS, "bad-blk-sigops");
         }
 
-        txdata.emplace_back(tx);
+        std::vector<CTxOut> spent_outputs;
+        if (!tx.IsCoinBase()) {
+            spent_outputs.reserve(tx.vin.size());
+            for (const auto& txin : tx.vin) {
+                spent_outputs.emplace_back(view.AccessCoin(txin.prevout).out);
+            }
+        }
+        txdata.emplace_back(tx, std::move(spent_outputs));
         if (!tx.IsCoinBase())
         {
             std::vector<CScriptCheck> vChecks;

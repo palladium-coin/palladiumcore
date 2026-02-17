@@ -39,6 +39,7 @@ const std::string ORDERPOSNEXT{"orderposnext"};
 const std::string POOL{"pool"};
 const std::string PURPOSE{"purpose"};
 const std::string SETTINGS{"settings"};
+const std::string TAPROOT_INTERNAL_KEY{"taprootkey"};
 const std::string TX{"tx"};
 const std::string VERSION{"version"};
 const std::string WATCHMETA{"watchmeta"};
@@ -124,6 +125,11 @@ bool WalletBatch::WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey)
 bool WalletBatch::WriteCScript(const uint160& hash, const CScript& redeemScript)
 {
     return WriteIC(std::make_pair(DBKeys::CSCRIPT, hash), redeemScript, false);
+}
+
+bool WalletBatch::WriteTaprootInternalKey(const uint256& output_key_hash, const CPubKey& internal_key)
+{
+    return WriteIC(std::make_pair(DBKeys::TAPROOT_INTERNAL_KEY, output_key_hash), internal_key, false);
 }
 
 bool WalletBatch::WriteWatchOnly(const CScript &dest, const CKeyMetadata& keyMeta)
@@ -382,6 +388,19 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
                 strErr = "Error reading wallet database: LegacyScriptPubKeyMan::LoadCScript failed";
                 return false;
             }
+        } else if (strType == DBKeys::TAPROOT_INTERNAL_KEY) {
+            uint256 output_key_hash;
+            ssKey >> output_key_hash;
+            CPubKey internal_key;
+            ssValue >> internal_key;
+            if (!internal_key.IsValid()) {
+                strErr = "Error reading wallet database: Taproot internal key corrupt";
+                return false;
+            }
+            if (!pwallet->GetOrCreateLegacyScriptPubKeyMan()->LoadTaprootInternalKey(output_key_hash, internal_key)) {
+                strErr = "Error reading wallet database: LegacyScriptPubKeyMan::LoadTaprootInternalKey failed";
+                return false;
+            }
         } else if (strType == DBKeys::ORDERPOSNEXT) {
             ssValue >> pwallet->nOrderPosNext;
         } else if (strType == DBKeys::DESTDATA) {
@@ -426,7 +445,8 @@ ReadKeyValue(CWallet* pwallet, CDataStream& ssKey, CDataStream& ssValue,
 bool WalletBatch::IsKeyType(const std::string& strType)
 {
     return (strType == DBKeys::KEY ||
-            strType == DBKeys::MASTER_KEY || strType == DBKeys::CRYPTED_KEY);
+            strType == DBKeys::MASTER_KEY || strType == DBKeys::CRYPTED_KEY ||
+            strType == DBKeys::TAPROOT_INTERNAL_KEY);
 }
 
 DBErrors WalletBatch::LoadWallet(CWallet* pwallet)

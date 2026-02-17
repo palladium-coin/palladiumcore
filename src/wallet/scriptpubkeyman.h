@@ -392,6 +392,7 @@ public:
     //! Load metadata (used by LoadWallet)
     void LoadKeyMetadata(const CKeyID& keyID, const CKeyMetadata &metadata);
     void LoadScriptMetadata(const CScriptID& script_id, const CKeyMetadata &metadata);
+    bool LoadTaprootInternalKey(const uint256& output_key_hash, const CPubKey& internal_key);
     //! Generate a new key
     CPubKey GenerateNewKey(WalletBatch& batch, bool internal = false) EXCLUSIVE_LOCKS_REQUIRED(cs_KeyStore);
 
@@ -460,6 +461,7 @@ public:
      * be anything).
      */
     void LearnAllRelatedScripts(const CPubKey& key);
+    void BackfillTaprootScriptsAndKeys();
 
     /**
      * Marks all keys in the keypool up to and including reserve_key as used.

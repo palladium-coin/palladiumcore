@@ -474,6 +474,8 @@ bool SignSignature(const SigningProvider &provider, const CScript& fromPubKey, C
         spent_outputs.resize(1);
         spent_outputs[0] = CTxOut(amount, fromPubKey);
     }
+    // NOTE: this helper only populates spent_outputs for single-input spends.
+    // Multi-input Taproot signing requires a complete spent_outputs vector.
     const PrecomputedTransactionData txdata(txTo, std::move(spent_outputs));
     MutableTransactionSignatureCreator creator(&txTo, nIn, amount, nHashType, &txdata);
 

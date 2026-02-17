@@ -1909,7 +1909,7 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
 
         if (stack.size() >= 2 && !stack.back().empty() && stack.back()[0] == ANNEX_TAG) {
             const valtype& annex = SpanPopBack(stack);
-            execdata.m_annex_hash = (CSHA256Writer() << annex).GetSHA256();
+            execdata.m_annex_hash = (CSHA256Writer("TapAnnex") << annex).GetSHA256();
             execdata.m_annex_present = true;
         } else {
             execdata.m_annex_present = false;

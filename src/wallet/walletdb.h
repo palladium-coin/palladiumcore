@@ -72,6 +72,7 @@ extern const std::string ORDERPOSNEXT;
 extern const std::string POOL;
 extern const std::string PURPOSE;
 extern const std::string SETTINGS;
+extern const std::string TAPROOT_INTERNAL_KEY;
 extern const std::string TX;
 extern const std::string VERSION;
 extern const std::string WATCHMETA;
@@ -225,6 +226,7 @@ public:
     bool WriteMasterKey(unsigned int nID, const CMasterKey& kMasterKey);
 
     bool WriteCScript(const uint160& hash, const CScript& redeemScript);
+    bool WriteTaprootInternalKey(const uint256& output_key_hash, const CPubKey& internal_key);
 
     bool WriteWatchOnly(const CScript &script, const CKeyMetadata &keymeta);
     bool EraseWatchOnly(const CScript &script);

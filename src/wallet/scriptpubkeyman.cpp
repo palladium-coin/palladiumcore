@@ -737,6 +737,13 @@ void LegacyScriptPubKeyMan::LoadScriptMetadata(const CScriptID& script_id, const
     m_script_metadata[script_id] = meta;
 }
 
+bool LegacyScriptPubKeyMan::LoadTaprootInternalKey(const uint256& output_key_hash, const CPubKey& internal_key)
+{
+    LOCK(cs_KeyStore);
+    m_taproot_internal_keys[output_key_hash] = internal_key;
+    return true;
+}
+
 bool LegacyScriptPubKeyMan::AddKeyPubKeyInner(const CKey& key, const CPubKey &pubkey)
 {
     LOCK(cs_KeyStore);
@@ -1364,6 +1371,9 @@ void LegacyScriptPubKeyMan::LearnRelatedScripts(const CPubKey& key, OutputType t
                 uint256 output_key_hash;
                 memcpy(output_key_hash.begin(), output_key.data(), XOnlyPubKey::SIZE);
                 m_taproot_internal_keys[output_key_hash] = key;
+                if (!WalletBatch(m_storage.GetDatabase()).WriteTaprootInternalKey(output_key_hash, key)) {
+                    WalletLogPrintf("%s: failed to persist taproot internal key mapping\n", __func__);
+                }
             }
         }
     }
@@ -1373,6 +1383,44 @@ void LegacyScriptPubKeyMan::LearnAllRelatedScripts(const CPubKey& key)
 {
     // OutputType::P2SH_SEGWIT always adds all necessary scripts for all types.
     LearnRelatedScripts(key, OutputType::P2SH_SEGWIT);
+    LearnRelatedScripts(key, OutputType::BECH32M);
+}
+
+void LegacyScriptPubKeyMan::BackfillTaprootScriptsAndKeys()
+{
+    for (const auto& key_id : GetKeys()) {
+        CPubKey pubkey;
+        if (!GetPubKey(key_id, pubkey) || !pubkey.IsCompressed()) {
+            continue;
+        }
+
+        CTxDestination taproot_dest = GetDestinationForKey(pubkey, OutputType::BECH32M);
+        CScript taproot_prog = GetScriptForDestination(taproot_dest);
+        if (!taproot_prog.empty() && !HaveCScript(CScriptID(taproot_prog))) {
+            AddCScript(taproot_prog);
+        }
+
+        XOnlyPubKey internal_key = pubkey.GetXOnlyPubKey();
+        auto [output_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+        if (!output_key.IsFullyValid()) {
+            continue;
+        }
+
+        uint256 output_key_hash;
+        memcpy(output_key_hash.begin(), output_key.data(), XOnlyPubKey::SIZE);
+        bool needs_write = false;
+        {
+            LOCK(cs_KeyStore);
+            auto it = m_taproot_internal_keys.find(output_key_hash);
+            if (it == m_taproot_internal_keys.end() || it->second != pubkey) {
+                m_taproot_internal_keys[output_key_hash] = pubkey;
+                needs_write = true;
+            }
+        }
+        if (needs_write) {
+            WalletBatch(m_storage.GetDatabase()).WriteTaprootInternalKey(output_key_hash, pubkey);
+        }
+    }
 }
 
 void LegacyScriptPubKeyMan::MarkReserveKeysAsUsed(int64_t keypool_id)
