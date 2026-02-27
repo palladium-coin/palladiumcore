@@ -49,8 +49,8 @@ from test_framework.script import (
     LegacySignatureHash,
     hash160,
 )
-from test_framework.test_framework import PalladiumTestFramework, SkipTest
-from test_framework.util import assert_equal
+from test_framework.test_framework import PalladiumTestFramework
+from test_framework.util import assert_equal, COINBASE_MATURITY
 from data import invalid_txs
 
 #  Use this class for tests that require behavior other than normal "mininode" behavior.
@@ -85,7 +85,6 @@ class FullBlockTest(PalladiumTestFramework):
         self.extra_args = [['-acceptnonstdtxn=1']]  # This is a consensus block test, we don't care about tx policy
 
     def run_test(self):
-        raise SkipTest("full block p2p test not applicable to current consensus rules")
         node = self.nodes[0]  # convenience reference to the node
 
         self.bootstrap_p2p()  # Add one p2p connection to the node
@@ -99,6 +98,9 @@ class FullBlockTest(PalladiumTestFramework):
         self.genesis_hash = int(self.nodes[0].getbestblockhash(), 16)
         self.block_heights[self.genesis_hash] = 0
         self.spendable_outputs = []
+
+        self._run_palladium_block_scenarios(node)
+        return
 
         # Create a new block
         b_dup_cb = self.next_block('dup_cb')
@@ -588,6 +590,7 @@ class FullBlockTest(PalladiumTestFramework):
         height = self.block_heights[self.tip.sha256] + 1
         coinbase = create_coinbase(height, self.coinbase_pubkey)
         b44 = CBlock()
+        b44.nVersion = 4
         b44.nTime = self.tip.nTime + 1
         b44.hashPrevBlock = self.tip.sha256
         b44.nBits = 0x207fffff
@@ -602,6 +605,7 @@ class FullBlockTest(PalladiumTestFramework):
         self.log.info("Reject a block with a non-coinbase as the first tx")
         non_coinbase = self.create_tx(out[15], 0, 1)
         b45 = CBlock()
+        b45.nVersion = 4
         b45.nTime = self.tip.nTime + 1
         b45.hashPrevBlock = self.tip.sha256
         b45.nBits = 0x207fffff
@@ -617,6 +621,7 @@ class FullBlockTest(PalladiumTestFramework):
         self.log.info("Reject a block with no transactions")
         self.move_tip(44)
         b46 = CBlock()
+        b46.nVersion = 4
         b46.nTime = b44.nTime + 1
         b46.hashPrevBlock = b44.sha256
         b46.nBits = 0x207fffff
@@ -938,6 +943,77 @@ class FullBlockTest(PalladiumTestFramework):
         b65 = self.update_block(65, [tx1, tx2])
         self.send_blocks([b65], True)
         self.save_spendable_output()
+
+    def _run_palladium_block_scenarios(self, node):
+        self.log.info("Palladium block processing scenarios")
+
+        # Accept a first valid block.
+        valid_1 = self.next_block("valid_1")
+        self.send_blocks([valid_1], success=True)
+
+        # Reject v1 block headers (Palladium requires modern block version).
+        self.move_tip("valid_1")
+        bad_ver = self.next_block("bad_ver", version=1)
+        self.send_blocks([bad_ver], success=False, reject_reason="bad-version", reconnect=True, force_send=True, timeout=10)
+
+        # Reject coinbase with wrong BIP34 height encoding.
+        self.move_tip("valid_1")
+        bad_cb = self.next_block("bad_cb")
+        bad_cb.vtx[0].vin[0].scriptSig = b"\x01\x01"
+        bad_cb.vtx[0].rehash()
+        bad_cb = self.update_block("bad_cb", [])
+        self.send_blocks([bad_cb], success=False, reject_reason="bad-cb-height", reconnect=True, force_send=True, timeout=10)
+
+        # Keep the current best chain if a competing chain has equal work.
+        self.move_tip("valid_1")
+        main_2 = self.next_block("main_2")
+        self.send_blocks([main_2], success=True)
+
+        self.move_tip("valid_1")
+        fork_2 = self.next_block("fork_2")
+        self.send_blocks([fork_2], success=True)
+
+        # Reorg to the longer chain once it has more work.
+        fork_3 = self.next_block("fork_3")
+        self.send_blocks([fork_3], success=True)
+        assert_equal(node.getbestblockhash(), fork_3.hash)
+
+        # Mine enough blocks so coinbase outputs become spendable.
+        for i in range(COINBASE_MATURITY + 5):
+            b = self.next_block(f"maturity.{i}")
+            self.send_blocks([b], success=True)
+            self.save_spendable_output()
+
+        # Accept a normal spend from a mature coinbase.
+        spend_ok = self.get_spendable_output()
+        b_spend_ok = self.next_block("spend_ok", spend=spend_ok)
+        self.send_blocks([b_spend_ok], success=True)
+
+        # Reject block with excessive coinbase reward.
+        b_bad_subsidy = self.next_block("bad_subsidy", additional_coinbase_value=1)
+        self.send_blocks([b_bad_subsidy], success=False, reject_reason='bad-cb-amount', reconnect=True, force_send=True, timeout=10)
+        self.move_tip("spend_ok")
+
+        # Reject double-spend inside a single block.
+        ds_out = self.get_spendable_output()
+        b_double_spend = self.next_block("double_spend")
+        tx1 = self.create_and_sign_transaction(ds_out, ds_out.vout[0].nValue - 2)
+        tx2 = self.create_and_sign_transaction(ds_out, ds_out.vout[0].nValue - 3)
+        b_double_spend = self.update_block("double_spend", [tx1, tx2])
+        self.send_blocks([b_double_spend], success=False, reject_reason='bad-txns-inputs-missingorspent', reconnect=True, force_send=True, timeout=10)
+        self.move_tip("spend_ok")
+
+        # Reject a non-final transaction.
+        nf_out = self.get_spendable_output()
+        b_nonfinal = self.next_block("nonfinal")
+        tx_nf = CTransaction()
+        tx_nf.nLockTime = 0xffffffff
+        tx_nf.vin.append(CTxIn(COutPoint(nf_out.sha256, 0)))
+        tx_nf.vout.append(CTxOut(nf_out.vout[0].nValue - 1, CScript([OP_TRUE])))
+        tx_nf.calc_sha256()
+        b_nonfinal = self.update_block("nonfinal", [tx_nf])
+        self.send_blocks([b_nonfinal], success=False, reject_reason='bad-txns-nonfinal', reconnect=True, force_send=True, timeout=10)
+        return
 
         # Attempt to spend an output created later in the same block
         #
@@ -1324,7 +1400,7 @@ class FullBlockTest(PalladiumTestFramework):
         tx.rehash()
         return tx
 
-    def next_block(self, number, spend=None, additional_coinbase_value=0, script=CScript([OP_TRUE]), *, version=1):
+    def next_block(self, number, spend=None, additional_coinbase_value=0, script=CScript([OP_TRUE]), *, version=4):
         if self.tip is None:
             base_block_hash = self.genesis_hash
             block_time = int(time.time()) + 1

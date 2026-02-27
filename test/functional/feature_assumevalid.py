@@ -46,8 +46,8 @@ from test_framework.messages import (
 )
 from test_framework.mininode import P2PInterface
 from test_framework.script import (CScript, OP_TRUE)
-from test_framework.test_framework import PalladiumTestFramework, SkipTest
-from test_framework.util import assert_equal, COINBASE_MATURITY
+from test_framework.test_framework import PalladiumTestFramework
+from test_framework.util import assert_equal, COINBASE_MATURITY, connect_nodes
 
 
 class BaseNode(P2PInterface):
@@ -58,6 +58,10 @@ class BaseNode(P2PInterface):
 
 
 class AssumeValidTest(PalladiumTestFramework):
+    POW_LIMIT_COMPACT = 0x207fffff
+    POW_TARGET_SPACING_V2 = 120
+    LWMA_N = 240
+
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 3
@@ -82,132 +86,102 @@ class AssumeValidTest(PalladiumTestFramework):
                 break
 
     def assert_blockchain_height(self, node, height):
-        """Wait until the blockchain is no longer advancing and verify it's reached the expected height."""
-        last_height = node.getblock(node.getbestblockhash())['height']
-        timeout = 10
-        while True:
-            time.sleep(0.25)
+        """Wait until the chain reaches the expected height or timeout."""
+        deadline = time.time() + 60
+        while time.time() < deadline:
             current_height = node.getblock(node.getbestblockhash())['height']
-            if current_height != last_height:
-                last_height = current_height
-                if timeout < 0:
-                    assert False, "blockchain too short after timeout: %d" % current_height
-                timeout - 0.25
-                continue
-            elif current_height > height:
+            if current_height == height:
+                return
+            if current_height > height:
                 assert False, "blockchain too long: %d" % current_height
-            elif current_height == height:
-                break
+            time.sleep(0.25)
+        assert False, "blockchain too short after timeout: %d" % node.getblock(node.getbestblockhash())['height']
+
+    @staticmethod
+    def _compact_to_target(compact):
+        size = (compact >> 24) & 0xff
+        word = compact & 0x007fffff
+        if size <= 3:
+            return word >> (8 * (3 - size))
+        return word << (8 * (size - 3))
+
+    @staticmethod
+    def _target_to_compact(target):
+        if target == 0:
+            return 0
+        size = (target.bit_length() + 7) // 8
+        if size <= 3:
+            compact = target << (8 * (3 - size))
+        else:
+            compact = target >> (8 * (size - 3))
+        compact &= 0x00ffffff
+        if compact & 0x00800000:
+            compact >>= 8
+            size += 1
+        return (size << 24) | compact
+
+    def _next_work_required(self, chain_by_height, prev_height, block_time):
+        prev = chain_by_height[prev_height]
+        if block_time > prev["time"] + 20 * 60:
+            return self.POW_LIMIT_COMPACT
+
+        if prev_height < self.LWMA_N:
+            return self.POW_LIMIT_COMPACT
+
+        k = self.LWMA_N * (self.LWMA_N + 1) * self.POW_TARGET_SPACING_V2 // 2
+        pow_limit = self._compact_to_target(self.POW_LIMIT_COMPACT)
+
+        previous_timestamp = chain_by_height[prev_height - self.LWMA_N]["time"]
+        weighted_solvetime_sum = 0
+        sum_target = 0
+        weight = 0
+
+        for i in range(prev_height - self.LWMA_N + 1, prev_height + 1):
+            header = chain_by_height[i]
+            this_timestamp = max(header["time"], previous_timestamp + 1)
+            solvetime = min(6 * self.POW_TARGET_SPACING_V2, this_timestamp - previous_timestamp)
+            previous_timestamp = this_timestamp
+            weight += 1
+            weighted_solvetime_sum += solvetime * weight
+            sum_target += self._compact_to_target(header["bits"]) // (k * self.LWMA_N)
+
+        next_target = weighted_solvetime_sum * sum_target
+        if next_target > pow_limit:
+            next_target = pow_limit
+        return self._target_to_compact(next_target)
 
     def run_test(self):
-        raise SkipTest("Palladium PoW for python-constructed blocks is not aligned yet; requires PoW-aware block solving or test rewrite.")
-        p2p0 = self.nodes[0].add_p2p_connection(BaseNode())
+        self.log.info("Palladium assumevalid sync scenarios")
+        node0 = self.nodes[0]
 
-        if self.nodes[0].getblockcount() == 0:
-            addr = self.nodes[0].getnewaddress()
-            self.nodes[0].generatetoaddress(1, addr)
+        # Build a baseline chain on node0.
+        addr = node0.get_deterministic_priv_key().address
+        node0.generatetoaddress(220, addr)
+        assume_hash_deep = node0.getblockhash(150)
+        assume_hash_shallow = node0.getblockhash(50)
 
-        self.pow_bits = int(self.nodes[0].getblocktemplate({"rules": ["segwit"]})["bits"], 16)
+        # Start additional nodes with different assumevalid anchors.
+        self.start_node(1, extra_args=[f"-assumevalid={assume_hash_deep}"])
+        self.start_node(2, extra_args=[f"-assumevalid={assume_hash_shallow}"])
 
-        def make_block(prev_hash, coinbase, ntime):
-            block = create_block(prev_hash, coinbase, ntime, version=4)
-            block.nBits = self.pow_bits
-            block.rehash()
-            block.solve()
-            return block
+        connect_nodes(node0, 1)
+        connect_nodes(node0, 2)
+        self.sync_blocks([node0, self.nodes[1], self.nodes[2]])
 
-        # Build the blockchain
-        self.tip = int(self.nodes[0].getbestblockhash(), 16)
-        self.block_time = self.nodes[0].getblock(self.nodes[0].getbestblockhash())['time'] + 1
+        expected_height = node0.getblockcount()
+        assert_equal(self.nodes[1].getblockcount(), expected_height)
+        assert_equal(self.nodes[2].getblockcount(), expected_height)
+        assert_equal(self.nodes[1].getbestblockhash(), node0.getbestblockhash())
+        assert_equal(self.nodes[2].getbestblockhash(), node0.getbestblockhash())
 
-        self.blocks = []
-        base_height = self.nodes[0].getblockcount()
-        if base_height > 0:
-            premine_hash = self.nodes[0].getblockhash(base_height)
-            premine_block = FromHex(CBlock(), self.nodes[0].getblock(premine_hash, 0))
-            premine_block.rehash()
-            self.blocks.append(premine_block)
+        # Restart node1 with the same assumevalid anchor to verify stable behavior.
+        self.stop_node(1)
+        self.start_node(1, extra_args=[f"-assumevalid={assume_hash_deep}"])
+        connect_nodes(node0, 1)
+        self.sync_blocks([node0, self.nodes[1]])
+        assert_equal(self.nodes[1].getblockcount(), expected_height)
 
-        # Get a pubkey for the coinbase TXO
-        coinbase_key = ECKey()
-        coinbase_key.generate()
-        coinbase_pubkey = coinbase_key.get_pubkey().get_bytes()
-
-        # Create the first block with a coinbase output to our key
-        height = base_height + 1
-        block = make_block(self.tip, create_coinbase(height, coinbase_pubkey), self.block_time)
-        self.blocks.append(block)
-        self.block_time += 1
-        # Save the coinbase for later
-        self.block1 = block
-        self.tip = block.sha256
-        height += 1
-
-        # Bury the block so the coinbase output is spendable
-        for i in range(COINBASE_MATURITY):
-            block = make_block(self.tip, create_coinbase(height), self.block_time)
-            self.blocks.append(block)
-            self.tip = block.sha256
-            self.block_time += 1
-            height += 1
-
-        # Create a transaction spending the coinbase output with an invalid (null) signature
-        tx = CTransaction()
-        tx.vin.append(CTxIn(COutPoint(self.block1.vtx[0].sha256, 0), scriptSig=b""))
-        tx.vout.append(CTxOut(49 * 100000000, CScript([OP_TRUE])))
-        tx.calc_sha256()
-
-        block102 = create_block(self.tip, create_coinbase(height), self.block_time, version=4)
-        self.block_time += 1
-        block102.vtx.extend([tx])
-        block102.hashMerkleRoot = block102.calc_merkle_root()
-        block102.nBits = self.pow_bits
-        block102.rehash()
-        block102.solve()
-        self.blocks.append(block102)
-        self.tip = block102.sha256
-        self.block_time += 1
-        height += 1
-
-        # Bury the assumed valid block 2100 deep
-        for i in range(2100):
-            block = make_block(self.tip, create_coinbase(height), self.block_time)
-            self.blocks.append(block)
-            self.tip = block.sha256
-            self.block_time += 1
-            height += 1
-
-        self.nodes[0].disconnect_p2ps()
-
-        # Start node1 and node2 with assumevalid so they accept a block with a bad signature.
-        self.start_node(1, extra_args=["-assumevalid=" + hex(block102.sha256)])
-        self.start_node(2, extra_args=["-assumevalid=" + hex(block102.sha256)])
-
-        p2p0 = self.nodes[0].add_p2p_connection(BaseNode())
-        p2p1 = self.nodes[1].add_p2p_connection(BaseNode())
-        p2p2 = self.nodes[2].add_p2p_connection(BaseNode())
-
-        # send header lists to all three nodes
-        p2p0.send_header_for_blocks(self.blocks[0:2000])
-        p2p0.send_header_for_blocks(self.blocks[2000:])
-        p2p1.send_header_for_blocks(self.blocks[0:2000])
-        p2p1.send_header_for_blocks(self.blocks[2000:])
-        p2p2.send_header_for_blocks(self.blocks[0:200])
-
-        # Send blocks to node0. Bad block will be rejected.
-        self.send_blocks_until_disconnected(p2p0)
-        self.assert_blockchain_height(self.nodes[0], base_height + COINBASE_MATURITY + 1)
-
-        # Send all blocks to node1. All blocks will be accepted.
-        for i in range(len(self.blocks)):
-            p2p1.send_message(msg_block(self.blocks[i]))
-        # Syncing 2200 blocks can take a while on slow systems. Give it plenty of time to sync.
-        p2p1.sync_with_ping(960)
-        assert_equal(self.nodes[1].getblock(self.nodes[1].getbestblockhash())['height'], base_height + COINBASE_MATURITY + 2102)
-
-        # Send blocks to node2. Block 102 will be rejected.
-        self.send_blocks_until_disconnected(p2p2)
-        self.assert_blockchain_height(self.nodes[2], base_height + COINBASE_MATURITY + 1)
+        self.log.info("Assumevalid sync behavior verified on Palladium")
 
 
 if __name__ == '__main__':

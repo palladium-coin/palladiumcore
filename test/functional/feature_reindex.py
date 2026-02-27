@@ -18,6 +18,8 @@ class ReindexTest(PalladiumTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 1
+        # Reindex startup can stay in RPC warmup longer on Palladium.
+        self.rpc_timeout = 300
 
     def reindex(self, justchainstate=False):
         self.nodes[0].generatetoaddress(3, self.nodes[0].get_deterministic_priv_key().address)

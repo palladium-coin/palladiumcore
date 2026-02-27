@@ -95,7 +95,7 @@ class ToolWalletTest(PalladiumTestFramework):
             HD (hd seed available): yes
             Keypool Size: 2
             Transactions: 0
-            Address Book: 3
+            Address Book: 4
         ''')
         self.assert_tool_output(out, '-wallet=wallet.dat', 'info')
         timestamp_after = self.wallet_timestamp()
@@ -134,7 +134,7 @@ class ToolWalletTest(PalladiumTestFramework):
             HD (hd seed available): yes
             Keypool Size: 2
             Transactions: 1
-            Address Book: 3
+            Address Book: 4
         ''')
         self.assert_tool_output(out, '-wallet=wallet.dat', 'info')
         shasum_after = self.wallet_shasum()

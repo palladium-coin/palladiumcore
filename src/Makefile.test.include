@@ -236,6 +236,7 @@ PALLADIUM_TESTS =\
   test/util_threadnames_tests.cpp \
   test/timedata_tests.cpp \
   test/torcontrol_tests.cpp \
+  test/taproot_tests.cpp \
   test/transaction_tests.cpp \
   test/txindex_tests.cpp \
   test/txvalidation_tests.cpp \
