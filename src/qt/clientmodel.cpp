@@ -15,6 +15,7 @@
 #include <net.h>
 #include <netbase.h>
 #include <util/system.h>
+#include <validation.h>
 
 #include <stdint.h>
 
@@ -226,31 +227,32 @@ static void BannedListChanged(ClientModel *clientmodel)
     assert(invoked);
 }
 
-static void BlockTipChanged(ClientModel *clientmodel, bool initialSync, int height, int64_t blockTime, double verificationProgress, bool fHeader)
+void ClientModel::TipChanged(SynchronizationState sync_state, interfaces::BlockTip tip, double verification_progress, SyncType synctype)
 {
     // lock free async UI updates in case we have a new block tip
     // during initial sync, only update the UI if the last update
     // was > 250ms (MODEL_UPDATE_DELAY) ago
     int64_t now = 0;
-    if (initialSync)
-        now = GetTimeMillis();
+    const bool throttle = (sync_state != SynchronizationState::POST_INIT && synctype == SyncType::BLOCK_SYNC) || sync_state == SynchronizationState::INIT_REINDEX;
+    if (throttle) now = GetTimeMillis();
 
-    int64_t& nLastUpdateNotification = fHeader ? nLastHeaderTipUpdateNotification : nLastBlockTipUpdateNotification;
+    int64_t& nLastUpdateNotification = synctype != SyncType::BLOCK_SYNC ? nLastHeaderTipUpdateNotification : nLastBlockTipUpdateNotification;
 
-    if (fHeader) {
+    if (synctype == SyncType::HEADER_SYNC) {
         // cache best headers time and height to reduce future cs_main locks
-        clientmodel->cachedBestHeaderHeight = height;
-        clientmodel->cachedBestHeaderTime = blockTime;
+        cachedBestHeaderHeight = tip.block_height;
+        cachedBestHeaderTime = tip.block_time;
     }
 
-    // During initial sync, block notifications, and header notifications from reindexing are both throttled.
-    if (!initialSync || (fHeader && !clientmodel->node().getReindex()) || now - nLastUpdateNotification > MODEL_UPDATE_DELAY) {
+    // During initial sync, block notifications, and during reindex both block/header notifications are throttled.
+    if (!throttle || now - nLastUpdateNotification > MODEL_UPDATE_DELAY) {
         //pass an async signal to the UI thread
-        bool invoked = QMetaObject::invokeMethod(clientmodel, "numBlocksChanged", Qt::QueuedConnection,
-                                  Q_ARG(int, height),
-                                  Q_ARG(QDateTime, QDateTime::fromTime_t(blockTime)),
-                                  Q_ARG(double, verificationProgress),
-                                  Q_ARG(bool, fHeader));
+        bool invoked = QMetaObject::invokeMethod(this, "numBlocksChanged", Qt::QueuedConnection,
+                                  Q_ARG(int, tip.block_height),
+                                  Q_ARG(QDateTime, QDateTime::fromTime_t(tip.block_time)),
+                                  Q_ARG(double, verification_progress),
+                                  Q_ARG(SyncType, synctype),
+                                  Q_ARG(SynchronizationState, sync_state));
         assert(invoked);
         nLastUpdateNotification = now;
     }
@@ -264,8 +266,12 @@ void ClientModel::subscribeToCoreSignals()
     m_handler_notify_network_active_changed = m_node.handleNotifyNetworkActiveChanged(std::bind(NotifyNetworkActiveChanged, this, std::placeholders::_1));
     m_handler_notify_alert_changed = m_node.handleNotifyAlertChanged(std::bind(NotifyAlertChanged, this));
     m_handler_banned_list_changed = m_node.handleBannedListChanged(std::bind(BannedListChanged, this));
-    m_handler_notify_block_tip = m_node.handleNotifyBlockTip(std::bind(BlockTipChanged, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, false));
-    m_handler_notify_header_tip = m_node.handleNotifyHeaderTip(std::bind(BlockTipChanged, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4, true));
+    m_handler_notify_block_tip = m_node.handleNotifyBlockTip([this](SynchronizationState sync_state, interfaces::BlockTip tip, double verification_progress) {
+        TipChanged(sync_state, tip, verification_progress, SyncType::BLOCK_SYNC);
+    });
+    m_handler_notify_header_tip = m_node.handleNotifyHeaderTip([this](SynchronizationState sync_state, interfaces::BlockTip tip, bool presync) {
+        TipChanged(sync_state, tip, /*verification_progress=*/0.0, presync ? SyncType::HEADER_PRESYNC : SyncType::HEADER_SYNC);
+    });
 }
 
 void ClientModel::unsubscribeFromCoreSignals()

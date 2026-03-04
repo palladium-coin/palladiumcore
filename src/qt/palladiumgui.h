@@ -24,11 +24,7 @@
 #endif
 
 #include <memory>
-
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QJsonDocument>
-#include <QJsonObject>
+#include <cstdint>
 
 class ClientModel;
 class NetworkStyle;
@@ -43,10 +39,13 @@ class WalletFrame;
 class WalletModel;
 class HelpMessageDialog;
 class ModalOverlay;
+enum class SyncType;
+enum class SynchronizationState;
 
 namespace interfaces {
 class Handler;
 class Node;
+struct BlockAndHeaderTipInfo;
 }
 
 QT_BEGIN_NAMESPACE
@@ -79,7 +78,7 @@ public:
     /** Set the client model.
         The client model represents the part of the core that communicates with the P2P network, and is wallet-agnostic.
     */
-    void setClientModel(ClientModel *clientModel);
+    void setClientModel(ClientModel *clientModel = nullptr, interfaces::BlockAndHeaderTipInfo* tip_info = nullptr);
 #ifdef ENABLE_WALLET
     void setWalletController(WalletController* wallet_controller);
 #endif
@@ -179,12 +178,6 @@ private:
     const PlatformStyle *platformStyle;
     const NetworkStyle* const m_network_style;
 
-    // --- NEUE VARIABLEN FÜR UPDATE CHECKER START ---
-    QNetworkAccessManager* networkManager;
-    QString latestVersionUrl;
-    QWidget* updateAlertWidget; // Der Balken
-    // --- NEUE VARIABLEN FÜR UPDATE CHECKER ENDE ---
-
     /** Create the main UI actions. */
     void createActions();
     /** Create the menu bar and sub-menus. */
@@ -206,6 +199,7 @@ private:
     void updateNetworkState();
 
     void updateHeadersSyncProgressLabel();
+    void updateHeadersPresyncProgressLabel(int64_t height, const QDateTime& blockDate);
 
     /** Open the OptionsDialog on the specified tab index */
     void openOptionsDialogWithTab(OptionsDialog::Tab tab);
@@ -222,7 +216,7 @@ public Q_SLOTS:
     /** Set network state shown in the UI */
     void setNetworkActive(bool networkActive);
     /** Set number of blocks and last block date shown in the UI */
-    void setNumBlocks(int count, const QDateTime& blockDate, double nVerificationProgress, bool headers);
+    void setNumBlocks(int count, const QDateTime& blockDate, double nVerificationProgress, SyncType synctype, SynchronizationState sync_state);
 
     /** Notify the user of an event from the core network or transaction handling code.
        @param[in] title     the message box / notification title
@@ -318,13 +312,6 @@ public Q_SLOTS:
     void setTrayIconVisible(bool);
 
     void showModalOverlay();
-
-private Q_SLOTS:
-    // --- NEUE SLOTS FÜR UPDATE CHECKER START ---
-    void checkUpdate();
-    void onUpdateResult(QNetworkReply* reply);
-    void openUpdateLink();
-    // --- NEUE SLOTS FÜR UPDATE CHECKER ENDE ---
 };
 
 class UnitDisplayStatusBarControl : public QLabel

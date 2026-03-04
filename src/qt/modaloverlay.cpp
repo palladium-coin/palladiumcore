@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2019 The Palladium Core developers
+// Copyright (c) 2016-2020 The Palladium Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -9,16 +9,13 @@
 
 #include <chainparams.h>
 
-#include <QResizeEvent>
 #include <QPropertyAnimation>
+#include <QResizeEvent>
 
-ModalOverlay::ModalOverlay(bool enable_wallet, QWidget *parent) :
-QWidget(parent),
-ui(new Ui::ModalOverlay),
-bestHeaderHeight(0),
-bestHeaderDate(QDateTime()),
-layerIsVisible(false),
-userClosed(false)
+ModalOverlay::ModalOverlay(bool enable_wallet, QWidget* parent)
+    : QWidget(parent),
+      ui(new Ui::ModalOverlay),
+      bestHeaderDate(QDateTime())
 {
     ui->setupUi(this);
     connect(ui->closeButton, &QPushButton::clicked, this, &ModalOverlay::closeClicked);
@@ -26,14 +23,7 @@ userClosed(false)
         parent->installEventFilter(this);
         raise();
     }
-
-    // Set semi-transparent background
-    QPalette pal = ui->bgWidget->palette();
-    QColor bgColor = pal.color(QPalette::Window);
-    bgColor.setAlpha(230);  // Semi-transparent (0-255, where 255 is opaque)
-    pal.setColor(QPalette::Window, bgColor);
-    ui->bgWidget->setAutoFillBackground(true);
-    ui->bgWidget->setPalette(pal);
+    ui->closeButton->installEventFilter(this);
 
     blockProcessTime.clear();
     setVisible(false);
@@ -41,6 +31,11 @@ userClosed(false)
         ui->infoText->setVisible(false);
         ui->infoTextStrong->setText(tr("%1 is currently syncing.  It will download headers and blocks from peers and validate them until reaching the tip of the block chain.").arg(PACKAGE_NAME));
     }
+
+    m_animation.setTargetObject(this);
+    m_animation.setPropertyName("pos");
+    m_animation.setDuration(300 /* ms */);
+    m_animation.setEasingCurve(QEasingCurve::OutQuad);
 }
 
 ModalOverlay::~ModalOverlay()
@@ -48,28 +43,35 @@ ModalOverlay::~ModalOverlay()
     delete ui;
 }
 
-bool ModalOverlay::eventFilter(QObject * obj, QEvent * ev) {
+bool ModalOverlay::eventFilter(QObject* obj, QEvent* ev)
+{
     if (obj == parent()) {
         if (ev->type() == QEvent::Resize) {
-            QResizeEvent * rev = static_cast<QResizeEvent*>(ev);
+            QResizeEvent* rev = static_cast<QResizeEvent*>(ev);
             resize(rev->size());
-            if (!layerIsVisible)
-                setGeometry(0, height(), width(), height());
+            if (!layerIsVisible) setGeometry(0, height(), width(), height());
 
-        }
-        else if (ev->type() == QEvent::ChildAdded) {
+            if (m_animation.endValue().toPoint().y() > 0) {
+                m_animation.setEndValue(QPoint(0, height()));
+            }
+        } else if (ev->type() == QEvent::ChildAdded) {
             raise();
         }
     }
+
+    if (obj == ui->closeButton && ev->type() == QEvent::FocusOut && layerIsVisible) {
+        ui->closeButton->setFocus(Qt::OtherFocusReason);
+    }
+
     return QWidget::eventFilter(obj, ev);
 }
 
 //! Tracks parent widget changes
-bool ModalOverlay::event(QEvent* ev) {
+bool ModalOverlay::event(QEvent* ev)
+{
     if (ev->type() == QEvent::ParentAboutToChange) {
         if (parent()) parent()->removeEventFilter(this);
-    }
-    else if (ev->type() == QEvent::ParentChange) {
+    } else if (ev->type() == QEvent::ParentChange) {
         if (parent()) {
             parent()->installEventFilter(this);
             raise();
@@ -78,12 +80,15 @@ bool ModalOverlay::event(QEvent* ev) {
     return QWidget::event(ev);
 }
 
-void ModalOverlay::setKnownBestHeight(int count, const QDateTime& blockDate)
+void ModalOverlay::setKnownBestHeight(int count, const QDateTime& blockDate, bool presync)
 {
-    if (count > bestHeaderHeight) {
+    if (!presync && count > bestHeaderHeight) {
         bestHeaderHeight = count;
         bestHeaderDate = blockDate;
         UpdateHeaderSyncLabel();
+    }
+    if (presync) {
+        UpdateHeaderPresyncLabel(count, blockDate);
     }
 }
 
@@ -108,16 +113,16 @@ void ModalOverlay::tipUpdate(int count, const QDateTime& blockDate, double nVeri
             if (sample.first < (currentDate.toMSecsSinceEpoch() - 500 * 1000) || i == blockProcessTime.size() - 1) {
                 progressDelta = blockProcessTime[0].second - sample.second;
                 timeDelta = blockProcessTime[0].first - sample.first;
-                progressPerHour = progressDelta / (double) timeDelta * 1000 * 3600;
+                progressPerHour = (progressDelta > 0) ? progressDelta / (double)timeDelta * 1000 * 3600 : 0;
                 remainingMSecs = (progressDelta > 0) ? remainingProgress / progressDelta * timeDelta : -1;
                 break;
             }
         }
         // show progress increase per hour
-        ui->progressIncreasePerH->setText(QString::number(progressPerHour * 100, 'f', 2)+"%");
+        ui->progressIncreasePerH->setText(QString::number(progressPerHour * 100, 'f', 2) + "%");
 
         // show expected remaining time
-        if(remainingMSecs >= 0) {
+        if (remainingMSecs >= 0) {
             ui->expectedTimeLeft->setText(GUIUtil::formatNiceTimeOffset(remainingMSecs / 1000.0));
         } else {
             ui->expectedTimeLeft->setText(QObject::tr("unknown"));
@@ -133,15 +138,13 @@ void ModalOverlay::tipUpdate(int count, const QDateTime& blockDate, double nVeri
     ui->newestBlockDate->setText(blockDate.toString());
 
     // show the percentage done according to nVerificationProgress
-    ui->percentageProgress->setText(QString::number(nVerificationProgress*100, 'f', 2)+"%");
-    ui->progressBar->setValue(nVerificationProgress*100);
+    ui->percentageProgress->setText(QString::number(nVerificationProgress * 100, 'f', 2) + "%");
 
     if (!bestHeaderDate.isValid())
         // not syncing
         return;
 
-    // estimate the number of headers left based on nPowTargetSpacingV2
-    // and check if the gui is not aware of the best header (happens rarely)
+    // estimate the number of headers left and check if the gui is aware of the best header.
     int estimateNumHeadersLeft = bestHeaderDate.secsTo(currentDate) / Params().GetConsensus().nPowTargetSpacingV2;
     bool hasBestHeader = bestHeaderHeight >= count;
 
@@ -150,39 +153,46 @@ void ModalOverlay::tipUpdate(int count, const QDateTime& blockDate, double nVeri
         ui->numberOfBlocksLeft->setText(QString::number(bestHeaderHeight - count));
     } else {
         UpdateHeaderSyncLabel();
-        ui->expectedTimeLeft->setText(tr("Unknown..."));
+        ui->expectedTimeLeft->setText(tr("Unknown…"));
     }
 }
 
-void ModalOverlay::UpdateHeaderSyncLabel() {
+void ModalOverlay::UpdateHeaderSyncLabel()
+{
     int est_headers_left = bestHeaderDate.secsTo(QDateTime::currentDateTime()) / Params().GetConsensus().nPowTargetSpacingV2;
-    ui->numberOfBlocksLeft->setText(tr("Unknown. Syncing Headers (%1, %2%)...").arg(bestHeaderHeight).arg(QString::number(100.0 / (bestHeaderHeight + est_headers_left) * bestHeaderHeight, 'f', 1)));
+    ui->numberOfBlocksLeft->setText(tr("Unknown. Syncing Headers (%1, %2%)…").arg(bestHeaderHeight).arg(QString::number(100.0 / (bestHeaderHeight + est_headers_left) * bestHeaderHeight, 'f', 1)));
+}
+
+void ModalOverlay::UpdateHeaderPresyncLabel(int height, const QDateTime& blockDate)
+{
+    int est_headers_left = blockDate.secsTo(QDateTime::currentDateTime()) / Params().GetConsensus().nPowTargetSpacingV2;
+    ui->numberOfBlocksLeft->setText(tr("Unknown. Pre-syncing Headers (%1, %2%)…").arg(height).arg(QString::number(100.0 / (height + est_headers_left) * height, 'f', 1)));
 }
 
 void ModalOverlay::toggleVisibility()
 {
     showHide(layerIsVisible, true);
-    if (!layerIsVisible)
-        userClosed = true;
+    if (!layerIsVisible) userClosed = true;
 }
 
 void ModalOverlay::showHide(bool hide, bool userRequested)
 {
-    if ( (layerIsVisible && !hide) || (!layerIsVisible && hide) || (!hide && userClosed && !userRequested))
+    if ((layerIsVisible && !hide) || (!layerIsVisible && hide) || (!hide && userClosed && !userRequested))
         return;
 
-    if (!isVisible() && !hide)
-        setVisible(true);
+    Q_EMIT triggered(hide);
 
-    setGeometry(0, hide ? 0 : height(), width(), height());
+    if (!isVisible() && !hide) setVisible(true);
 
-    QPropertyAnimation* animation = new QPropertyAnimation(this, "pos");
-    animation->setDuration(300);
-    animation->setStartValue(QPoint(0, hide ? 0 : this->height()));
-    animation->setEndValue(QPoint(0, hide ? this->height() : 0));
-    animation->setEasingCurve(QEasingCurve::OutQuad);
-    animation->start(QAbstractAnimation::DeleteWhenStopped);
+    m_animation.setStartValue(QPoint(0, hide ? 0 : height()));
+    // The eventFilter() updates the endValue if it is required for QEvent::Resize.
+    m_animation.setEndValue(QPoint(0, hide ? height() : 0));
+    m_animation.start(QAbstractAnimation::KeepWhenStopped);
     layerIsVisible = !hide;
+
+    if (layerIsVisible) {
+        ui->closeButton->setFocus(Qt::OtherFocusReason);
+    }
 }
 
 void ModalOverlay::closeClicked()
