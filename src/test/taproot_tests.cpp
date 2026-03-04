@@ -912,6 +912,121 @@ BOOST_AUTO_TEST_CASE(scriptpath_annex_single_element_not_stripped)
     BOOST_CHECK_EQUAL(serror, SCRIPT_ERR_SCHNORR_SIG_SIZE);
 }
 
+// D.8 — Tapscript OP_CHECKSIG with empty pubkey fails with TAPSCRIPT_EMPTY_PUBKEY
+BOOST_AUTO_TEST_CASE(scriptpath_checksig_empty_pubkey_fails)
+{
+    CKey key = DecodeSecret(WIF_KEY);
+    BOOST_REQUIRE(key.IsValid());
+    XOnlyPubKey internal_xonly = key.GetPubKey().GetXOnlyPubKey();
+
+    CScript leaf_script;
+    leaf_script << OP_CHECKSIG;
+    uint256 leaf_hash = ComputeTapleafHashTest(TAPROOT_LEAF_TAPSCRIPT, leaf_script);
+    XOnlyPubKey output_key; bool parity;
+    BOOST_REQUIRE(CreateTaprootOutput(internal_xonly, &leaf_hash, output_key, parity));
+
+    CScript spk = MakeTaprootSPK(output_key);
+    const CAmount amount = 1000000;
+    CMutableTransaction credit = BuildCreditingTransaction(spk, amount);
+    CTransaction credit_tx(credit);
+    CMutableTransaction spend = BuildSpendingTransaction(CScript(), CScriptWitness(), credit_tx);
+
+    std::vector<unsigned char> ctrl = MakeControlBlock(TAPROOT_LEAF_TAPSCRIPT, parity, internal_xonly);
+    spend.vin[0].scriptWitness.stack = {
+        std::vector<unsigned char>{},
+        std::vector<unsigned char>{},
+        std::vector<unsigned char>(leaf_script.begin(), leaf_script.end()),
+        ctrl
+    };
+
+    CTransaction spend_tx(spend);
+    std::vector<CTxOut> spent_outs;
+    spent_outs.push_back(CTxOut(amount, spk));
+    PrecomputedTransactionData txdata(spend, spent_outs);
+    MutableTransactionSignatureChecker checker(&spend, 0, amount, txdata);
+    ScriptError serror;
+    BOOST_CHECK(!VerifyScript(CScript(), spk, &spend_tx.vin[0].scriptWitness,
+                              TAPROOT_FLAGS, checker, &serror));
+    BOOST_CHECK_EQUAL(serror, SCRIPT_ERR_TAPSCRIPT_EMPTY_PUBKEY);
+}
+
+// D.9 — Tapscript OP_CHECKSIG with unknown pubkey type is discouraged when flag is set
+BOOST_AUTO_TEST_CASE(scriptpath_checksig_upgradable_pubkeytype_discouraged)
+{
+    CKey key = DecodeSecret(WIF_KEY);
+    BOOST_REQUIRE(key.IsValid());
+    XOnlyPubKey internal_xonly = key.GetPubKey().GetXOnlyPubKey();
+
+    CScript leaf_script;
+    leaf_script << OP_CHECKSIG;
+    uint256 leaf_hash = ComputeTapleafHashTest(TAPROOT_LEAF_TAPSCRIPT, leaf_script);
+    XOnlyPubKey output_key; bool parity;
+    BOOST_REQUIRE(CreateTaprootOutput(internal_xonly, &leaf_hash, output_key, parity));
+
+    CScript spk = MakeTaprootSPK(output_key);
+    const CAmount amount = 1000000;
+    CMutableTransaction credit = BuildCreditingTransaction(spk, amount);
+    CTransaction credit_tx(credit);
+    CMutableTransaction spend = BuildSpendingTransaction(CScript(), CScriptWitness(), credit_tx);
+
+    std::vector<unsigned char> ctrl = MakeControlBlock(TAPROOT_LEAF_TAPSCRIPT, parity, internal_xonly);
+    spend.vin[0].scriptWitness.stack = {
+        std::vector<unsigned char>{},
+        std::vector<unsigned char>{0x02},
+        std::vector<unsigned char>(leaf_script.begin(), leaf_script.end()),
+        ctrl
+    };
+
+    CTransaction spend_tx(spend);
+    std::vector<CTxOut> spent_outs;
+    spent_outs.push_back(CTxOut(amount, spk));
+    PrecomputedTransactionData txdata(spend, spent_outs);
+    MutableTransactionSignatureChecker checker(&spend, 0, amount, txdata);
+    ScriptError serror;
+    const unsigned int flags = TAPROOT_FLAGS | SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_PUBKEYTYPE;
+    BOOST_CHECK(!VerifyScript(CScript(), spk, &spend_tx.vin[0].scriptWitness,
+                              flags, checker, &serror));
+    BOOST_CHECK_EQUAL(serror, SCRIPT_ERR_DISCOURAGE_UPGRADABLE_PUBKEYTYPE);
+}
+
+// D.10 — Without discourage flag, unknown pubkey type in OP_CHECKSIG falls through to EVAL_FALSE
+BOOST_AUTO_TEST_CASE(scriptpath_checksig_upgradable_pubkeytype_without_discourage_eval_false)
+{
+    CKey key = DecodeSecret(WIF_KEY);
+    BOOST_REQUIRE(key.IsValid());
+    XOnlyPubKey internal_xonly = key.GetPubKey().GetXOnlyPubKey();
+
+    CScript leaf_script;
+    leaf_script << OP_CHECKSIG;
+    uint256 leaf_hash = ComputeTapleafHashTest(TAPROOT_LEAF_TAPSCRIPT, leaf_script);
+    XOnlyPubKey output_key; bool parity;
+    BOOST_REQUIRE(CreateTaprootOutput(internal_xonly, &leaf_hash, output_key, parity));
+
+    CScript spk = MakeTaprootSPK(output_key);
+    const CAmount amount = 1000000;
+    CMutableTransaction credit = BuildCreditingTransaction(spk, amount);
+    CTransaction credit_tx(credit);
+    CMutableTransaction spend = BuildSpendingTransaction(CScript(), CScriptWitness(), credit_tx);
+
+    std::vector<unsigned char> ctrl = MakeControlBlock(TAPROOT_LEAF_TAPSCRIPT, parity, internal_xonly);
+    spend.vin[0].scriptWitness.stack = {
+        std::vector<unsigned char>{},
+        std::vector<unsigned char>{0x02},
+        std::vector<unsigned char>(leaf_script.begin(), leaf_script.end()),
+        ctrl
+    };
+
+    CTransaction spend_tx(spend);
+    std::vector<CTxOut> spent_outs;
+    spent_outs.push_back(CTxOut(amount, spk));
+    PrecomputedTransactionData txdata(spend, spent_outs);
+    MutableTransactionSignatureChecker checker(&spend, 0, amount, txdata);
+    ScriptError serror;
+    BOOST_CHECK(!VerifyScript(CScript(), spk, &spend_tx.vin[0].scriptWitness,
+                              TAPROOT_FLAGS, checker, &serror));
+    BOOST_CHECK_EQUAL(serror, SCRIPT_ERR_EVAL_FALSE);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 

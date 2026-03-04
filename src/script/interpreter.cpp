@@ -406,7 +406,7 @@ static bool EvalChecksigTapscript(const valtype& sig, const valtype& pubkey, Scr
     }
 
     if (pubkey.empty()) {
-        return set_error(serror, SCRIPT_ERR_PUBKEYTYPE);
+        return set_error(serror, SCRIPT_ERR_TAPSCRIPT_EMPTY_PUBKEY);
     }
 
     if (pubkey.size() == 32) {

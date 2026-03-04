@@ -109,6 +109,8 @@ const char* ScriptErrorString(const ScriptError serror)
             return "OP_CHECKMULTISIG(VERIFY) is not available in tapscript";
         case SCRIPT_ERR_TAPSCRIPT_MINIMALIF:
             return "Tapscript requires minimal IF/NOTIF argument";
+        case SCRIPT_ERR_TAPSCRIPT_EMPTY_PUBKEY:
+            return "Empty public key in tapscript";
         case SCRIPT_ERR_OP_CODESEPARATOR:
             return "Using OP_CODESEPARATOR in non-witness script";
         case SCRIPT_ERR_SIG_FINDANDDELETE:
