@@ -61,9 +61,6 @@
 #include <QVBoxLayout>
 #include <QWindow>
 
-#include <QFile>
-#include <QTextStream>
-
 #include <QUrl>
 #include <QDesktopServices>
 #include <QHBoxLayout>
@@ -89,21 +86,7 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
     platformStyle(_platformStyle),
     m_network_style(networkStyle)
 {
-
-// --- DARK MODE AUTO-LOAD ---
     QSettings settings;
-    bool isDark = settings.value("darkModeEnabled", false).toBool();
-    if (isDark) {
-        // Stylesheet laden
-        QFile f(":/res/styles/dark.qss");
-        if (f.open(QFile::ReadOnly | QFile::Text)) {
-            QTextStream ts(&f);
-            qApp->setStyleSheet(ts.readAll());
-            f.close();
-        }
-    }
-
-    //QSettings settings;
     if (!restoreGeometry(settings.value("MainWindowGeometry").toByteArray())) {
         // Restore failed (perhaps missing setting), center the window
         move(QGuiApplication::primaryScreen()->availableGeometry().center() - frameGeometry().center());
@@ -152,10 +135,6 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
     // Create actions for the toolbar, menu bar and tray/dock icon
     // Needs walletFrame to be initialized
     createActions();
-
-    if (isDark && themeAction) {
-        themeAction->setChecked(true);
-    }
 
     // Create application menu bar
     createMenuBar();
@@ -240,9 +219,6 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
     });
 
     modalOverlay = new ModalOverlay(enableWallet, this->centralWidget());
-    if (themeAction->isChecked()) {
-        modalOverlay->setStyleSheet("background-color: #2b2b2b; color: white;");
-    }
     connect(labelBlocksIcon, &GUIUtil::ClickableLabel::clicked, this, &PalladiumGUI::showModalOverlay);
     connect(progressBar, &GUIUtil::ClickableProgressBar::clicked, this, &PalladiumGUI::showModalOverlay);
 #ifdef ENABLE_WALLET
@@ -467,10 +443,6 @@ void PalladiumGUI::createActions()
 
     connect(new QShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_C), this), &QShortcut::activated, this, &PalladiumGUI::showDebugWindowActivateConsole);
     connect(new QShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_D), this), &QShortcut::activated, this, &PalladiumGUI::showDebugWindow);
-
-    themeAction = new QAction(tr("&Dark Mode"), this);
-    themeAction->setCheckable(true);
-    connect(themeAction, &QAction::triggered, this, &PalladiumGUI::toggleTheme);
 }
 
 void PalladiumGUI::createMenuBar()
@@ -564,7 +536,6 @@ void PalladiumGUI::createMenuBar()
     help->addAction(aboutAction);
     help->addAction(aboutQtAction);
 
-    settings->addAction(themeAction);
 }
 
 void PalladiumGUI::createToolBars()
@@ -1522,46 +1493,6 @@ void UnitDisplayStatusBarControl::onMenuSelection(QAction* action)
         optionsModel->setDisplayUnit(action->data());
     }
 }
-void PalladiumGUI::toggleTheme()
-{
-    QSettings settings;
-    if (themeAction->isChecked()) {
-        // 1. Dark Mode laden
-        QFile f(":/res/styles/dark.qss");
-        if (f.open(QFile::ReadOnly | QFile::Text)) {
-            QTextStream ts(&f);
-            qApp->setStyleSheet(ts.readAll());
-            f.close();
-        }
-
-        // 2. Speichern, dass er an ist
-        settings.setValue("darkModeEnabled", true);
-        
-        if (modalOverlay) {
-            modalOverlay->setStyleSheet("background-color: #2b2b2b; color: white;");
-        }
-    } else {
-        // 1. Standard Theme (Weiß)
-        qApp->setStyleSheet("");
-        qApp->setPalette(style()->standardPalette());
-
-        // 2. Speichern, dass er aus ist
-        settings.setValue("darkModeEnabled", false);
-
-        if (modalOverlay) {
-            modalOverlay->setStyleSheet("");
-        }
-    }
-
-    // Force geometry recalculation for all widgets after theme change
-    // This ensures proper sizing when switching between native (light) and stylesheet (dark) rendering
-    for (QWidget *widget : qApp->allWidgets()) {
-        if (widget && widget->isVisible()) {
-            widget->updateGeometry();
-        }
-    }
-}
-
 void PalladiumGUI::checkUpdate()
 {
     // URL zu den GitHub Releases API
