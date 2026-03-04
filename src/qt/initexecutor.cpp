@@ -11,7 +11,6 @@
 #include <exception>
 
 #include <QDebug>
-#include <QMetaObject>
 #include <QObject>
 #include <QString>
 #include <QThread>
@@ -20,6 +19,8 @@ InitExecutor::InitExecutor(interfaces::Node& node)
     : QObject(), m_node(node)
 {
     m_context.moveToThread(&m_thread);
+    connect(this, &InitExecutor::requestedInitialize, &m_context, [this] { runInitialization(); }, Qt::QueuedConnection);
+    connect(this, &InitExecutor::requestedShutdown, &m_context, [this] { runShutdown(); }, Qt::QueuedConnection);
     m_thread.start();
 }
 
@@ -39,33 +40,39 @@ void InitExecutor::handleRunawayException(const std::exception* e)
 
 void InitExecutor::initialize()
 {
-    QMetaObject::invokeMethod(&m_context, [this] {
-        try {
-            util::ThreadRename("qt-init");
-            qDebug() << "Running initialization in thread";
-            interfaces::BlockAndHeaderTipInfo tip_info;
-            bool rv = m_node.appInitMain(&tip_info);
-            Q_EMIT initializeResult(rv, tip_info);
-        } catch (const std::exception& e) {
-            handleRunawayException(&e);
-        } catch (...) {
-            handleRunawayException(nullptr);
-        }
-    });
+    Q_EMIT requestedInitialize();
 }
 
 void InitExecutor::shutdown()
 {
-    QMetaObject::invokeMethod(&m_context, [this] {
-        try {
-            qDebug() << "Running Shutdown in thread";
-            m_node.appShutdown();
-            qDebug() << "Shutdown finished";
-            Q_EMIT shutdownResult();
-        } catch (const std::exception& e) {
-            handleRunawayException(&e);
-        } catch (...) {
-            handleRunawayException(nullptr);
-        }
-    });
+    Q_EMIT requestedShutdown();
+}
+
+void InitExecutor::runInitialization()
+{
+    try {
+        util::ThreadRename("qt-init");
+        qDebug() << "Running initialization in thread";
+        interfaces::BlockAndHeaderTipInfo tip_info;
+        bool rv = m_node.appInitMain(&tip_info);
+        Q_EMIT initializeResult(rv, tip_info);
+    } catch (const std::exception& e) {
+        handleRunawayException(&e);
+    } catch (...) {
+        handleRunawayException(nullptr);
+    }
+}
+
+void InitExecutor::runShutdown()
+{
+    try {
+        qDebug() << "Running Shutdown in thread";
+        m_node.appShutdown();
+        qDebug() << "Shutdown finished";
+        Q_EMIT shutdownResult();
+    } catch (const std::exception& e) {
+        handleRunawayException(&e);
+    } catch (...) {
+        handleRunawayException(nullptr);
+    }
 }

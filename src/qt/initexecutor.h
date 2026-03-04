@@ -34,10 +34,15 @@ Q_SIGNALS:
     void initializeResult(bool success, interfaces::BlockAndHeaderTipInfo tip_info);
     void shutdownResult();
     void runawayException(const QString& message);
+    // Internal queued requests executed in m_thread via m_context affinity.
+    void requestedInitialize();
+    void requestedShutdown();
 
 private:
     /// Pass fatal exception message to UI thread
     void handleRunawayException(const std::exception* e);
+    void runInitialization();
+    void runShutdown();
 
     interfaces::Node& m_node;
     QObject m_context;
