@@ -269,6 +269,28 @@ QLabel { color: rgb(40,40,40);  }</string>
                <property name="text">
                 <string notr="true">~</string>
                </property>
+             </widget>
+             </item>
+             <item>
+              <widget class="QProgressBar" name="syncProgressBar">
+               <property name="minimumSize">
+                <size>
+                 <width>220</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="minimum">
+                <number>0</number>
+               </property>
+               <property name="maximum">
+                <number>10000</number>
+               </property>
+               <property name="value">
+                <number>0</number>
+               </property>
+               <property name="textVisible">
+                <bool>false</bool>
+               </property>
               </widget>
              </item>
             </layout>
