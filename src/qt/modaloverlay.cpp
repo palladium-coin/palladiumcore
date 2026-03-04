@@ -110,15 +110,18 @@ void ModalOverlay::setKnownBestHeight(int count, const QDateTime& blockDate, boo
     if (!presync && count > bestHeaderHeight) {
         bestHeaderHeight = count;
         bestHeaderDate = blockDate;
-        UpdateHeaderSyncLabel();
+        // Do not switch to indeterminate mode once block sync has started.
+        UpdateHeaderSyncLabel(!m_block_sync_started);
     }
     if (presync) {
-        UpdateHeaderPresyncLabel(count, blockDate);
+        // Do not switch to indeterminate mode once block sync has started.
+        UpdateHeaderPresyncLabel(count, blockDate, !m_block_sync_started);
     }
 }
 
 void ModalOverlay::tipUpdate(int count, const QDateTime& blockDate, double nVerificationProgress)
 {
+    m_block_sync_started = true;
     QDateTime currentDate = QDateTime::currentDateTime();
 
     // keep a vector of samples of verification progress at height

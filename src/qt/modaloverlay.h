@@ -46,6 +46,8 @@ private:
     int bestHeaderHeight{0}; // best known height (based on the headers)
     QDateTime bestHeaderDate;
     QVector<QPair<qint64, double> > blockProcessTime;
+    // Keep the overlay progress bar stable once block-sync progress starts.
+    bool m_block_sync_started{false};
     bool layerIsVisible{false};
     bool userClosed{false};
     QPropertyAnimation m_animation;
