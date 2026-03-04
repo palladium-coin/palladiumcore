@@ -51,6 +51,8 @@ static constexpr int64_t HEADERS_DOWNLOAD_TIMEOUT_PER_HEADER = 1000; // 1ms/head
 static constexpr int32_t MAX_OUTBOUND_PEERS_TO_PROTECT_FROM_DISCONNECT = 4;
 /** Timeout for (unprotected) outbound peers to sync to our chainwork, in seconds */
 static constexpr int64_t CHAIN_SYNC_TIMEOUT = 20 * 60; // 20 minutes
+/** How long to wait for a peer to respond to a getheaders request, in seconds */
+static constexpr int64_t HEADERS_RESPONSE_TIME = 2 * 60;
 /** How frequently to check for stale tips, in seconds */
 static constexpr int64_t STALE_CHECK_INTERVAL = 10 * 60; // 10 minutes
 /** How frequently to check for extra outbound peers and disconnect, in seconds */
@@ -234,6 +236,8 @@ struct CNodeState {
     bool fSyncStarted;
     //! When to potentially disconnect peer for stalling headers download
     int64_t nHeadersSyncTimeout;
+    //! Last time we sent a getheaders request to this peer, in seconds.
+    int64_t nLastGetHeadersTime;
     //! Since when we're stalling block download progress (in microseconds), or 0.
     int64_t nStallingSince;
     std::list<QueuedBlock> vBlocksInFlight;
@@ -376,6 +380,7 @@ struct CNodeState {
         nUnconnectingHeaders = 0;
         fSyncStarted = false;
         nHeadersSyncTimeout = 0;
+        nLastGetHeadersTime = 0;
         nStallingSince = 0;
         nDownloadingSince = 0;
         nBlocksInFlight = 0;
@@ -403,6 +408,21 @@ static CNodeState *State(NodeId pnode) EXCLUSIVE_LOCKS_REQUIRED(cs_main) {
     if (it == mapNodeState.end())
         return nullptr;
     return &it->second;
+}
+
+static bool MaybeSendGetHeaders(CNode* pfrom, CConnman* connman, const CNetMsgMaker& msgMaker, const CBlockLocator& locator, const uint256& hash_stop) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
+{
+    CNodeState* state = State(pfrom->GetId());
+    if (state == nullptr) return false;
+
+    const int64_t now = GetTime();
+    if (state->nLastGetHeadersTime != 0 && now - state->nLastGetHeadersTime < HEADERS_RESPONSE_TIME) {
+        return false;
+    }
+
+    connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, locator, hash_stop));
+    state->nLastGetHeadersTime = now;
+    return true;
 }
 
 static void UpdatePreferredDownload(CNode* node, CNodeState* state) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
@@ -1681,6 +1701,9 @@ bool static ProcessHeadersMessage(CNode* pfrom, CConnman* connman, CTxMemPool& m
 
     if (nCount == 0) {
         // Nothing interesting. Stop asking this peers for more headers.
+        LOCK(cs_main);
+        CNodeState* nodestate = State(pfrom->GetId());
+        if (nodestate) nodestate->nLastGetHeadersTime = 0;
         return true;
     }
 
@@ -1700,12 +1723,19 @@ bool static ProcessHeadersMessage(CNode* pfrom, CConnman* connman, CTxMemPool& m
         //   nUnconnectingHeaders gets reset back to 0.
         if (!LookupBlockIndex(headers[0].hashPrevBlock) && nCount < MAX_BLOCKS_TO_ANNOUNCE) {
             nodestate->nUnconnectingHeaders++;
-            connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, ::ChainActive().GetLocator(pindexBestHeader), uint256()));
-            LogPrint(BCLog::NET, "received header %s: missing prev block %s, sending getheaders (%d) to end (peer=%d, nUnconnectingHeaders=%d)\n",
-                    headers[0].GetHash().ToString(),
-                    headers[0].hashPrevBlock.ToString(),
-                    pindexBestHeader->nHeight,
-                    pfrom->GetId(), nodestate->nUnconnectingHeaders);
+            const bool sent_getheaders = MaybeSendGetHeaders(pfrom, connman, msgMaker, ::ChainActive().GetLocator(pindexBestHeader), uint256());
+            if (sent_getheaders) {
+                LogPrint(BCLog::NET, "received header %s: missing prev block %s, sending getheaders (%d) to end (peer=%d, nUnconnectingHeaders=%d)\n",
+                        headers[0].GetHash().ToString(),
+                        headers[0].hashPrevBlock.ToString(),
+                        pindexBestHeader->nHeight,
+                        pfrom->GetId(), nodestate->nUnconnectingHeaders);
+            } else {
+                LogPrint(BCLog::NET, "received header %s: missing prev block %s, suppressing duplicate getheaders to peer=%d (nUnconnectingHeaders=%d)\n",
+                        headers[0].GetHash().ToString(),
+                        headers[0].hashPrevBlock.ToString(),
+                        pfrom->GetId(), nodestate->nUnconnectingHeaders);
+            }
             // Set hashLastUnknownBlock for this peer, so that if we
             // eventually get the headers - even from a different peer -
             // we can use this peer to download.
@@ -1744,6 +1774,7 @@ bool static ProcessHeadersMessage(CNode* pfrom, CConnman* connman, CTxMemPool& m
     {
         LOCK(cs_main);
         CNodeState *nodestate = State(pfrom->GetId());
+        nodestate->nLastGetHeadersTime = 0;
         if (nodestate->nUnconnectingHeaders > 0) {
             LogPrint(BCLog::NET, "peer=%d: resetting nUnconnectingHeaders (%d -> 0)\n", pfrom->GetId(), nodestate->nUnconnectingHeaders);
         }
@@ -2300,8 +2331,11 @@ bool ProcessMessage(CNode* pfrom, const std::string& msg_type, CDataStream& vRec
         }
 
         if (best_block != nullptr) {
-            connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, ::ChainActive().GetLocator(pindexBestHeader), *best_block));
-            LogPrint(BCLog::NET, "getheaders (%d) %s to peer=%d\n", pindexBestHeader->nHeight, best_block->ToString(), pfrom->GetId());
+            if (MaybeSendGetHeaders(pfrom, connman, msgMaker, ::ChainActive().GetLocator(pindexBestHeader), *best_block)) {
+                LogPrint(BCLog::NET, "getheaders (%d) %s to peer=%d\n", pindexBestHeader->nHeight, best_block->ToString(), pfrom->GetId());
+            } else {
+                LogPrint(BCLog::NET, "getheaders request to %s suppressed for peer=%d (recent request still pending)\n", best_block->ToString(), pfrom->GetId());
+            }
         }
 
         return true;
@@ -2673,7 +2707,7 @@ bool ProcessMessage(CNode* pfrom, const std::string& msg_type, CDataStream& vRec
         if (!LookupBlockIndex(cmpctblock.header.hashPrevBlock)) {
             // Doesn't connect (or is genesis), instead of DoSing in AcceptBlockHeader, request deeper headers
             if (!::ChainstateActive().IsInitialBlockDownload())
-                connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, ::ChainActive().GetLocator(pindexBestHeader), uint256()));
+                MaybeSendGetHeaders(pfrom, connman, msgMaker, ::ChainActive().GetLocator(pindexBestHeader), uint256());
             return true;
         }
 
@@ -3429,7 +3463,6 @@ void PeerLogicValidation::ConsiderEviction(CNode *pto, int64_t time_in_seconds)
                 LogPrint(BCLog::NET, "sending getheaders to outbound peer=%d to verify chain work (current best known block:%s, benchmark blockhash: %s)\n", pto->GetId(), state.pindexBestKnownBlock != nullptr ? state.pindexBestKnownBlock->GetBlockHash().ToString() : "<none>", state.m_chain_sync.m_work_header->GetBlockHash().ToString());
                 connman->PushMessage(pto, msgMaker.Make(NetMsgType::GETHEADERS, ::ChainActive().GetLocator(state.m_chain_sync.m_work_header->pprev), uint256()));
                 state.m_chain_sync.m_sent_getheaders = true;
-                constexpr int64_t HEADERS_RESPONSE_TIME = 120; // 2 minutes
                 // Bump the timeout to allow a response, which could clear the timeout
                 // (if the response shows the peer has synced), reset the timeout (if
                 // the peer syncs to the required work but not to our tip), or result
