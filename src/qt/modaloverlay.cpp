@@ -19,6 +19,20 @@ int ToProgressBarValue(double progress)
     if (progress > 1.0) progress = 1.0;
     return static_cast<int>(progress * 10000.0 + 0.5);
 }
+
+void SetProgressBarDeterminate(Ui::ModalOverlay* ui, double progress)
+{
+    ui->syncProgressBar->setMinimum(0);
+    ui->syncProgressBar->setMaximum(10000);
+    ui->syncProgressBar->setValue(ToProgressBarValue(progress));
+}
+
+void SetProgressBarIndeterminate(Ui::ModalOverlay* ui)
+{
+    // Qt busy indicator mode.
+    ui->syncProgressBar->setMinimum(0);
+    ui->syncProgressBar->setMaximum(0);
+}
 } // namespace
 
 ModalOverlay::ModalOverlay(bool enable_wallet, QWidget* parent)
@@ -46,7 +60,7 @@ ModalOverlay::ModalOverlay(bool enable_wallet, QWidget* parent)
     m_animation.setDuration(300 /* ms */);
     m_animation.setEasingCurve(QEasingCurve::OutQuad);
 
-    ui->syncProgressBar->setValue(0);
+    SetProgressBarDeterminate(ui, 0.0);
 }
 
 ModalOverlay::~ModalOverlay()
@@ -150,7 +164,7 @@ void ModalOverlay::tipUpdate(int count, const QDateTime& blockDate, double nVeri
 
     // show the percentage done according to nVerificationProgress
     ui->percentageProgress->setText(QString::number(nVerificationProgress * 100, 'f', 2) + "%");
-    ui->syncProgressBar->setValue(ToProgressBarValue(nVerificationProgress));
+    SetProgressBarDeterminate(ui, nVerificationProgress);
 
     if (!bestHeaderDate.isValid())
         // not syncing
@@ -164,30 +178,26 @@ void ModalOverlay::tipUpdate(int count, const QDateTime& blockDate, double nVeri
     if (estimateNumHeadersLeft < HEADER_HEIGHT_DELTA_SYNC && hasBestHeader) {
         ui->numberOfBlocksLeft->setText(QString::number(bestHeaderHeight - count));
     } else {
-        UpdateHeaderSyncLabel();
+        UpdateHeaderSyncLabel(false);
         ui->expectedTimeLeft->setText(tr("Unknown…"));
     }
 }
 
-void ModalOverlay::UpdateHeaderSyncLabel()
+void ModalOverlay::UpdateHeaderSyncLabel(bool set_progress_bar)
 {
     int est_headers_left = bestHeaderDate.secsTo(QDateTime::currentDateTime()) / Params().GetConsensus().nPowTargetSpacingV2;
     int total = bestHeaderHeight + est_headers_left;
     double percent_done = total > 0 ? (100.0 * bestHeaderHeight) / total : 0.0;
-    if (total > 0) {
-        ui->syncProgressBar->setValue(ToProgressBarValue(double(bestHeaderHeight) / total));
-    }
+    if (set_progress_bar) SetProgressBarIndeterminate(ui);
     ui->numberOfBlocksLeft->setText(tr("Unknown. Syncing Headers (%1, %2%)…").arg(bestHeaderHeight).arg(QString::number(percent_done, 'f', 1)));
 }
 
-void ModalOverlay::UpdateHeaderPresyncLabel(int height, const QDateTime& blockDate)
+void ModalOverlay::UpdateHeaderPresyncLabel(int height, const QDateTime& blockDate, bool set_progress_bar)
 {
     int est_headers_left = blockDate.secsTo(QDateTime::currentDateTime()) / Params().GetConsensus().nPowTargetSpacingV2;
     int total = height + est_headers_left;
     double percent_done = total > 0 ? (100.0 * height) / total : 0.0;
-    if (total > 0) {
-        ui->syncProgressBar->setValue(ToProgressBarValue(double(height) / total));
-    }
+    if (set_progress_bar) SetProgressBarIndeterminate(ui);
     ui->numberOfBlocksLeft->setText(tr("Unknown. Pre-syncing Headers (%1, %2%)…").arg(height).arg(QString::number(percent_done, 'f', 1)));
 }
 

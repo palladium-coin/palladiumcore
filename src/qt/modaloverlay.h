@@ -49,8 +49,8 @@ private:
     bool layerIsVisible{false};
     bool userClosed{false};
     QPropertyAnimation m_animation;
-    void UpdateHeaderSyncLabel();
-    void UpdateHeaderPresyncLabel(int height, const QDateTime& blockDate);
+    void UpdateHeaderSyncLabel(bool set_progress_bar = true);
+    void UpdateHeaderPresyncLabel(int height, const QDateTime& blockDate, bool set_progress_bar = true);
 };
 
 #endif // PALLADIUM_QT_MODALOVERLAY_H
