@@ -32,7 +32,7 @@
    <item>
     <widget class="QWidget" name="bgWidget" native="true">
      <property name="styleSheet">
-      <string notr="true"></string>
+      <string notr="true">#bgWidget { background: rgba(0,0,0,220); }</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayoutMain" stretch="1">
       <property name="leftMargin">
@@ -50,34 +50,35 @@
       <item>
        <widget class="QWidget" name="contentWidget" native="true">
         <property name="styleSheet">
-         <string notr="true">#contentWidget { border: 1px solid palette(mid); border-radius: 6px; }
-QFormLayout QLabel { min-height: 20px; }</string>
+         <string notr="true">#contentWidget { background: rgba(255,255,255,240); border-radius: 6px; }
+
+QLabel { color: rgb(40,40,40);  }</string>
         </property>
         <layout class="QVBoxLayout" name="verticalLayoutSub" stretch="1,0,0,0">
          <property name="spacing">
-          <number>16</number>
+          <number>0</number>
          </property>
          <property name="leftMargin">
-          <number>20</number>
+          <number>10</number>
          </property>
          <property name="topMargin">
-          <number>20</number>
+          <number>10</number>
          </property>
          <property name="rightMargin">
-          <number>20</number>
+          <number>10</number>
          </property>
          <property name="bottomMargin">
-          <number>20</number>
+          <number>10</number>
          </property>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayoutIconText" stretch="0,1">
-           <property name="spacing">
-            <number>16</number>
+           <property name="topMargin">
+            <number>20</number>
            </property>
            <item>
             <layout class="QVBoxLayout" name="verticalLayoutIcon">
-             <property name="spacing">
-              <number>8</number>
+             <property name="leftMargin">
+              <number>0</number>
              </property>
              <item>
               <widget class="QPushButton" name="warningIcon">
@@ -120,8 +121,11 @@ QFormLayout QLabel { min-height: 20px; }</string>
            </item>
            <item>
             <layout class="QVBoxLayout" name="verticalLayoutInfoText">
-             <property name="spacing">
-              <number>12</number>
+             <property name="leftMargin">
+              <number>0</number>
+             </property>
+             <property name="topMargin">
+              <number>0</number>
              </property>
              <item>
               <widget class="QLabel" name="infoText">
@@ -163,7 +167,7 @@ QFormLayout QLabel { min-height: 20px; }</string>
                <property name="sizeHint" stdset="0">
                 <size>
                  <width>20</width>
-                 <height>20</height>
+                 <height>40</height>
                 </size>
                </property>
               </spacer>
@@ -180,7 +184,7 @@ QFormLayout QLabel { min-height: 20px; }</string>
            <property name="sizeHint" stdset="0">
             <size>
              <width>20</width>
-             <height>24</height>
+             <height>40</height>
             </size>
            </property>
           </spacer>
@@ -191,22 +195,13 @@ QFormLayout QLabel { min-height: 20px; }</string>
             <enum>QFormLayout::FieldsStayAtSizeHint</enum>
            </property>
            <property name="horizontalSpacing">
-            <number>16</number>
+            <number>6</number>
            </property>
            <property name="verticalSpacing">
-            <number>12</number>
+            <number>6</number>
            </property>
            <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
-            <number>0</number>
+            <number>10</number>
            </property>
            <item row="0" column="0">
             <widget class="QLabel" name="labelNumberOfBlocksLeft">
@@ -224,7 +219,7 @@ QFormLayout QLabel { min-height: 20px; }</string>
            <item row="0" column="1">
             <widget class="QLabel" name="numberOfBlocksLeft">
              <property name="text">
-              <string>Unknown...</string>
+              <string>Unknown…</string>
              </property>
             </widget>
            </item>
@@ -250,7 +245,7 @@ QFormLayout QLabel { min-height: 20px; }</string>
               </sizepolicy>
              </property>
              <property name="text">
-              <string>Unknown...</string>
+              <string>Unknown…</string>
              </property>
             </widget>
            </item>
@@ -269,23 +264,10 @@ QFormLayout QLabel { min-height: 20px; }</string>
            </item>
            <item row="2" column="1">
             <layout class="QHBoxLayout" name="horizontalLayoutSync" stretch="0,1">
-             <property name="spacing">
-              <number>8</number>
-             </property>
              <item>
               <widget class="QLabel" name="percentageProgress">
                <property name="text">
                 <string notr="true">~</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QProgressBar" name="progressBar">
-               <property name="value">
-                <number>24</number>
-               </property>
-               <property name="format">
-                <string/>
                </property>
               </widget>
              </item>
@@ -307,7 +289,7 @@ QFormLayout QLabel { min-height: 20px; }</string>
            <item row="4" column="1">
             <widget class="QLabel" name="progressIncreasePerH">
              <property name="text">
-              <string>calculating...</string>
+              <string>calculating…</string>
              </property>
             </widget>
            </item>
@@ -326,17 +308,8 @@ QFormLayout QLabel { min-height: 20px; }</string>
            </item>
            <item row="5" column="1">
             <widget class="QLabel" name="expectedTimeLeft">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
              <property name="text">
-              <string>calculating...</string>
-             </property>
-             <property name="wordWrap">
-              <bool>false</bool>
+              <string>calculating…</string>
              </property>
             </widget>
            </item>
@@ -344,20 +317,11 @@ QFormLayout QLabel { min-height: 20px; }</string>
          </item>
          <item>
           <layout class="QHBoxLayout" name="horizontalLayoutButtons">
-           <property name="spacing">
-            <number>8</number>
-           </property>
            <property name="leftMargin">
-            <number>0</number>
+            <number>10</number>
            </property>
            <property name="topMargin">
-            <number>20</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
-            <number>0</number>
+            <number>10</number>
            </property>
            <item>
             <spacer name="horizontalSpacer">
