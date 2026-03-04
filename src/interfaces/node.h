@@ -10,6 +10,7 @@
 #include <net_types.h>  // For banmap_t
 #include <netaddress.h> // For Network
 #include <support/allocators/secure.h> // For SecureString
+#include <uint256.h>
 
 #include <functional>
 #include <memory>
@@ -30,10 +31,28 @@ class proxyType;
 struct CNodeStateStats;
 struct NodeContext;
 enum class WalletCreationStatus;
+enum class SynchronizationState;
 
 namespace interfaces {
 class Handler;
 class Wallet;
+
+//! Block tip (could be a header or a block tip depending on subscribed signal).
+struct BlockTip {
+    int block_height;
+    int64_t block_time;
+    uint256 block_hash;
+};
+
+//! Block and header tip information.
+struct BlockAndHeaderTipInfo
+{
+    int block_height{0};
+    int64_t block_time{0};
+    int header_height{0};
+    int64_t header_time{0};
+    double verification_progress{0.0};
+};
 
 //! Top-level interface for a palladium node (palladiumd process).
 class Node
@@ -87,7 +106,7 @@ public:
     virtual bool baseInitialize() = 0;
 
     //! Start node.
-    virtual bool appInitMain() = 0;
+    virtual bool appInitMain(interfaces::BlockAndHeaderTipInfo* tip_info = nullptr) = 0;
 
     //! Stop node.
     virtual void appShutdown() = 0;
@@ -248,12 +267,12 @@ public:
 
     //! Register handler for block tip messages.
     using NotifyBlockTipFn =
-        std::function<void(bool initial_download, int height, int64_t block_time, double verification_progress)>;
+        std::function<void(SynchronizationState, interfaces::BlockTip tip, double verification_progress)>;
     virtual std::unique_ptr<Handler> handleNotifyBlockTip(NotifyBlockTipFn fn) = 0;
 
     //! Register handler for header tip messages.
     using NotifyHeaderTipFn =
-        std::function<void(bool initial_download, int height, int64_t block_time, double verification_progress)>;
+        std::function<void(SynchronizationState, interfaces::BlockTip tip, bool presync)>;
     virtual std::unique_ptr<Handler> handleNotifyHeaderTip(NotifyHeaderTipFn fn) = 0;
 
     //! Return pointer to internal chain interface, useful for testing.
