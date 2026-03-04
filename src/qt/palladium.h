@@ -9,11 +9,14 @@
 #include <config/palladium-config.h>
 #endif
 
+#include <interfaces/node.h>
+
 #include <QApplication>
 #include <memory>
 
 class PalladiumGUI;
 class ClientModel;
+class InitExecutor;
 class NetworkStyle;
 class OptionsModel;
 class PaymentServer;
@@ -26,33 +29,8 @@ class Handler;
 class Node;
 } // namespace interfaces
 
-/** Class encapsulating Palladium Core startup and shutdown.
- * Allows running startup and shutdown in a different thread from the UI thread.
- */
-class PalladiumCore: public QObject
-{
-    Q_OBJECT
-public:
-    explicit PalladiumCore(interfaces::Node& node);
-
-public Q_SLOTS:
-    void initialize();
-    void shutdown();
-
-Q_SIGNALS:
-    void initializeResult(bool success);
-    void shutdownResult();
-    void runawayException(const QString &message);
-
-private:
-    /// Pass fatal exception message to UI thread
-    void handleRunawayException(const std::exception *e);
-
-    interfaces::Node& m_node;
-};
-
 /** Main Palladium application object */
-class PalladiumApplication: public QApplication
+class PalladiumApplication : public QApplication
 {
     Q_OBJECT
 public:
@@ -70,9 +48,9 @@ public:
     /// Initialize prune setting
     void InitializePruneSetting(bool prune);
     /// Create main window
-    void createWindow(const NetworkStyle *networkStyle);
+    void createWindow(const NetworkStyle* networkStyle);
     /// Create splash screen
-    void createSplashScreen(const NetworkStyle *networkStyle);
+    void createSplashScreen(const NetworkStyle* networkStyle);
     /// Basic initialization, before starting initialization/shutdown thread. Return true on success.
     bool baseInitialize();
 
@@ -91,10 +69,10 @@ public:
     void setupPlatformStyle();
 
 public Q_SLOTS:
-    void initializeResult(bool success);
+    void initializeResult(bool success, interfaces::BlockAndHeaderTipInfo tip_info);
     void shutdownResult();
     /// Handle runaway exceptions. Shows a message box with the problem and quits the program.
-    void handleRunawayException(const QString &message);
+    void handleRunawayException(const QString& message);
 
 Q_SIGNALS:
     void requestedInitialize();
@@ -103,18 +81,18 @@ Q_SIGNALS:
     void windowShown(PalladiumGUI* window);
 
 private:
-    QThread *coreThread;
     interfaces::Node& m_node;
-    OptionsModel *optionsModel;
-    ClientModel *clientModel;
-    PalladiumGUI *window;
-    QTimer *pollShutdownTimer;
+    std::unique_ptr<InitExecutor> m_executor;
+    OptionsModel* optionsModel;
+    ClientModel* clientModel;
+    PalladiumGUI* window;
+    QTimer* pollShutdownTimer;
 #ifdef ENABLE_WALLET
     PaymentServer* paymentServer{nullptr};
     WalletController* m_wallet_controller{nullptr};
 #endif
     int returnValue;
-    const PlatformStyle *platformStyle;
+    const PlatformStyle* platformStyle;
     std::unique_ptr<QWidget> shutdownWindow;
 
     void startThread();
