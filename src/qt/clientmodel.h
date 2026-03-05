@@ -14,12 +14,14 @@
 class BanTableModel;
 class OptionsModel;
 class PeerTableModel;
+enum class SynchronizationState;
 
 class CBlockIndex;
 
 namespace interfaces {
 class Handler;
 class Node;
+struct BlockTip;
 }
 
 QT_BEGIN_NAMESPACE
@@ -31,6 +33,12 @@ enum class BlockSource {
     REINDEX,
     DISK,
     NETWORK
+};
+
+enum class SyncType {
+    HEADER_PRESYNC,
+    HEADER_SYNC,
+    BLOCK_SYNC
 };
 
 enum NumConnections {
@@ -93,12 +101,13 @@ private:
     //! A thread to interact with m_node asynchronously
     QThread* const m_thread;
 
+    void TipChanged(SynchronizationState sync_state, interfaces::BlockTip tip, double verification_progress, SyncType synctype);
     void subscribeToCoreSignals();
     void unsubscribeFromCoreSignals();
 
 Q_SIGNALS:
     void numConnectionsChanged(int count);
-    void numBlocksChanged(int count, const QDateTime& blockDate, double nVerificationProgress, bool header);
+    void numBlocksChanged(int count, const QDateTime& blockDate, double nVerificationProgress, SyncType synctype, SynchronizationState sync_state);
     void mempoolSizeChanged(long count, size_t mempoolSizeInBytes);
     void networkActiveChanged(bool networkActive);
     void alertsChanged(const QString &warnings);

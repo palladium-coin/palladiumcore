@@ -13,6 +13,7 @@
 #include <qt/clientmodel.h>
 #include <qt/guiconstants.h>
 #include <qt/guiutil.h>
+#include <qt/initexecutor.h>
 #include <qt/intro.h>
 #include <qt/networkstyle.h>
 #include <qt/optionsmodel.h>
@@ -33,7 +34,7 @@
 #include <ui_interface.h>
 #include <uint256.h>
 #include <util/system.h>
-#include <util/threadnames.h>
+#include <validation.h>
 
 #include <memory>
 
@@ -62,6 +63,9 @@ Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin);
 Q_DECLARE_METATYPE(bool*)
 Q_DECLARE_METATYPE(CAmount)
 Q_DECLARE_METATYPE(uint256)
+Q_DECLARE_METATYPE(SynchronizationState)
+Q_DECLARE_METATYPE(SyncType)
+Q_DECLARE_METATYPE(interfaces::BlockAndHeaderTipInfo)
 
 static QString GetLangTerritory()
 {
@@ -127,54 +131,13 @@ void DebugMessageHandler(QtMsgType type, const QMessageLogContext& context, cons
     }
 }
 
-PalladiumCore::PalladiumCore(interfaces::Node& node) :
-    QObject(), m_node(node)
-{
-}
-
-void PalladiumCore::handleRunawayException(const std::exception *e)
-{
-    PrintExceptionContinue(e, "Runaway exception");
-    Q_EMIT runawayException(QString::fromStdString(m_node.getWarnings()));
-}
-
-void PalladiumCore::initialize()
-{
-    try
-    {
-        qDebug() << __func__ << ": Running initialization in thread";
-        util::ThreadRename("qt-init");
-        bool rv = m_node.appInitMain();
-        Q_EMIT initializeResult(rv);
-    } catch (const std::exception& e) {
-        handleRunawayException(&e);
-    } catch (...) {
-        handleRunawayException(nullptr);
-    }
-}
-
-void PalladiumCore::shutdown()
-{
-    try
-    {
-        qDebug() << __func__ << ": Running Shutdown in thread";
-        m_node.appShutdown();
-        qDebug() << __func__ << ": Shutdown finished";
-        Q_EMIT shutdownResult();
-    } catch (const std::exception& e) {
-        handleRunawayException(&e);
-    } catch (...) {
-        handleRunawayException(nullptr);
-    }
-}
-
 static int qt_argc = 1;
 static const char* qt_argv = "palladium-qt";
 
 PalladiumApplication::PalladiumApplication(interfaces::Node& node):
     QApplication(qt_argc, const_cast<char **>(&qt_argv)),
-    coreThread(nullptr),
     m_node(node),
+    m_executor(nullptr),
     optionsModel(nullptr),
     clientModel(nullptr),
     window(nullptr),
@@ -200,14 +163,6 @@ void PalladiumApplication::setupPlatformStyle()
 
 PalladiumApplication::~PalladiumApplication()
 {
-    if(coreThread)
-    {
-        qDebug() << __func__ << ": Stopping thread";
-        coreThread->quit();
-        coreThread->wait();
-        qDebug() << __func__ << ": Stopped thread";
-    }
-
     delete window;
     window = nullptr;
     delete optionsModel;
@@ -238,7 +193,7 @@ void PalladiumApplication::createWindow(const NetworkStyle *networkStyle)
 
 void PalladiumApplication::createSplashScreen(const NetworkStyle *networkStyle)
 {
-    SplashScreen *splash = new SplashScreen(m_node, nullptr, networkStyle);
+    SplashScreen *splash = new SplashScreen(m_node, Qt::WindowFlags(), networkStyle);
     // We don't hold a direct pointer to the splash screen after creation, but the splash
     // screen will take care of deleting itself when finish() happens.
     splash->show();
@@ -253,22 +208,13 @@ bool PalladiumApplication::baseInitialize()
 
 void PalladiumApplication::startThread()
 {
-    if(coreThread)
-        return;
-    coreThread = new QThread(this);
-    PalladiumCore *executor = new PalladiumCore(m_node);
-    executor->moveToThread(coreThread);
-
-    /*  communication to and from thread */
-    connect(executor, &PalladiumCore::initializeResult, this, &PalladiumApplication::initializeResult);
-    connect(executor, &PalladiumCore::shutdownResult, this, &PalladiumApplication::shutdownResult);
-    connect(executor, &PalladiumCore::runawayException, this, &PalladiumApplication::handleRunawayException);
-    connect(this, &PalladiumApplication::requestedInitialize, executor, &PalladiumCore::initialize);
-    connect(this, &PalladiumApplication::requestedShutdown, executor, &PalladiumCore::shutdown);
-    /*  make sure executor object is deleted in its own thread */
-    connect(coreThread, &QThread::finished, executor, &QObject::deleteLater);
-
-    coreThread->start();
+    if (m_executor) return;
+    m_executor.reset(new InitExecutor(m_node));
+    connect(m_executor.get(), &InitExecutor::initializeResult, this, &PalladiumApplication::initializeResult);
+    connect(m_executor.get(), &InitExecutor::shutdownResult, this, &PalladiumApplication::shutdownResult);
+    connect(m_executor.get(), &InitExecutor::runawayException, this, &PalladiumApplication::handleRunawayException);
+    connect(this, &PalladiumApplication::requestedInitialize, m_executor.get(), &InitExecutor::initialize);
+    connect(this, &PalladiumApplication::requestedShutdown, m_executor.get(), &InitExecutor::shutdown);
 }
 
 void PalladiumApplication::parameterSetup()
@@ -323,7 +269,7 @@ void PalladiumApplication::requestShutdown()
     Q_EMIT requestedShutdown();
 }
 
-void PalladiumApplication::initializeResult(bool success)
+void PalladiumApplication::initializeResult(bool success, interfaces::BlockAndHeaderTipInfo tip_info)
 {
     qDebug() << __func__ << ": Initialization result: " << success;
     // Set exit result.
@@ -333,7 +279,7 @@ void PalladiumApplication::initializeResult(bool success)
         // Log this only after AppInitMain finishes, as then logging setup is guaranteed complete
         qInfo() << "Platform customization:" << platformStyle->getName();
         clientModel = new ClientModel(m_node, optionsModel);
-        window->setClientModel(clientModel);
+        window->setClientModel(clientModel, &tip_info);
 #ifdef ENABLE_WALLET
         if (WalletModel::isWalletEnabled()) {
             m_wallet_controller = new WalletController(m_node, platformStyle, optionsModel, this);
@@ -438,6 +384,9 @@ int GuiMain(int argc, char* argv[])
 #ifdef ENABLE_WALLET
     qRegisterMetaType<WalletModel*>();
 #endif
+    qRegisterMetaType<SynchronizationState>();
+    qRegisterMetaType<SyncType>();
+    qRegisterMetaType<interfaces::BlockAndHeaderTipInfo>("interfaces::BlockAndHeaderTipInfo");
     // Register typedefs (see http://qt-project.org/doc/qt-5/qmetatype.html#qRegisterMetaType)
     // IMPORTANT: if CAmount is no longer a typedef use the normal variant above (see https://doc.qt.io/qt-5/qmetatype.html#qRegisterMetaType-1)
     qRegisterMetaType<CAmount>("CAmount");

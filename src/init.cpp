@@ -23,6 +23,7 @@
 #include <index/blockfilterindex.h>
 #include <index/txindex.h>
 #include <interfaces/chain.h>
+#include <interfaces/node.h>
 #include <key.h>
 #include <miner.h>
 #include <net.h>
@@ -348,7 +349,10 @@ static void registerSignalHandler(int signal, void(*handler)(int))
 static boost::signals2::connection rpc_notify_block_change_connection;
 static void OnRPCStarted()
 {
-    rpc_notify_block_change_connection = uiInterface.NotifyBlockTip_connect(&RPCNotifyBlockChange);
+    rpc_notify_block_change_connection = uiInterface.NotifyBlockTip_connect(
+        [](SynchronizationState sync_state, const CBlockIndex* block, double) {
+            RPCNotifyBlockChange(sync_state != SynchronizationState::POST_INIT, block);
+        });
 }
 
 static void OnRPCStopped()
@@ -598,9 +602,9 @@ std::string LicenseInfo()
 }
 
 #if HAVE_SYSTEM
-static void BlockNotifyCallback(bool initialSync, const CBlockIndex *pBlockIndex)
+static void BlockNotifyCallback(SynchronizationState sync_state, const CBlockIndex *pBlockIndex, double)
 {
-    if (initialSync || !pBlockIndex)
+    if (sync_state != SynchronizationState::POST_INIT || !pBlockIndex)
         return;
 
     std::string strCmd = gArgs.GetArg("-blocknotify", "");
@@ -616,7 +620,7 @@ static bool fHaveGenesis = false;
 static Mutex g_genesis_wait_mutex;
 static std::condition_variable g_genesis_wait_cv;
 
-static void BlockNotifyGenesisWait(bool, const CBlockIndex *pBlockIndex)
+static void BlockNotifyGenesisWait(SynchronizationState, const CBlockIndex *pBlockIndex, double)
 {
     if (pBlockIndex != nullptr) {
         {
@@ -1211,7 +1215,7 @@ bool AppInitLockDataDirectory()
     return true;
 }
 
-bool AppInitMain(NodeContext& node)
+bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
 {
     const CChainParams& chainparams = Params();
     // ********************************************************* Step 4a: application initialization
@@ -1838,12 +1842,25 @@ bool AppInitMain(NodeContext& node)
     // ********************************************************* Step 12: start node
 
     int chain_active_height;
+    int64_t best_block_time = 0;
 
     //// debug print
     {
         LOCK(cs_main);
         LogPrintf("block tree size = %u\n", ::BlockIndex().size());
         chain_active_height = ::ChainActive().Height();
+        if (const CBlockIndex* tip = ::ChainActive().Tip()) {
+            best_block_time = tip->GetBlockTime();
+            if (tip_info) {
+                tip_info->block_height = chain_active_height;
+                tip_info->block_time = best_block_time;
+                tip_info->verification_progress = GuessVerificationProgress(Params().TxData(), tip);
+            }
+        }
+        if (tip_info && ::pindexBestHeader) {
+            tip_info->header_height = ::pindexBestHeader->nHeight;
+            tip_info->header_time = ::pindexBestHeader->GetBlockTime();
+        }
     }
     LogPrintf("nBestHeight = %d\n", chain_active_height);
 

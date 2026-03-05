@@ -36,6 +36,7 @@
 #include <interfaces/node.h>
 #include <ui_interface.h>
 #include <util/system.h>
+#include <validation.h>
 
 #include <QAction>
 #include <QApplication>
@@ -58,16 +59,12 @@
 #include <QTimer>
 #include <QToolBar>
 #include <QUrlQuery>
-#include <QVBoxLayout>
 #include <QWindow>
 
 #include <QUrl>
 #include <QDesktopServices>
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QPushButton>
-#include <QVersionNumber> // Falls Qt Version >= 5.6, sonst String-Vergleich
-#include <clientversion.h> // Wichtig um die eigene Version zu kennen
 
 const std::string PalladiumGUI::DEFAULT_UIPLATFORM =
 #if defined(Q_OS_MAC)
@@ -102,32 +99,21 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
     rpcConsole = new RPCConsole(node, _platformStyle, nullptr);
     helpMessageDialog = new HelpMessageDialog(node, this, false);
 
-    // --- UPDATE CHECKER LAYOUT SETUP ---
-    QWidget* mainContainer = new QWidget(this);
-    QVBoxLayout* mainLayout = new QVBoxLayout(mainContainer);
-    mainLayout->setContentsMargins(0,0,0,0);
-    mainLayout->setSpacing(0);
-
-    updateAlertWidget = new QWidget(mainContainer);
-    updateAlertWidget->setVisible(false);
-    mainLayout->addWidget(updateAlertWidget);
-
 #ifdef ENABLE_WALLET
     if(enableWallet)
     {
         /** Create wallet frame and make it the central widget */
         walletFrame = new WalletFrame(_platformStyle, this);
-        mainLayout->addWidget(walletFrame);
+        setCentralWidget(walletFrame);
     } else
 #endif // ENABLE_WALLET
     {
         /* When compiled without wallet or -disablewallet is provided,
          * the central widget is the rpc console.
          */
-        mainLayout->addWidget(rpcConsole);
+        setCentralWidget(rpcConsole);
         Q_EMIT consoleShown(rpcConsole);
     }
-    setCentralWidget(mainContainer);
 
     // Accept D&D of URIs
     setAcceptDrops(true);
@@ -230,16 +216,6 @@ PalladiumGUI::PalladiumGUI(interfaces::Node& node, const PlatformStyle *_platfor
 #ifdef Q_OS_MAC
     m_app_nap_inhibitor = new CAppNapInhibitor;
 #endif
-
-    // --- START EINFÜGUNG: UPDATE CHECKER ---
-    networkManager = new QNetworkAccessManager(this);
-    connect(networkManager, &QNetworkAccessManager::finished, this, &PalladiumGUI::onUpdateResult);
-    
-    // updateAlertWidget is already initialized and added to layout above
-
-    // Check beim Start ausführen
-    checkUpdate();
-    // --- ENDE EINFÜGUNG: UPDATE CHECKER ---
 }
 
 PalladiumGUI::~PalladiumGUI()
@@ -575,7 +551,7 @@ void PalladiumGUI::createToolBars()
     }
 }
 
-void PalladiumGUI::setClientModel(ClientModel *_clientModel)
+void PalladiumGUI::setClientModel(ClientModel *_clientModel, interfaces::BlockAndHeaderTipInfo* tip_info)
 {
     this->clientModel = _clientModel;
     if(_clientModel)
@@ -589,8 +565,19 @@ void PalladiumGUI::setClientModel(ClientModel *_clientModel)
         connect(_clientModel, &ClientModel::numConnectionsChanged, this, &PalladiumGUI::setNumConnections);
         connect(_clientModel, &ClientModel::networkActiveChanged, this, &PalladiumGUI::setNetworkActive);
 
-        modalOverlay->setKnownBestHeight(_clientModel->getHeaderTipHeight(), QDateTime::fromTime_t(_clientModel->getHeaderTipTime()));
-        setNumBlocks(m_node.getNumBlocks(), QDateTime::fromTime_t(m_node.getLastBlockTime()), m_node.getVerificationProgress(), false);
+        SynchronizationState sync_state = SynchronizationState::POST_INIT;
+        if (m_node.getReindex()) {
+            sync_state = SynchronizationState::INIT_REINDEX;
+        } else if (m_node.isInitialBlockDownload()) {
+            sync_state = SynchronizationState::INIT_DOWNLOAD;
+        }
+        if (tip_info) {
+            modalOverlay->setKnownBestHeight(tip_info->header_height, QDateTime::fromTime_t(tip_info->header_time), /*presync=*/false);
+            setNumBlocks(tip_info->block_height, QDateTime::fromTime_t(tip_info->block_time), tip_info->verification_progress, SyncType::BLOCK_SYNC, sync_state);
+        } else {
+            modalOverlay->setKnownBestHeight(_clientModel->getHeaderTipHeight(), QDateTime::fromTime_t(_clientModel->getHeaderTipTime()), /*presync=*/false);
+            setNumBlocks(m_node.getNumBlocks(), QDateTime::fromTime_t(m_node.getLastBlockTime()), m_node.getVerificationProgress(), SyncType::BLOCK_SYNC, sync_state);
+        }
         connect(_clientModel, &ClientModel::numBlocksChanged, this, &PalladiumGUI::setNumBlocks);
 
         // Receive and report messages from client model
@@ -931,7 +918,15 @@ void PalladiumGUI::updateHeadersSyncProgressLabel()
     int headersTipHeight = clientModel->getHeaderTipHeight();
     int estHeadersLeft = (GetTime() - headersTipTime) / Params().GetConsensus().nPowTargetSpacingV2;
     if (estHeadersLeft > HEADER_HEIGHT_DELTA_SYNC)
-        progressBarLabel->setText(tr("Syncing Headers (%1%)...").arg(QString::number(100.0 / (headersTipHeight+estHeadersLeft)*headersTipHeight, 'f', 1)));
+        progressBarLabel->setText(tr("Syncing Headers (%1%)…").arg(QString::number(100.0 / (headersTipHeight + estHeadersLeft) * headersTipHeight, 'f', 1)));
+}
+
+void PalladiumGUI::updateHeadersPresyncProgressLabel(int64_t height, const QDateTime& blockDate)
+{
+    int estHeadersLeft = blockDate.secsTo(QDateTime::currentDateTime()) / Params().GetConsensus().nPowTargetSpacingV2;
+    if (estHeadersLeft > HEADER_HEIGHT_DELTA_SYNC) {
+        progressBarLabel->setText(tr("Pre-syncing Headers (%1%)…").arg(QString::number(100.0 / (height + estHeadersLeft) * height, 'f', 1)));
+    }
 }
 
 void PalladiumGUI::openOptionsDialogWithTab(OptionsDialog::Tab tab)
@@ -945,19 +940,24 @@ void PalladiumGUI::openOptionsDialogWithTab(OptionsDialog::Tab tab)
     dlg.exec();
 }
 
-void PalladiumGUI::setNumBlocks(int count, const QDateTime& blockDate, double nVerificationProgress, bool header)
+void PalladiumGUI::setNumBlocks(int count, const QDateTime& blockDate, double nVerificationProgress, SyncType synctype, SynchronizationState sync_state)
 {
 // Disabling macOS App Nap on initial sync, disk and reindex operations.
 #ifdef Q_OS_MAC
-    (m_node.isInitialBlockDownload() || m_node.getReindex() || m_node.getImporting()) ? m_app_nap_inhibitor->disableAppNap() : m_app_nap_inhibitor->enableAppNap();
+    if (sync_state == SynchronizationState::POST_INIT) {
+        m_app_nap_inhibitor->enableAppNap();
+    } else {
+        m_app_nap_inhibitor->disableAppNap();
+    }
 #endif
 
     if (modalOverlay)
     {
-        if (header)
-            modalOverlay->setKnownBestHeight(count, blockDate);
-        else
+        if (synctype != SyncType::BLOCK_SYNC) {
+            modalOverlay->setKnownBestHeight(count, blockDate, synctype == SyncType::HEADER_PRESYNC);
+        } else {
             modalOverlay->tipUpdate(count, blockDate, nVerificationProgress);
+        }
     }
     if (!clientModel)
         return;
@@ -969,28 +969,31 @@ void PalladiumGUI::setNumBlocks(int count, const QDateTime& blockDate, double nV
     enum BlockSource blockSource = clientModel->getBlockSource();
     switch (blockSource) {
         case BlockSource::NETWORK:
-            if (header) {
+            if (synctype == SyncType::HEADER_PRESYNC) {
+                updateHeadersPresyncProgressLabel(count, blockDate);
+                return;
+            } else if (synctype == SyncType::HEADER_SYNC) {
                 updateHeadersSyncProgressLabel();
                 return;
             }
-            progressBarLabel->setText(tr("Synchronizing with network..."));
+            progressBarLabel->setText(tr("Synchronizing with network…"));
             updateHeadersSyncProgressLabel();
             break;
         case BlockSource::DISK:
-            if (header) {
-                progressBarLabel->setText(tr("Indexing blocks on disk..."));
+            if (synctype != SyncType::BLOCK_SYNC) {
+                progressBarLabel->setText(tr("Indexing blocks on disk…"));
             } else {
-                progressBarLabel->setText(tr("Processing blocks on disk..."));
+                progressBarLabel->setText(tr("Processing blocks on disk…"));
             }
             break;
         case BlockSource::REINDEX:
-            progressBarLabel->setText(tr("Reindexing blocks on disk..."));
+            progressBarLabel->setText(tr("Reindexing blocks on disk…"));
             break;
         case BlockSource::NONE:
-            if (header) {
+            if (synctype != SyncType::BLOCK_SYNC) {
                 return;
             }
-            progressBarLabel->setText(tr("Connecting to peers..."));
+            progressBarLabel->setText(tr("Connecting to peers…"));
             break;
     }
 
@@ -1027,7 +1030,7 @@ void PalladiumGUI::setNumBlocks(int count, const QDateTime& blockDate, double nV
         progressBar->setValue(nVerificationProgress * 1000000000.0 + 0.5);
         progressBar->setVisible(true);
 
-        tooltip = tr("Catching up...") + QString("<br>") + tooltip;
+        tooltip = tr("Catching up…") + QString("<br>") + tooltip;
         if(count != prevBlocks)
         {
             labelBlocksIcon->setPixmap(platformStyle->SingleColorIcon(QString(
@@ -1298,13 +1301,10 @@ void PalladiumGUI::updateProxyIcon()
     bool proxy_enabled = clientModel->getProxyInfo(ip_port);
 
     if (proxy_enabled) {
-        if (labelProxyIcon->pixmap() == nullptr) {
-            QString ip_port_q = QString::fromStdString(ip_port);
-            labelProxyIcon->setPixmap(platformStyle->SingleColorIcon(":/icons/proxy").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
-            labelProxyIcon->setToolTip(tr("Proxy is <b>enabled</b>: %1").arg(ip_port_q));
-        } else {
-            labelProxyIcon->show();
-        }
+        QString ip_port_q = QString::fromStdString(ip_port);
+        labelProxyIcon->setPixmap(platformStyle->SingleColorIcon(":/icons/proxy").pixmap(STATUSBAR_ICONSIZE, STATUSBAR_ICONSIZE));
+        labelProxyIcon->setToolTip(tr("Proxy is <b>enabled</b>: %1").arg(ip_port_q));
+        labelProxyIcon->show();
     } else {
         labelProxyIcon->hide();
     }
@@ -1491,91 +1491,5 @@ void UnitDisplayStatusBarControl::onMenuSelection(QAction* action)
     if (action)
     {
         optionsModel->setDisplayUnit(action->data());
-    }
-}
-void PalladiumGUI::checkUpdate()
-{
-    // URL zu den GitHub Releases API
-    QNetworkRequest request(QUrl("https://api.github.com/repos/palladium-coin/palladiumcore/releases/latest"));
-    
-    // GitHub verlangt einen User-Agent Header, sonst wird die Anfrage blockiert
-    request.setRawHeader("User-Agent", "PalladiumWallet");
-    
-    networkManager->get(request);
-}
-
-void PalladiumGUI::onUpdateResult(QNetworkReply* reply)
-{
-    if (reply->error() == QNetworkReply::NoError) {
-        QByteArray response = reply->readAll();
-        QJsonDocument doc = QJsonDocument::fromJson(response);
-        QJsonObject obj = doc.object();
-
-
-        QString remoteVersionStr = obj["tag_name"].toString();
-        latestVersionUrl = obj["html_url"].toString(); // Link zum Release
-
-        // Entferne das 'v' falls vorhanden für den Vergleich
-        if(remoteVersionStr.startsWith("v")) {
-            remoteVersionStr.remove(0, 1);
-        }
-
-        // Aktuelle Client Version holen
-        QString currentVersionStr = QString::fromStdString(FormatFullVersion());
-        if(currentVersionStr.startsWith("v")) {
-            currentVersionStr.remove(0, 1);
-        }
-        // Bereinige currentVersionStr falls nötig, FormatFullVersion gibt oft sowas wie "1.0.0-beta" zurück
-        currentVersionStr = currentVersionStr.split('-').first();
-
-        // Vergleiche Versionen mit QVersionNumber
-        QVersionNumber local = QVersionNumber::fromString(currentVersionStr);
-        QVersionNumber remote = QVersionNumber::fromString(remoteVersionStr);
-
-        if (remote > local) {
-            
-            // Erstelle das Layout für den Warnbalken
-            if (!updateAlertWidget->layout()) {
-                QHBoxLayout *layout = new QHBoxLayout(updateAlertWidget);
-                layout->setContentsMargins(10, 5, 10, 5);
-                
-                // Stylesheet für den roten Balken
-                updateAlertWidget->setStyleSheet("background-color: #d9534f; color: white; border-radius: 0px;");
-                updateAlertWidget->setMaximumHeight(50);
-
-                QLabel *label = new QLabel(tr("A new update is available! (%1)").arg(remoteVersionStr), updateAlertWidget);
-                label->setStyleSheet("font-weight: bold; border: none; background: transparent; color: white;");
-                
-                QPushButton *btn = new QPushButton(tr("Download"), updateAlertWidget);
-                btn->setStyleSheet("background-color: white; color: #d9534f; font-weight: bold; border-radius: 3px; padding: 3px 10px;");
-                
-                QString url = latestVersionUrl;
-                connect(btn, &QPushButton::clicked, [this, url]() {
-                    if(!QDesktopServices::openUrl(QUrl(url))) {
-                        QMessageBox::information(this, tr("Update Available"), tr("Please visit: %1").arg(url));
-                    }
-                });
-                
-                QPushButton *btnClose = new QPushButton("X", updateAlertWidget);
-                btnClose->setFlat(true);
-                btnClose->setStyleSheet("color: white; font-weight: bold; border: none; background: transparent;");
-                connect(btnClose, &QPushButton::clicked, updateAlertWidget, &QWidget::hide);
-
-                layout->addWidget(label);
-                layout->addStretch(); // Schiebt Button nach rechts
-                layout->addWidget(btn);
-                layout->addWidget(btnClose);
-            }
-            
-            updateAlertWidget->setVisible(true);
-        }
-    }
-    reply->deleteLater();
-}
-
-void PalladiumGUI::openUpdateLink()
-{
-    if (!latestVersionUrl.isEmpty()) {
-        QDesktopServices::openUrl(QUrl(latestVersionUrl));
     }
 }

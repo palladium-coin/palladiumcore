@@ -6,6 +6,7 @@
 #define PALLADIUM_QT_MODALOVERLAY_H
 
 #include <QDateTime>
+#include <QPropertyAnimation>
 #include <QWidget>
 
 //! The required delta of headers to the estimated number of available headers until we show the IBD progress
@@ -23,29 +24,35 @@ class ModalOverlay : public QWidget
 public:
     explicit ModalOverlay(bool enable_wallet, QWidget *parent);
     ~ModalOverlay();
-
-public Q_SLOTS:
     void tipUpdate(int count, const QDateTime& blockDate, double nVerificationProgress);
-    void setKnownBestHeight(int count, const QDateTime& blockDate);
+    void setKnownBestHeight(int count, const QDateTime& blockDate, bool presync);
 
-    void toggleVisibility();
-    // will show or hide the modal layer
     void showHide(bool hide = false, bool userRequested = false);
-    void closeClicked();
     bool isLayerVisible() const { return layerIsVisible; }
 
+public Q_SLOTS:
+    void toggleVisibility();
+    void closeClicked();
+
+Q_SIGNALS:
+    void triggered(bool hidden);
+
 protected:
-    bool eventFilter(QObject * obj, QEvent * ev);
-    bool event(QEvent* ev);
+    bool eventFilter(QObject * obj, QEvent * ev) override;
+    bool event(QEvent* ev) override;
 
 private:
     Ui::ModalOverlay *ui;
-    int bestHeaderHeight; //best known height (based on the headers)
+    int bestHeaderHeight{0}; // best known height (based on the headers)
     QDateTime bestHeaderDate;
     QVector<QPair<qint64, double> > blockProcessTime;
-    bool layerIsVisible;
-    bool userClosed;
-    void UpdateHeaderSyncLabel();
+    // Keep the overlay progress bar stable once block-sync progress starts.
+    bool m_block_sync_started{false};
+    bool layerIsVisible{false};
+    bool userClosed{false};
+    QPropertyAnimation m_animation;
+    void UpdateHeaderSyncLabel(bool set_progress_bar = true);
+    void UpdateHeaderPresyncLabel(int height, const QDateTime& blockDate, bool set_progress_bar = true);
 };
 
 #endif // PALLADIUM_QT_MODALOVERLAY_H
