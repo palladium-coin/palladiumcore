@@ -14,6 +14,13 @@ import hashlib
 import struct
 from decimal import Decimal
 
+from test_framework.address import program_to_witness
+from test_framework.key import (
+    ECPubKey,
+    SECP256K1,
+    SECP256K1_G,
+    SECP256K1_ORDER,
+)
 from test_framework.messages import (
     COutPoint,
     CTransaction,
@@ -54,6 +61,29 @@ def tapbranch_hash(left: bytes, right: bytes) -> bytes:
     """BIP341 TapBranch hash (lexicographic sort)."""
     a, b = (left, right) if left <= right else (right, left)
     return tagged_hash('TapBranch', a + b)
+
+
+def taproot_output_and_control_from_internal(internal_pubkey_bytes: bytes, leaf_script: bytes, leaf_version: int = 0xC0):
+    """Build output key and control block for a single-leaf Taproot script tree."""
+    pub = ECPubKey()
+    pub.set(internal_pubkey_bytes)
+    assert pub.is_valid
+
+    affine = SECP256K1.affine(pub.p)
+    assert affine is not None
+    internal_xonly = affine[0].to_bytes(32, 'big')
+
+    merkle_root = tapleaf_hash(leaf_script, leaf_version)
+    tweak = int.from_bytes(tagged_hash("TapTweak", internal_xonly + merkle_root), "big")
+    assert tweak < SECP256K1_ORDER
+
+    tweaked = SECP256K1.affine(SECP256K1.add(pub.p, SECP256K1.mul([(SECP256K1_G, tweak)])))
+    assert tweaked is not None
+    output_xonly = tweaked[0].to_bytes(32, 'big')
+    parity = tweaked[1] & 1
+
+    control_block = bytes([leaf_version | parity]) + internal_xonly
+    return output_xonly, control_block
 
 
 # ---------------------------------------------------------------------------
@@ -299,6 +329,47 @@ class TaprootReproTest(PalladiumTestFramework):
         self.log.info("F.4: Post-restart spend succeeded")
 
     # -----------------------------------------------------------------------
+    # F.5 — Valid script-path spend is accepted and mined
+    # -----------------------------------------------------------------------
+
+    def test_valid_script_path_spend(self, wallet, mining_addr):
+        """F.5: spend a Taproot output via script-path using an OP_TRUE leaf."""
+        node = self.nodes[0]
+        self.log.info("F.5: Valid Taproot script-path spend")
+
+        internal_addr = wallet.getnewaddress("", "bech32")
+        internal_pub = bytes.fromhex(wallet.getaddressinfo(internal_addr)["pubkey"])
+        tapleaf_script = bytes(CScript([OP_1]))  # OP_TRUE
+        output_xonly, control_block = taproot_output_and_control_from_internal(internal_pub, tapleaf_script)
+        scriptpath_addr = program_to_witness(1, output_xonly, main=False)
+
+        fund_txid = wallet.sendtoaddress(scriptpath_addr, 0.5)
+        node.generatetoaddress(1, mining_addr)
+        fund_decoded = node.decoderawtransaction(wallet.gettransaction(fund_txid)["hex"])
+        expected_spk_hex = "5120" + output_xonly.hex()
+        prevout = next(v for v in fund_decoded["vout"] if v["scriptPubKey"].get("hex") == expected_spk_hex)
+        prev_value_sat = int(Decimal(str(prevout["value"])) * COIN)
+
+        spend_dest = wallet.getnewaddress("", "bech32")
+        spend_script = CScript(bytes.fromhex(wallet.getaddressinfo(spend_dest)["scriptPubKey"]))
+        spend = CTransaction()
+        spend.nVersion = 2
+        spend.vin = [CTxIn(COutPoint(int(fund_txid, 16), prevout["n"]), nSequence=0xffffffff)]
+        spend.vout = [CTxOut(prev_value_sat - 1000, spend_script)]
+        spend.wit = CTxWitness()
+        spend.wit.vtxinwit = [CTxInWitness()]
+        spend.wit.vtxinwit[0].scriptWitness.stack = [tapleaf_script, control_block]
+
+        spend_hex = spend.serialize().hex()
+        spend_txid = node.sendrawtransaction(spend_hex)
+        assert spend_txid in node.getrawmempool(), "Valid script-path taproot tx not in mempool"
+
+        blockhash = node.generatetoaddress(1, mining_addr)[0]
+        block = node.getblock(blockhash, 2)
+        assert any(tx["txid"] == spend_txid for tx in block["tx"]), "Valid script-path taproot tx not mined"
+        self.log.info("F.5: Valid script-path spend accepted and mined")
+
+    # -----------------------------------------------------------------------
     # Main entry point
     # -----------------------------------------------------------------------
 
@@ -327,6 +398,10 @@ class TaprootReproTest(PalladiumTestFramework):
 
         self.log.info("=== F.4: Taproot persistence after restart ===")
         self.test_taproot_persistence_after_restart(wallet, mining_addr)
+        wallet = self.get_loaded_wallet("tr_test")
+
+        self.log.info("=== F.5: Valid script-path spend ===")
+        self.test_valid_script_path_spend(wallet, mining_addr)
 
 
 if __name__ == '__main__':
