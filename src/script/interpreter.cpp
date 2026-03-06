@@ -1833,6 +1833,8 @@ static bool SignatureHashSchnorr(uint256& hash_out, ScriptExecutionData& execdat
     uint8_t spend_type = (ext_flag << 1) | (execdata.m_annex_present ? 1 : 0);
 
     CSHA256Writer ss("TapSighash");
+    static constexpr uint8_t EPOCH = 0;
+    ss << EPOCH;
     ss << hash_type;
     ss << txTo.nVersion;
     ss << txTo.nLockTime;
@@ -1909,7 +1911,7 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
 
         if (stack.size() >= 2 && !stack.back().empty() && stack.back()[0] == ANNEX_TAG) {
             const valtype& annex = SpanPopBack(stack);
-            execdata.m_annex_hash = (CSHA256Writer("TapAnnex") << annex).GetSHA256();
+            execdata.m_annex_hash = (CSHA256Writer{} << annex).GetSHA256();
             execdata.m_annex_present = true;
         } else {
             execdata.m_annex_present = false;
