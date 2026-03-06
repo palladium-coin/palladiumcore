@@ -231,48 +231,34 @@ bool IsWitnessStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs)
                 if (tx.vin[i].scriptWitness.stack[j].size() > MAX_STANDARD_P2WSH_STACK_ITEM_SIZE)
                     return false;
             }
-        } else if (witnessversion == 1 && witnessprogram.size() == WITNESS_V1_TAPROOT_SIZE) {
-            // Taproot spends cannot be wrapped inside P2SH and must have at least one witness element.
-            if (is_p2sh || tx.vin[i].scriptWitness.stack.empty()) {
-                return false;
-            }
+        }
 
+        // Check policy limits for Taproot spends:
+        // - MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE limit for stack item size
+        // - No annexes
+        if (witnessversion == 1 && witnessprogram.size() == WITNESS_V1_TAPROOT_SIZE && !is_p2sh) {
+            // Taproot spend (non-P2SH-wrapped, version 1, witness program size 32; see BIP 341)
             const auto& witness_stack = tx.vin[i].scriptWitness.stack;
-            const bool has_annex = witness_stack.size() >= 2 && !witness_stack.back().empty() && witness_stack.back()[0] == 0x50;
-            const size_t non_annex_items = witness_stack.size() - (has_annex ? 1 : 0);
-            if (non_annex_items == 0) {
+            if (witness_stack.size() >= 2 && !witness_stack.back().empty() && witness_stack.back()[0] == ANNEX_TAG) {
+                // Annexes are nonstandard as long as no semantics are defined for them.
                 return false;
             }
-
-            // Key path spends have one witness element after optional annex stripping.
-            if (non_annex_items == 1) {
-                continue;
-            }
-
-            // Script path spend policy checks.
-            const std::vector<unsigned char>& control_block = witness_stack[non_annex_items - 1];
-            if (control_block.size() < TAPROOT_CONTROL_BASE_SIZE ||
-                control_block.size() > TAPROOT_CONTROL_MAX_SIZE ||
-                ((control_block.size() - TAPROOT_CONTROL_BASE_SIZE) % TAPROOT_CONTROL_NODE_SIZE) != 0) {
-                return false;
-            }
-            if ((control_block[0] & TAPROOT_LEAF_MASK) != TAPROOT_LEAF_TAPSCRIPT) {
-                return false;
-            }
-
-            const std::vector<unsigned char>& tapscript = witness_stack[non_annex_items - 2];
-            if (tapscript.size() > MAX_STANDARD_TAPSCRIPT_SCRIPT_SIZE) {
-                return false;
-            }
-
-            const size_t witness_arg_count = non_annex_items - 2;
-            if (witness_arg_count > MAX_STANDARD_TAPSCRIPT_STACK_ITEMS) {
-                return false;
-            }
-            for (size_t j = 0; j < witness_arg_count; ++j) {
-                if (witness_stack[j].size() > MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE) {
-                    return false;
+            if (witness_stack.size() >= 2) {
+                // Script path spend (2 or more stack elements after removing optional annex)
+                const auto& control_block = witness_stack.back();
+                if (control_block.empty()) return false; // Empty control block is invalid
+                if ((control_block[0] & TAPROOT_LEAF_MASK) == TAPROOT_LEAF_TAPSCRIPT) {
+                    // Leaf version 0xc0 (aka Tapscript, see BIP 342)
+                    for (size_t j = 0; j + 2 < witness_stack.size(); ++j) {
+                        if (witness_stack[j].size() > MAX_STANDARD_TAPSCRIPT_STACK_ITEM_SIZE) return false;
+                    }
                 }
+            } else if (witness_stack.size() == 1) {
+                // Key path spend (1 stack element after removing optional annex)
+                // (no policy rules apply)
+            } else {
+                // 0 stack elements; this is already invalid by consensus rules
+                return false;
             }
         }
     }
