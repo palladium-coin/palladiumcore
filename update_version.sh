@@ -6,12 +6,37 @@ echo "========================================================"
 echo "   Palladium Core - Master Version Updater"
 echo "========================================================"
 
-# 1. Get Inputs
-read -p "Enter CURRENT version string (e.g. 1.4.3): " OLD_VERSION
+CONFIGURE_FILE="configure.ac"
+MSVC_FILE="build_msvc/palladium_config.h"
+MANPAGES=(
+    "doc/man/palladium-cli.1"
+    "doc/man/palladium-qt.1"
+    "doc/man/palladium-tx.1"
+    "doc/man/palladium-wallet.1"
+    "doc/man/palladiumd.1"
+)
+
+# 1. Detect current version and ask only for the target one.
+if [ ! -f "$CONFIGURE_FILE" ]; then
+    echo "Error: $CONFIGURE_FILE not found."
+    exit 1
+fi
+
+CURRENT_MAJOR=$(sed -n 's/^define(_CLIENT_VERSION_MAJOR, \([0-9][0-9]*\)).*/\1/p' "$CONFIGURE_FILE" | head -n1)
+CURRENT_MINOR=$(sed -n 's/^define(_CLIENT_VERSION_MINOR, \([0-9][0-9]*\)).*/\1/p' "$CONFIGURE_FILE" | head -n1)
+CURRENT_REV=$(sed -n 's/^define(_CLIENT_VERSION_REVISION, \([0-9][0-9]*\)).*/\1/p' "$CONFIGURE_FILE" | head -n1)
+
+if [ -z "$CURRENT_MAJOR" ] || [ -z "$CURRENT_MINOR" ] || [ -z "$CURRENT_REV" ]; then
+    echo "Error: could not detect current version from $CONFIGURE_FILE."
+    exit 1
+fi
+
+OLD_VERSION="${CURRENT_MAJOR}.${CURRENT_MINOR}.${CURRENT_REV}"
+echo "Current version detected: $OLD_VERSION"
 read -p "Enter NEW version string (e.g. 1.5.0): " NEW_VERSION
 
-if [ -z "$OLD_VERSION" ] || [ -z "$NEW_VERSION" ]; then
-    echo "Error: Version strings cannot be empty."
+if [ -z "$NEW_VERSION" ]; then
+    echo "Error: NEW version string cannot be empty."
     exit 1
 fi
 
@@ -23,46 +48,59 @@ REV="${V_PARTS[2]}"
 
 # Default to 0 if revision is missing (e.g. 1.5 becomes 1.5.0)
 if [ -z "$REV" ]; then REV="0"; fi
+if [ -z "$MAJOR" ] || [ -z "$MINOR" ]; then
+    echo "Error: NEW version must be in MAJOR.MINOR[.REVISION] format."
+    exit 1
+fi
 
 echo "--------------------------------------------------------"
 echo "Targeting: $MAJOR.$MINOR.$REV"
 echo "--------------------------------------------------------"
 
-# 2. Global Text Replacement (Docs, Manpages, Comments)
-echo "[1/3] Performing global search & replace ($OLD_VERSION -> $NEW_VERSION)..."
-# We exclude .git directory and binaries to avoid corruption
-grep -rIl "$OLD_VERSION" . | grep -v "^./.git" | grep -v "update_version.sh" | while read -r file ; do
-    sed -i "s/$OLD_VERSION/$NEW_VERSION/g" "$file"
+TARGET_FILES=("$CONFIGURE_FILE" "$MSVC_FILE" "${MANPAGES[@]}")
+OLD_VERSION_REGEX=$(printf '%s' "$OLD_VERSION" | sed 's/[][\/.^$*+?|(){}-]/\\&/g')
+NEW_VERSION_REPL=$(printf '%s' "$NEW_VERSION" | sed 's/[&|]/\\&/g')
+
+echo "[1/4] Validating target file whitelist..."
+MISSING_FILES=()
+for file in "${TARGET_FILES[@]}"; do
+    if [ ! -f "$file" ]; then
+        MISSING_FILES+=("$file")
+    fi
 done
-echo "Global text replacement done."
-
-# 3. Update configure.ac (The Linux/Unix Build System)
-echo "[2/3] Updating configure.ac..."
-if [ -f "configure.ac" ]; then
-    sed -i "s/define(_CLIENT_VERSION_MAJOR, [0-9]*)/define(_CLIENT_VERSION_MAJOR, $MAJOR)/g" configure.ac
-    sed -i "s/define(_CLIENT_VERSION_MINOR, [0-9]*)/define(_CLIENT_VERSION_MINOR, $MINOR)/g" configure.ac
-    sed -i "s/define(_CLIENT_VERSION_REVISION, [0-9]*)/define(_CLIENT_VERSION_REVISION, $REV)/g" configure.ac
-    echo "✔ configure.ac updated."
-else
-    echo "❌ Warning: configure.ac not found."
+if [ "${#MISSING_FILES[@]}" -ne 0 ]; then
+    echo "Error: required target files are missing:"
+    for file in "${MISSING_FILES[@]}"; do
+        echo "  - $file"
+    done
+    exit 1
 fi
+echo "✔ All target files are present."
 
-# 4. Update Windows MSVC Config (The Windows Build System)
-echo "[3/3] Updating build_msvc/palladium_config.h..."
-MSVC_FILE="build_msvc/palladium_config.h"
-if [ -f "$MSVC_FILE" ]; then
-    sed -i "s/#define CLIENT_VERSION_MAJOR [0-9]*/#define CLIENT_VERSION_MAJOR $MAJOR/g" "$MSVC_FILE"
-    sed -i "s/#define CLIENT_VERSION_MINOR [0-9]*/#define CLIENT_VERSION_MINOR $MINOR/g" "$MSVC_FILE"
-    sed -i "s/#define CLIENT_VERSION_REVISION [0-9]*/#define CLIENT_VERSION_REVISION $REV/g" "$MSVC_FILE"
-    echo "✔ $MSVC_FILE updated."
-else
-    echo "❌ Warning: $MSVC_FILE not found."
-fi
+# 2. Update configure.ac (Linux/Unix build metadata)
+echo "[2/4] Updating $CONFIGURE_FILE..."
+sed -i "s/define(_CLIENT_VERSION_MAJOR, [0-9]*)/define(_CLIENT_VERSION_MAJOR, $MAJOR)/g" "$CONFIGURE_FILE"
+sed -i "s/define(_CLIENT_VERSION_MINOR, [0-9]*)/define(_CLIENT_VERSION_MINOR, $MINOR)/g" "$CONFIGURE_FILE"
+sed -i "s/define(_CLIENT_VERSION_REVISION, [0-9]*)/define(_CLIENT_VERSION_REVISION, $REV)/g" "$CONFIGURE_FILE"
+echo "✔ $CONFIGURE_FILE updated."
+
+# 3. Update Windows MSVC config
+echo "[3/4] Updating $MSVC_FILE..."
+sed -i "s/#define CLIENT_VERSION_MAJOR [0-9]*/#define CLIENT_VERSION_MAJOR $MAJOR/g" "$MSVC_FILE"
+sed -i "s/#define CLIENT_VERSION_MINOR [0-9]*/#define CLIENT_VERSION_MINOR $MINOR/g" "$MSVC_FILE"
+sed -i "s/#define CLIENT_VERSION_REVISION [0-9]*/#define CLIENT_VERSION_REVISION $REV/g" "$MSVC_FILE"
+echo "✔ $MSVC_FILE updated."
+
+# 4. Update the five generated manpages via deterministic text replacement
+echo "[4/4] Updating manpages ($OLD_VERSION -> $NEW_VERSION)..."
+for file in "${MANPAGES[@]}"; do
+    sed -i "s|$OLD_VERSION_REGEX|$NEW_VERSION_REPL|g" "$file"
+done
+echo "✔ Manpages updated."
 
 echo "========================================================"
-echo "Update Complete! Please run:"
-echo "1. make clean"
-echo "2. ./autogen.sh"
-echo "3. ./configure"
-echo "4. make"
+echo "Update complete. Updated files:"
+for file in "${TARGET_FILES[@]}"; do
+    echo " - $file"
+done
 echo "========================================================"
