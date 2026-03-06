@@ -488,12 +488,16 @@ static UniValue getblocktemplate(const JSONRPCRequest& request)
     if(!g_rpc_node->connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
-    if (g_rpc_node->connman->GetNodeCount(CConnman::CONNECTIONS_ALL) == 0)
-        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, PACKAGE_NAME " is not connected!");
+    // Match Bitcoin behavior: in regtest (MineBlocksOnDemand), allow block
+    // template generation even without peers and during IBD.
+    if (!Params().MineBlocksOnDemand()) {
+        if (g_rpc_node->connman->GetNodeCount(CConnman::CONNECTIONS_ALL) == 0)
+            throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, PACKAGE_NAME " is not connected!");
 
-    // Block getblocktemplate during initial block download for security
-    if (::ChainstateActive().IsInitialBlockDownload()) {
-        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, PACKAGE_NAME " is in initial sync and waiting for blocks...");
+        // Block getblocktemplate during initial block download for security
+        if (::ChainstateActive().IsInitialBlockDownload()) {
+            throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, PACKAGE_NAME " is in initial sync and waiting for blocks...");
+        }
     }
 
     static unsigned int nTransactionsUpdatedLast;
