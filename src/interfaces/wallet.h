@@ -254,6 +254,9 @@ public:
     // Return whether private keys enabled.
     virtual bool privateKeysDisabled() = 0;
 
+    // Return whether the wallet contains a Taproot scriptPubKey manager.
+    virtual bool taprootEnabled() = 0;
+
     // Get default address type.
     virtual OutputType getDefaultAddressType() = 0;
 

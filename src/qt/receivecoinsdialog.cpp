@@ -44,10 +44,13 @@ QString AddressTypeDisplayName(OutputType type)
     }
 }
 
-void InitAddressTypeComboBox(QComboBox* combo)
+void InitAddressTypeComboBox(QComboBox* combo, bool include_taproot)
 {
     combo->clear();
     for (const auto type : RECEIVE_ADDRESS_TYPES) {
+        if (!include_taproot && type == OutputType::BECH32M) {
+            continue;
+        }
         combo->addItem(AddressTypeDisplayName(type), static_cast<int>(type));
     }
 }
@@ -75,7 +78,7 @@ ReceiveCoinsDialog::ReceiveCoinsDialog(const PlatformStyle* _platformStyle, QWid
                                                                                                platformStyle(_platformStyle)
 {
     ui->setupUi(this);
-    InitAddressTypeComboBox(ui->addressType);
+    InitAddressTypeComboBox(ui->addressType, /*include_taproot=*/false);
     SetAddressType(ui->addressType, OutputType::BECH32);
 
     if (!_platformStyle->getImagesOnButtons()) {
@@ -140,6 +143,7 @@ void ReceiveCoinsDialog::setModel(WalletModel* _model)
         // Last 2 columns are set by the columnResizingFixer, when the table geometry is ready.
         columnResizingFixer = new GUIUtil::TableViewLastColumnResizingFixer(tableView, AMOUNT_MINIMUM_COLUMN_WIDTH, DATE_COLUMN_WIDTH, this);
 
+        InitAddressTypeComboBox(ui->addressType, model->wallet().taprootEnabled());
         SetAddressType(ui->addressType, model->wallet().getDefaultAddressType());
 
         // Set the button to be enabled or disabled based on whether the wallet can give out new addresses.
