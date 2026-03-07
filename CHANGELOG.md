@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-03-08
+
+### Added
+- Async Qt `InitExecutor` for startup/shutdown and sync-state notification plumbing from validation to UI
+- Exposed block/header tip snapshots via `appInitMain` for sync-aware UI initialization
+- Added a sync progress bar to modal overlay with separate header/block progress tracking
+
+### Changed
+- Qt Receive dialog now shows the `bech32m` address option only when wallet Taproot capability is available
+- Header sync now rate-limits duplicate `getheaders` requests
+- Made `update_version.sh` deterministic and auto-detect current version before bumping
+- Updated version metadata and man pages to `2.0.2`
+
+### Fixed
+- Aligned Taproot sighash epoch and annex hashing semantics with Bitcoin/BIP341 behavior
+- Aligned Taproot witness standardness policy with Bitcoin
+- Added tapscript-specific empty pubkey error handling to improve validation diagnostics
+- `getblocktemplate` on regtest now skips peer/IBD checks for local mining and test workflows
+- Fixed Qt modal overlay regressions (text overlap and mixed header/block progress behavior)
+- Restored `InitExecutor` compatibility with older Qt `invokeMethod` APIs
+
+### Removed
+- Removed dark mode support from `palladium-qt`
+- Removed whitepaper assets from this repository (moved to a dedicated repository)
+
+### Tests
+- Extended Taproot functional coverage with valid script-path scenarios
+- Realigned functional tests with Palladium consensus behavior and stabilized Taproot validation flows
+- Added script/taproot test coverage for tapscript-specific empty pubkey handling
+
 ## [2.0.1] - 2026-02-17
 
 ### Fixed
@@ -271,7 +301,8 @@ Initial public release of Palladium Core.
 
 ---
 
-[Unreleased]: https://github.com/palladium-coin/palladiumcore/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/palladium-coin/palladiumcore/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/palladium-coin/palladiumcore/releases/tag/v2.0.2
 [2.0.1]: https://github.com/palladium-coin/palladiumcore/releases/tag/v2.0.1
 [2.0.0]: https://github.com/palladium-coin/palladiumcore/releases/tag/v2.0.0
 [1.5.1]: https://github.com/palladium-coin/palladiumcore/releases/tag/v1.5.1
