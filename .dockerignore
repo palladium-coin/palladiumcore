@@ -53,7 +53,7 @@ aclocal.m4
 .deps
 .dirstamp
 .libs
-src/config/
+src/config/*.h
 src/obj
 src/univalue/gen
 
