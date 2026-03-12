@@ -121,7 +121,15 @@ connect=trusted.node.ip:2333             # Connect ONLY to this node (maximum se
 
 ### Performance Tuning
 ```conf
-dbcache=512                              # Database cache size in MB (increase for better performance)
+# UTXO database cache size in MB. Higher values significantly speed up initial
+# block download and block validation. Default: 450.
+# Recommended: 2048 on machines with ≥4GB RAM, 512 on machines with 1-2GB RAM.
+dbcache=2048
+
+# Number of threads for parallel script verification in transactions.
+# 0 = automatic (uses all available logical cores).
+# Set an explicit value to limit CPU usage (e.g. 4 on a quad-core machine).
+par=4
 
 maxorphantx=100                          # Maximum number of orphan transactions
 
@@ -186,6 +194,10 @@ addnode=173.212.224.67:2333
 zmqpubrawblock=tcp://0.0.0.0:28334
 zmqpubrawtx=tcp://0.0.0.0:28335
 zmqpubhashblock=tcp://0.0.0.0:28332
+
+# Performance (adjust to available hardware)
+dbcache=2048
+par=4
 
 # Logging
 debug=net
