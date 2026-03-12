@@ -30,15 +30,15 @@ win32-build
 docker-build
 
 # Compiled binaries and libraries
-*.o
-*.a
-*.so
-*.dylib
-*.exe
-*.app
-*.pdb
-*.lo
-*.la
+**/*.o
+**/*.a
+**/*.so
+**/*.dylib
+**/*.exe
+**/*.app
+**/*.pdb
+**/*.lo
+**/*.la
 
 # Build configuration and cache
 config.cache
@@ -50,9 +50,9 @@ autom4te.cache/
 Makefile
 Makefile.in
 aclocal.m4
-.deps
-.dirstamp
-.libs
+**/.deps
+**/.dirstamp
+**/.libs
 src/config/*.h
 src/obj
 src/univalue/gen
