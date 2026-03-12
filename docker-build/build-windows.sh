@@ -58,7 +58,7 @@ docker run --rm --platform=linux/amd64 \
 
     # For Windows with depends: use CONFIG_SITE and prefix=/
     CONFIG_SITE=\$PWD/depends/${HOST_TRIPLE}/share/config.site \
-      ./configure --prefix=/
+      ./configure --prefix=/ --host=${HOST_TRIPLE}
 
     echo '[*] make...'
     make -j\$(nproc)
