@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.3] - 2026-03-12
+
+### Fixed
+- **Critical consensus fix**: replaced BIP9-based Taproot activation with a hardcoded height (`TaprootHeight = 405000`), resolving a chain split where miners signaling BIP9 bit 2 caused Taproot to activate at height 385200 before the implementation was deployed. New nodes now accept all pre-405000 blocks without applying Taproot script rules, unblocking nodes stuck at height 385246.
+- On startup, BLOCK_FAILED flags are automatically cleared for blocks below `TaprootHeight`, so nodes upgrading from old software resync without requiring a manual `reconsiderblock` command.
+- Updated `defaultAssumeValid` and `nMinimumChainWork` to height 385246; added checkpoints at 350000, 370000 and 385246.
+- Updated `chainTxData` to reflect current network state.
+
+### Documentation
+- Added `dbcache` and `par` performance options with recommended values to `share/examples/palladium.conf` and `doc/configuration-file.md`.
+
 ## [2.0.2] - 2026-03-08
 
 ### Added
