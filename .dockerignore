@@ -67,8 +67,8 @@ src/qt/palladium-qt.creator
 src/qt/palladium-qt.creator.user
 src/qt/palladium-qt.files
 src/qt/palladium-qt.includes
-*.qm
-qrc_*.cpp
+**/*.qm
+**/qrc_*.cpp
 Palladium-Qt.app
 
 # Test files and coverage
