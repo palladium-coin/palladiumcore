@@ -31,7 +31,8 @@ docker run --rm --platform=linux/amd64 \
 
     echo '[*] cleaning tree (avoid host-built artifacts)...'
     [[ -f Makefile ]] && make distclean || true
-    find . -name "*.moc" -o -name "moc_*.cpp" | xargs rm -f
+    find . -name \"*.moc\" -delete
+    find . -name \"moc_*.cpp\" -delete
     rm -rf univalue/.libs
     rm -rf depends/${HOST_TRIPLE}
     rm -f config.cache
