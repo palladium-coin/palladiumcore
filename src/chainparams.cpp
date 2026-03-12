@@ -66,6 +66,7 @@ public:
         strNetworkID = CBaseChainParams::MAIN;
         consensus.nSubsidyHalvingInterval = 210000;
         consensus.nResilienceForkHeight = 340000;
+        consensus.TaprootHeight = 405000; // Taproot (BIP341/BIP342) enforcement starts here
 
         consensus.BIP16Exception = uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
         consensus.BIP34Height = 29000;
@@ -97,10 +98,10 @@ public:
 
 
         // The best chain should have at least this much work.
-        consensus.nMinimumChainWork = uint256S("0x00000000000000000000000000000000000000000000001578157d557d557aa0");   
+        consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000115183f34b85b6077c4");
 
         // By default assume that the signatures in ancestors of this block are valid.
-        consensus.defaultAssumeValid = uint256S("0x0000000000000014351dee34029945d5a4dea299ec8843626695c88b084b4d10");
+        consensus.defaultAssumeValid = uint256S("0x00000000000001e019f8d1d5ccb24ac40ec58acab23a30c02d4fc46500ab26cf"); // height 385246
 
         /**
          * The message start string is designed to be unlikely to occur in normal data.
@@ -168,14 +169,17 @@ public:
                 {200000, uint256S("0x000000000000221a9e16556453fc86308b260d95d80c14bafaf053a09374e7eb")},
                 {250000, uint256S("0x0000000000012553b0303deaf5f2883deb66c901b6848dd03bb4a34f1774e0d0")},
                 {300000, uint256S("0x0000000000013acdf07a4fb988bbe9824c36eb421478a71c8196cf524dcba143")},
+                {350000, uint256S("0x00000000000000825c095d36cd52a2719d08953a680a6d3e4db94e9d8a6bedcb")},
+                {370000, uint256S("0x00000000000000b12ef0c72358259be1c7a68bd5bd712473e20762408a9e2507")},
+                {385246, uint256S("0x00000000000001e019f8d1d5ccb24ac40ec58acab23a30c02d4fc46500ab26cf")},
             }
         };
 
         chainTxData = ChainTxData{
             // Data from RPC: getchaintxstats
-            /* nTime    */ 1761142315,
-            /* nTxCount */ 361981,
-            /* dTxRate  */ 0.005767377239409816,
+            /* nTime    */ 1771324224,
+            /* nTxCount */ 461430,
+            /* dTxRate  */ 0.01043847937601012,
         };
     }
 };
@@ -189,7 +193,8 @@ public:
         strNetworkID = CBaseChainParams::TESTNET;
         consensus.nSubsidyHalvingInterval = 210000;
         consensus.nResilienceForkHeight = 2000;
-       
+        consensus.TaprootHeight = 2500;
+
         consensus.BIP34Height = 1700;
         consensus.BIP34Hash = uint256();
         consensus.BIP65Height = 0;
@@ -282,6 +287,7 @@ public:
         strNetworkID =  CBaseChainParams::REGTEST;
         consensus.nSubsidyHalvingInterval = 150;
         consensus.nResilienceForkHeight = 200;
+        consensus.TaprootHeight = 0; // Taproot active from genesis on regtest
         consensus.BIP16Exception = uint256();
         consensus.BIP34Height = 0;
         consensus.BIP34Hash = uint256();

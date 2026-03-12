@@ -47,6 +47,8 @@ struct Params {
     uint256 hashGenesisBlock;
     int nSubsidyHalvingInterval;
     int nResilienceForkHeight;
+    /** Block height at which Taproot (BIP341/BIP342) becomes active */
+    int TaprootHeight;
     /* Block hash that is excepted from BIP16 enforcement */
     uint256 BIP16Exception;
     /** Block height and hash at which BIP34 becomes active */

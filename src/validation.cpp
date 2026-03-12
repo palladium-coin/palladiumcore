@@ -1849,7 +1849,8 @@ static bool IsScriptWitnessEnabled(const Consensus::Params& params)
 
 static bool IsTaprootEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& params)
 {
-    return VersionBitsState(pindexPrev, params, Consensus::DEPLOYMENT_TAPROOT, versionbitscache) == ThresholdState::ACTIVE;
+    if (pindexPrev == nullptr) return false;
+    return pindexPrev->nHeight + 1 >= params.TaprootHeight;
 }
 
 static unsigned int GetBlockScriptFlags(const CBlockIndex* pindex, const Consensus::Params& consensusparams) EXCLUSIVE_LOCKS_REQUIRED(cs_main) {

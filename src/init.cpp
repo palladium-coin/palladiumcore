@@ -1667,6 +1667,21 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                         break;
                     }
                     assert(::ChainActive().Tip() != nullptr);
+
+                    // Clear BLOCK_FAILED flags for blocks below TaprootHeight that were
+                    // previously rejected under the old BIP9-based taproot activation.
+                    // This allows nodes upgrading from old software to automatically
+                    // re-validate those blocks under the new height-based rules.
+                    {
+                        const int taprootHeight = chainparams.GetConsensus().TaprootHeight;
+                        LOCK(cs_main);
+                        for (auto& [hash, pindex] : ::BlockIndex()) {
+                            if (pindex->nHeight < taprootHeight &&
+                                    (pindex->nStatus & BLOCK_FAILED_MASK)) {
+                                ResetBlockFailureFlags(pindex);
+                            }
+                        }
+                    }
                 }
             } catch (const std::exception& e) {
                 LogPrintf("%s\n", e.what());
