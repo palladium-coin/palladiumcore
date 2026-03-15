@@ -147,17 +147,21 @@ dnsseed=0                                # Disable DNS seeding for privacy
 bind=127.0.0.1                           # Bind to specific interface only (localhost)
 ```
 
-### Mining Configuration (for mining pools)
+### Mining and Block Template Configuration
 ```conf
+# Block template creation limits
+blockmaxweight=3996000                   # Maximum BIP141 block weight
+blockmintxfee=0.00001                    # Minimum fee rate for transactions included in block creation (PLM/kB)
 
-mine=1                                   # Enable block generation
-
-miningaddress=your_palladium_address     # Mining address to receive block rewards
-
-blockmaxsize=1000000                     # Maximum block size in bytes (default: 1000000)
-
-blockprioritysize=50000                  # Block priority size in bytes (default: 50000)
+# Relay and mining policy options
+bytespersigop=20                         # Equivalent bytes per sigop in transactions for relay and mining
+datacarrier=1                            # Relay and mine data carrier (OP_RETURN) transactions
+datacarriersize=83                       # Maximum data size for OP_RETURN transactions we relay and mine
+minrelaytxfee=0.00001                    # Fee rate threshold for relaying and mining policy (PLM/kB)
 ```
+
+> **Note:** `mine`, `miningaddress`, `blockmaxsize`, and `blockprioritysize` are not valid configuration options in Palladium Core.
+> Mining software should use the `getblocktemplate` RPC with an external miner/pool stack.
 
 
 ## Complete Configuration Examples
