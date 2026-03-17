@@ -26,6 +26,7 @@
 #include <txmempool.h>
 #include <univalue.h>
 #include <util/fees.h>
+#include <util/moneystr.h>
 #include <util/strencodings.h>
 #include <util/string.h>
 #include <util/system.h>
@@ -909,6 +910,12 @@ static UniValue estimatesmartfee(const JSONRPCRequest& request)
     } else {
         errors.push_back("Insufficient data or no feerate found");
         result.pushKV("errors", errors);
+        if (gArgs.IsArgSet("-fallbackfee")) {
+            CAmount nFeePerK = 0;
+            if (ParseMoney(gArgs.GetArg("-fallbackfee", ""), nFeePerK) && nFeePerK > 0) {
+                result.pushKV("feerate", ValueFromAmount(nFeePerK));
+            }
+        }
     }
     result.pushKV("blocks", feeCalc.returnedTarget);
     return result;
