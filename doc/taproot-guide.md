@@ -223,15 +223,14 @@ Taproot uses Schnorr signatures instead of ECDSA:
 
 ### Mainnet Deployment
 
-Taproot activates via miner signaling (BIP9):
-- **Signaling period**: February 14, 2026 - March 1, 2027
-- **Activation threshold**: 75% of blocks in a 720-block period (540 blocks)
-- **Activation method**: BIP9 soft fork using bit 2
+Taproot activates at a fixed block height:
+- **Mainnet**: block 405000
+- **Testnet**: block 2500
+- **Activation method**: hardcoded height (since v2.0.3; earlier versions used BIP9 signaling)
 
 **What this means**:
-- Once 75% of miners signal readiness, Taproot will "lock in"
-- After lock-in, there's a grace period before activation
-- Once activated, everyone must follow Taproot consensus rules
+- From block 405000 on, everyone must follow Taproot consensus rules
+- Nodes older than v2.0.3 can get stuck around block 385246 (see `CHANGELOG.md`); upgrade to v2.0.3 or later
 
 **Checking activation status**:
 ```bash
@@ -261,10 +260,10 @@ Look for the "taproot" deployment status: `defined`, `started`, `locked_in`, `ac
 
 ### Can I use Taproot on mainnet right now?
 
-**Yes**, once Taproot activates (expected March 2026 after miner signaling). Before activation, you can create Taproot addresses but cannot spend from them on mainnet.
+**Yes**, once the chain is past block 405000 (check with `palladium-cli getblockchaininfo`: `softforks.taproot.active`). Before activation, you can create Taproot addresses but cannot spend from them on mainnet.
 
 You can test immediately on:
-- **Testnet**: Realistic test environment with same activation timeline
+- **Testnet**: Realistic test environment (Taproot active from block 2500)
 - **Regtest**: Local testing environment (Taproot always active)
 
 ### What happens if I send to a Taproot address before activation?
@@ -317,7 +316,7 @@ However, older nodes can still relay Taproot transactions (after activation) eve
 ### Where can I learn more?
 
 - **Technical specification**: See `TAPROOT.md` in the repository root
-- **Release notes**: See `doc/release-notes.md` for version 2.0.0
+- **Release notes**: See the [release notes](release-notes/) and `CHANGELOG.md`
 - **BIP specifications**:
   - [BIP340: Schnorr Signatures](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)
   - [BIP341: Taproot](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)
@@ -371,7 +370,7 @@ Taproot brings important privacy and efficiency improvements to Palladium:
 - **Sending and receiving** work the same as with other address types
 - **Completely optional**: Your existing addresses continue to work
 - **Compatible** with modern wallets after they add bech32m support
-- **Activated via miner signaling**: Expected February 2026 on mainnet
+- **Active on mainnet** from block 405000
 
 Enjoy the enhanced privacy and efficiency of Taproot!
 

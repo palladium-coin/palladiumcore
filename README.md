@@ -38,7 +38,7 @@ Palladium Core 2.0.0 introduces **full Taproot support**, bringing cutting-edge 
 - **Enhanced Privacy**: Complex smart contracts appear as simple transactions on-chain
 - **Smaller Transactions**: Lower fees through more efficient signature schemes
 
-**Learn More**: [Taproot User Guide](doc/taproot-guide.md) | [Technical Specification](doc/TAPROOT.md) | [Release Notes](doc/release-notes/release-notes-2.0.0.md)
+**Learn More**: [Taproot User Guide](doc/taproot-guide.md) | [Technical Specification](doc/TAPROOT.md) | [Release Notes](doc/release-notes/)
 
 ## Quick Start
 

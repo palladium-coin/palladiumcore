@@ -197,20 +197,15 @@ This implementation is a backport of Taproot functionality from **Bitcoin Core v
 
 **Files**: `src/chainparams.cpp`, `src/consensus/params.h`, `src/versionbitsinfo.cpp`
 
-**Deployment parameters**:
+**Activation parameters** (`TaprootHeight`):
 
-**Mainnet**:
-- Deployment: BIP9 soft fork
-- Bit: 2
-- Start time: 1771027200 (February 14, 2026 00:00:00 UTC)
-- Timeout: 1803859200 (March 1, 2027 00:00:00 UTC)
-- Min activation height: Not specified (activation determined by signaling threshold)
+Since v2.0.3 Taproot is enforced from a hardcoded block height, not from BIP9 state.
 
-**Testnet**:
-- Same parameters as mainnet
+- **Mainnet**: block 405000
+- **Testnet**: block 2500
+- **Regtest**: block 0 (active from genesis)
 
-**Regtest**:
-- Status: ALWAYS_ACTIVE (immediate activation for testing)
+The BIP9 deployment (bit 2, start 1771027200 / February 14, 2026, timeout 1803859200 / March 1, 2027) is still defined in `src/chainparams.cpp`, but only so that miners keep signaling; it does not decide when the rules apply. `getblockchaininfo` does not report it as a BIP9 deployment; Taproot is listed as a `buried` softfork.
 
 **Statistics**:
 - `chainparams.cpp`: +9 lines
@@ -271,13 +266,9 @@ This implementation is a backport of Taproot functionality from **Bitcoin Core v
 
 ### Deployment Activation
 
-Taproot activates via BIP9 signaling:
-1. Miners signal readiness by setting bit 2 in block version
-2. When 540 of 720 blocks in a confirmation window signal (75% threshold), deployment is LOCKED_IN
-3. After LOCKED_IN period ends, deployment becomes ACTIVE for all subsequent blocks
-4. Timeout on March 1, 2027 if insufficient signaling
+Taproot rules (BIP340/341/342) apply to every block at or above `TaprootHeight` (`IsTaprootEnabled` in `src/validation.cpp`). Blocks below it are validated without Taproot script rules.
 
-**Note**: Palladium uses a 75% activation threshold (540/720 blocks) compared to Bitcoin's 90% (1815/2016 blocks), with a shorter confirmation window to facilitate faster network coordination while maintaining security.
+**History**: v2.0.0 introduced Taproot as a BIP9 deployment (bit 2, 75% threshold: 540 of 720 blocks). Miners signaling bit 2 made the deployment activate at height 385200 before the implementation was deployed, causing a chain split. v2.0.3 replaced BIP9 activation with the fixed height 405000 and accepts all earlier blocks without Taproot rules (see `CHANGELOG.md`).
 
 ### Script Verification Flags
 
@@ -367,7 +358,7 @@ Tapscript execution tracks validation weight to prevent DoS:
 **Consensus rules**:
 - `src/script/interpreter.cpp`: Taproot/tapscript validation logic (469 lines added)
 - `src/script/script_error.h`: New error codes for taproot
-- `src/chainparams.cpp`: BIP9 deployment parameters
+- `src/chainparams.cpp`: `TaprootHeight` and BIP9 signaling parameters
 
 **Address encoding**:
 - `src/bech32.cpp`: Bech32m implementation
@@ -470,7 +461,7 @@ Test coverage:
 ### Palladium-Specific Documentation
 
 - **User guide**: `doc/taproot-guide.md`
-- **Release notes**: `doc/release-notes.md` (v2.0.0)
+- **Release notes**: `doc/release-notes/`
 - **BIP implementation list**: `doc/bips.md`
 
 ---
