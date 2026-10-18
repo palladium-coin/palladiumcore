@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Palladium Core (v2.x) is a Bitcoin Core fork in C++17 with Taproot (BIP340/341/342) support. Source layout, subsystem boundaries, and conventions follow upstream Bitcoin Core, with `bitcoin` renamed to `palladium` everywhere (`palladiumd`, `palladium-cli`, `palladium-qt`, `palladium-tx`, `palladium-wallet`, `test_palladium`, `libpalladium_*.a`, `palladium.conf`, default datadir `~/.palladium`). `doc/developer-notes.md` is the coding-style reference.
+Palladium Core (v2.x) is a Bitcoin Core fork in C++11 with Taproot (BIP340/341/342) support. Source layout, subsystem boundaries, and conventions follow upstream Bitcoin Core, with `bitcoin` renamed to `palladium` everywhere (`palladiumd`, `palladium-cli`, `palladium-qt`, `palladium-tx`, `palladium-wallet`, `test_palladium`, `libpalladium_*.a`, `palladium.conf`, default datadir `~/.palladium`). `doc/developer-notes.md` is the coding-style reference.
 
 ## Build
 
