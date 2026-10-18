@@ -3486,17 +3486,9 @@ static bool ContextualCheckBlockHeader(const CBlockHeader& block, BlockValidatio
     const int nHeight = pindexPrev->nHeight + 1;
 
     // Check proof of work
+    // (the testnet min-difficulty rule after 20 minutes is part of GetNextWorkRequired)
     const Consensus::Params& consensusParams = params.GetConsensus();
-    
-    // For testnet, allow min difficulty blocks after 20 minutes of inactivity
-    bool skipPowCheck = false;
-    if (params.NetworkIDString() == "test" && consensusParams.fPowAllowMinDifficultyBlocks) {
-        if (pindexPrev && block.GetBlockTime() > pindexPrev->GetBlockTime() + consensusParams.nPowTargetSpacing * 2) {
-            skipPowCheck = true; // Allow min difficulty after 20 min inactivity
-        }
-    }
-    
-    if (!skipPowCheck && block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
+    if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
         return state.Invalid(BlockValidationResult::BLOCK_INVALID_HEADER, "bad-diffbits", "incorrect proof of work");
 
     // Check against checkpoints
