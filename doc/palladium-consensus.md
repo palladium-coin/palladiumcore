@@ -34,5 +34,5 @@ Before `nResilienceForkHeight`, transactions with an OP_RETURN output whose scri
 | | Mainnet | Testnet | Regtest |
 |---|---------|---------|---------|
 | P2P port | 2333 | 12333 | 28444 |
-| RPC port | 2332 | 12332 | 12443 |
+| RPC port | 2332 | 12332 | 28443 |
 | Bech32 HRP | `plm` | `tplm` | `rplm` |
