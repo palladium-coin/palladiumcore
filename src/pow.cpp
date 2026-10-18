@@ -11,13 +11,18 @@
 #include <primitives/block.h>
 #include <uint256.h>
 
+// Mainnet difficulty reset window (Segwit/CSV activation at 29000) and LWMA start
+static constexpr int DIFF_RESET_FIRST = 28930;
+static constexpr int DIFF_RESET_LAST = 28999;
+static constexpr int LWMA_START_HEIGHT = 29000;
+
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
     assert(pindexLast != nullptr);
     unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
 
     // reset difficulty for new diff algorithm's average + Segwit/CSV activation
-    if ((pindexLast->nHeight >= 28930) && (pindexLast->nHeight <= 28999))
+    if ((pindexLast->nHeight >= DIFF_RESET_FIRST) && (pindexLast->nHeight <= DIFF_RESET_LAST))
         return nProofOfWorkLimit;
 
     // Special difficulty rule for testnet: If the new block's timestamp is more than 20 minutes
@@ -43,7 +48,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         return CalculateNextWorkRequired(pindexLast, pindexFirst->GetBlockTime(), params);
     }
 
-    if (pindexLast->nHeight >= 29000)
+    if (pindexLast->nHeight >= LWMA_START_HEIGHT)
         return LwmaCalculateNextWorkRequired(pindexLast, params);
 
     // Only change once per difficulty adjustment interval
@@ -127,8 +132,8 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
 
     // Palladium: Resilience Hard Fork (nResilienceForkHeight) for fast difficulty adjustment
     int64_t nTargetTimespan = params.nPowTargetTimespan;
-    if (pindexLast->nHeight + 1 >= 340000) {
-        nTargetTimespan = 7200; // 60 blocks * 120 seconds
+    if (pindexLast->nHeight + 1 >= params.nResilienceForkHeight) {
+        nTargetTimespan = 60 * params.nPowTargetSpacingV2; // 60 blocks
     }
 
     // Limit adjustment step
