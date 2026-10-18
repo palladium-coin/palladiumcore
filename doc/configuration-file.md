@@ -331,7 +331,7 @@ addnode=<ip-address2>:12333
 
 # Regtest ports
 port=28444
-rpcport=28443
+rpcport=12443
 maxconnections=1
 
 # Regtest RPC (development credentials)
