@@ -30,7 +30,10 @@ bool VerifyWallets(interfaces::Chain& chain, const std::vector<std::string>& wal
             chain.initError(strprintf(_("Specified -walletdir \"%s\" is a relative path").translated, wallet_dir.string()));
             return false;
         }
-        gArgs.ForceSetArg("-walletdir", canonical_wallet_dir.string());
+        // Newer Boost keeps the trailing separator of the input, strip it so equal dirs compare equal
+        std::string canonical_str = canonical_wallet_dir.string();
+        while (canonical_str.size() > 1 && canonical_str.back() == fs::path::preferred_separator) canonical_str.pop_back();
+        gArgs.ForceSetArg("-walletdir", canonical_str);
     }
 
     LogPrintf("Using wallet directory %s\n", GetWalletDir().string());
