@@ -49,7 +49,6 @@ The Palladium repo's [root README](/README.md) contains relevant information on 
 
 - [Developer Notes](developer-notes.md)
 - [Productivity Notes](productivity.md)
-- [Release Notes](release-notes/)
 - [Release Process](release-process.md)
 - [Source Code Documentation (External Link)](https://doxygen.palladiumcore.org/)
 - [Translation Process](translation_process.md)

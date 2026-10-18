@@ -90,10 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added doc/TAPROOT.md: comprehensive technical specification
 - Added doc/taproot-guide.md: user-friendly guide for wallet users
 - Updated doc/bips.md with BIP340/341/342/350 implementation details
-- Restructured release notes: doc/release-notes/release-notes-2.0.0.md
 - Updated man pages for all binaries to version 2.0.0
-
-[Detailed release notes](doc/release-notes/release-notes-2.0.0.md)
 
 ## [1.5.1] - 2026-01-26
 

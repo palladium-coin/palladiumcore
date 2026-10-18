@@ -41,7 +41,6 @@ Developer Notes
       - [Consensus Compatibility](#consensus-compatibility)
     - [Scripted diffs](#scripted-diffs)
         - [Suggestions and examples](#suggestions-and-examples)
-    - [Release notes](#release-notes)
     - [RPC interface guidelines](#rpc-interface-guidelines)
     - [Internal interface guidelines](#internal-interface-guidelines)
 
@@ -976,21 +975,6 @@ To find all previous uses of scripted diffs in the repository, do:
 ```
 git log --grep="-BEGIN VERIFY SCRIPT-"
 ```
-
-Release notes
--------------
-
-Release notes should be written for any PR that:
-
-- introduces a notable new feature
-- fixes a significant bug
-- changes an API or configuration model
-- makes any other visible change to the end-user experience.
-
-Release notes should be added to a PR-specific release note file at
-`/doc/release-notes-<PR number>.md` to avoid conflicts between multiple PRs.
-All `release-notes*` files are merged into a single
-[/doc/release-notes.md](/doc/release-notes.md) file prior to the release.
 
 RPC interface guidelines
 --------------------------

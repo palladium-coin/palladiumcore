@@ -61,5 +61,5 @@ Keep these in mind when merging upstream changes or touching consensus/policy co
 ## Conventions
 
 - Commit prefixes follow upstream style (`rpc:`, `build:`, `net:`, `wallet:`, `qt:`, `test:`, `doc:`). See `CONTRIBUTING.md`.
-- Release notes go in `doc/release-notes/`; user-visible changes also in `CHANGELOG.md`.
+- `CHANGELOG.md` is the single source for release history (there is no `doc/release-notes/`).
 - Config reference: `doc/configuration-file.md` / `doc/palladium-conf.md`.

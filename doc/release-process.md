@@ -353,9 +353,9 @@ palladium.org (see below for palladium.org update instructions).
 
   - This repo
 
-      - Archive the release notes for the new version to `doc/release-notes/` (branch `master` and branch of the release)
+      - Add the new version to `CHANGELOG.md` (branch `master` and branch of the release)
 
-      - Create a [new GitHub release](https://github.com/palladium/palladium/releases/new) with a link to the archived release notes
+      - Create a [new GitHub release](https://github.com/palladium/palladium/releases/new) with a link to the `CHANGELOG.md` section
 
 - Announce the release:
 

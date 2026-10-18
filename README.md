@@ -38,7 +38,7 @@ Palladium Core 2.0.0 introduces **full Taproot support**, bringing cutting-edge 
 - **Enhanced Privacy**: Complex smart contracts appear as simple transactions on-chain
 - **Smaller Transactions**: Lower fees through more efficient signature schemes
 
-**Learn More**: [Taproot User Guide](doc/taproot-guide.md) | [Technical Specification](doc/TAPROOT.md) | [Release Notes](doc/release-notes/)
+**Learn More**: [Taproot User Guide](doc/taproot-guide.md) | [Technical Specification](doc/TAPROOT.md)
 
 ## Quick Start
 
@@ -197,10 +197,9 @@ Palladium Core is released under the terms of the MIT license. See [COPYING](COP
 ## Documentation
 
 ### Core Documentation
-- **[CHANGELOG](CHANGELOG.md)** - Complete version history and release notes
+- **[CHANGELOG](CHANGELOG.md)** - Complete version history
 - **[Taproot User Guide](doc/taproot-guide.md)** - How to use Taproot addresses (v2.0.0)
 - **[Taproot Technical Specification](doc/TAPROOT.md)** - Deep dive into Taproot implementation
-- **[Release Notes](doc/release-notes/)** - Detailed release notes for each version
 - **[Configuration Guide](doc/configuration-file.md)** - Complete configuration reference
 - **[BIP Implementation Status](doc/bips.md)** - Bitcoin Improvement Proposals implemented
 

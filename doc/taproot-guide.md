@@ -316,7 +316,7 @@ However, older nodes can still relay Taproot transactions (after activation) eve
 ### Where can I learn more?
 
 - **Technical specification**: See `TAPROOT.md` in the repository root
-- **Release notes**: See the [release notes](release-notes/) and `CHANGELOG.md`
+- **Release history**: See `CHANGELOG.md`
 - **BIP specifications**:
   - [BIP340: Schnorr Signatures](https://github.com/bitcoin/bips/blob/master/bip-0340.mediawiki)
   - [BIP341: Taproot](https://github.com/bitcoin/bips/blob/master/bip-0341.mediawiki)
@@ -377,4 +377,4 @@ Enjoy the enhanced privacy and efficiency of Taproot!
 ---
 
 **For technical details**, see [TAPROOT.md](TAPROOT.md)
-**For release information**, see [Release Notes v2.0.0](release-notes/release-notes-2.0.0.md)
+**For release information**, see [CHANGELOG](../CHANGELOG.md)

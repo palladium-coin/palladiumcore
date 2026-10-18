@@ -461,7 +461,6 @@ Test coverage:
 ### Palladium-Specific Documentation
 
 - **User guide**: `doc/taproot-guide.md`
-- **Release notes**: `doc/release-notes/`
 - **BIP implementation list**: `doc/bips.md`
 
 ---
