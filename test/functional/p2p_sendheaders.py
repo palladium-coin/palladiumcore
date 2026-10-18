@@ -85,6 +85,8 @@ d. Announce 49 headers that don't connect.
 e. Announce one more that doesn't connect.
    Expect: disconnect.
 """
+import time
+
 from test_framework.blocktools import create_block, create_coinbase
 from test_framework.messages import CInv
 from test_framework.mininode import (
@@ -242,6 +244,11 @@ class SendHeadersTest(PalladiumTestFramework):
         block.nBits = int(self.nodes[0].getblocktemplate({"rules": ["segwit"]})["bits"], 16)
         block.solve()
         return block
+
+    def bump_getheaders_limit(self):
+        # The node sends at most one getheaders per peer every HEADERS_RESPONSE_TIME (120s)
+        self.mocktime = getattr(self, "mocktime", int(time.time())) + 121
+        self.nodes[0].setmocktime(self.mocktime)
 
     def run_test(self):
         # Setup the p2p connections
@@ -547,6 +554,7 @@ class SendHeadersTest(PalladiumTestFramework):
                 block_time += 1
                 height += 1
             # Send the header of the second block -> this won't connect.
+            self.bump_getheaders_limit()
             with mininode_lock:
                 test_node.last_message.pop("getheaders", None)
             test_node.send_header_for_blocks([blocks[1]])
@@ -570,6 +578,7 @@ class SendHeadersTest(PalladiumTestFramework):
 
         for i in range(1, MAX_UNCONNECTING_HEADERS):
             # Send a header that doesn't connect, check that we get a getheaders.
+            self.bump_getheaders_limit()
             with mininode_lock:
                 test_node.last_message.pop("getheaders", None)
             test_node.send_header_for_blocks([blocks[i]])
@@ -585,6 +594,7 @@ class SendHeadersTest(PalladiumTestFramework):
         # before we get disconnected.  Should be 5*MAX_UNCONNECTING_HEADERS
         for i in range(5 * MAX_UNCONNECTING_HEADERS - 1):
             # Send a header that doesn't connect, check that we get a getheaders.
+            self.bump_getheaders_limit()
             with mininode_lock:
                 test_node.last_message.pop("getheaders", None)
             test_node.send_header_for_blocks([blocks[i % len(blocks)]])
