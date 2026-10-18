@@ -33,12 +33,12 @@ def generate_blocks(node, n):
 
 def mine_large_blocks(node, n):
     # Mine "large" blocks using many ~66k transactions and built-in mining.
-    # Use a larger tx count than the generic helper to keep prune thresholds
-    # aligned with Palladium's block/weight behavior.
+    # 14 such transactions fill a block (MAX_BLOCK_WEIGHT); more would stay in
+    # the mempool and exhaust the spendable UTXOs.
     txouts = gen_return_txouts()
     utxos = []
     fee = 100 * node.getnetworkinfo()["relayfee"]
-    tx_per_block = 24
+    tx_per_block = 14
 
     for _ in range(n):
         if len(utxos) < tx_per_block:
