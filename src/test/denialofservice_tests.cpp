@@ -172,7 +172,8 @@ BOOST_AUTO_TEST_CASE(stale_tip_peer_management)
         BOOST_CHECK(node->fDisconnect == false);
     }
 
-    SetMockTime(GetTime() + 3*consensusParams.nPowTargetSpacingV2 + 1);
+    // Must also exceed STALE_CHECK_INTERVAL (10 min), which throttles the check
+    SetMockTime(GetTime() + std::max<int64_t>(3*consensusParams.nPowTargetSpacingV2, 10*60) + 1);
 
     // Now tip should definitely be stale, and we should look for an extra
     // outbound peer
