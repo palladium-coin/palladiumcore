@@ -29,7 +29,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     if (params.fPowAllowMinDifficultyBlocks && pindexLast->nHeight >= 0)
         return LwmaCalculateNextWorkRequired(pindexLast, params);
 
-    // Palladium: Hard Fork at 350,000 for fast difficulty adjustment
+    // Palladium: Resilience Hard Fork (nResilienceForkHeight) for fast difficulty adjustment
     if (pindexLast->nHeight + 1 >= params.nResilienceForkHeight) {
         int64_t nIntervalNew = 60;
         if ((pindexLast->nHeight + 1) % nIntervalNew != 0)
@@ -125,7 +125,7 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
     if (params.fPowNoRetargeting)
         return pindexLast->nBits;
 
-    // Palladium: Hard Fork at 350,000 for fast difficulty adjustment
+    // Palladium: Resilience Hard Fork (nResilienceForkHeight) for fast difficulty adjustment
     int64_t nTargetTimespan = params.nPowTargetTimespan;
     if (pindexLast->nHeight + 1 >= 340000) {
         nTargetTimespan = 7200; // 60 blocks * 120 seconds
