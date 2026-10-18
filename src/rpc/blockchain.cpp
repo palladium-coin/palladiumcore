@@ -1261,7 +1261,8 @@ UniValue getblockchaininfo(const JSONRPCRequest& request)
     BuriedForkDescPushBack(softforks, "csv", consensusParams.CSVHeight);
     BuriedForkDescPushBack(softforks, "segwit", consensusParams.SegwitHeight);
     BIP9SoftForkDescPushBack(softforks, "testdummy", consensusParams, Consensus::DEPLOYMENT_TESTDUMMY);
-    BIP9SoftForkDescPushBack(softforks, "taproot", consensusParams, Consensus::DEPLOYMENT_TAPROOT);
+    // Taproot is enforced from a hardcoded height (see IsTaprootEnabled), not via BIP9 state.
+    BuriedForkDescPushBack(softforks, "taproot", consensusParams.TaprootHeight);
     obj.pushKV("softforks",             softforks);
 
     obj.pushKV("warnings", GetWarnings(false));

@@ -151,7 +151,7 @@ class BlockchainTest(PalladiumTestFramework):
         })
 
         assert 'taproot' in softforks
-        assert_equal(softforks['taproot']['type'], 'bip9')
+        assert_equal(softforks['taproot']['type'], 'buried')
         assert_equal(softforks['taproot']['active'], True)
 
     def _test_getchaintxstats(self):
