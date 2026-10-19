@@ -201,6 +201,7 @@ BASE_SCRIPTS = [
     'rpc_getblockstats.py',
     'wallet_create_tx.py',
     'feature_taproot.py',
+    'feature_taproot_consensus.py',
     'p2p_fingerprint.py',
     'feature_uacomment.py',
     'wallet_coinbase_category.py',
