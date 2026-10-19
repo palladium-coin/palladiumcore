@@ -5,6 +5,7 @@
 #include <crypto/sha256.h>
 #include <key.h>
 #include <key_io.h>
+#include <outputtype.h>
 #include <primitives/transaction.h>
 #include <pubkey.h>
 #include <script/interpreter.h>
@@ -17,6 +18,7 @@
 #include <test/util/setup_common.h>
 #include <test/util/transaction_utils.h>
 #include <uint256.h>
+#include <util/strencodings.h>
 
 #include <boost/test/unit_test.hpp>
 
@@ -211,6 +213,43 @@ BOOST_AUTO_TEST_CASE(parity_bit_flip_fails)
     BOOST_CHECK(!VerifyScript(CScript(), taproot_spk, &spend_tx.vin[0].scriptWitness,
                               TAPROOT_FLAGS, checker, &serror));
     BOOST_CHECK_EQUAL(serror, SCRIPT_ERR_WITNESS_PROGRAM_MISMATCH);
+}
+
+// A.5 — BIP86 test vectors (mnemonic "abandon ... about", m/86'/0'/0'/{0,1}/n):
+// internal key -> output key with the key-path-only tweak, and the resulting
+// address for the Palladium mainnet HRP (computed independently from the output key).
+BOOST_AUTO_TEST_CASE(bip86_vectors)
+{
+    struct Vector { const char* internal_key; const char* output_key; const char* address; };
+    const Vector vectors[] = {
+        {"cc8a4bc64d897bddc5fbc2f670f7a8ba0b386779106cf1223c6fc5d7cd6fc115",
+         "a60869f0dbcf1dc659c9cecbaf8050135ea9e8cdc487053f1dc6880949dc684c",
+         "plm1p5cyxnuxmeuwuvkwfem96lqzszd02n6xdcjrs20cac6yqjjwudpxq3sa4q9"},
+        {"83dfe85a3151d2517290da461fe2815591ef69f2b18a2ce63f01697a8b313145",
+         "a82f29944d65b86ae6b5e5cc75e294ead6c59391a1edc5e016e3498c67fc7bbb",
+         "plm1p4qhjn9zdvkux4e44uhx8tc55attvtyu358kutcqkudyccelu0waszqs5k3"},
+        {"399f1b2f4393f29a18c937859c5dd8a77350103157eb880f02e8c08214277cef",
+         "882d74e5d0572d5a816cef0041a96b6c1de832f6f9676d9605c44d5e9a97d3dc",
+         "plm1p3qkhfews2uk44qtvauqyr2ttdsw7svhkl9nkm9s9c3x4ax5h60wqf2vpwc"},
+    };
+    for (const Vector& v : vectors) {
+        const std::vector<unsigned char> internal = ParseHex(v.internal_key);
+        const XOnlyPubKey internal_key(internal.begin(), internal.end());
+        auto [output_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+        BOOST_CHECK_EQUAL(HexStr(output_key.begin(), output_key.end()), v.output_key);
+
+        // The wallet builds the destination from a compressed key; the x-only internal key
+        // is the same whichever parity prefix is used.
+        for (unsigned char prefix : {0x02, 0x03}) {
+            std::vector<unsigned char> compressed{prefix};
+            compressed.insert(compressed.end(), internal.begin(), internal.end());
+            const CPubKey pubkey(compressed.begin(), compressed.end());
+            BOOST_REQUIRE(pubkey.IsFullyValid());
+            const CTxDestination dest = GetDestinationForKey(pubkey, OutputType::BECH32M);
+            BOOST_CHECK_EQUAL(EncodeDestination(dest), v.address);
+            BOOST_CHECK(DecodeDestination(v.address) == dest);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
