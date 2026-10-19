@@ -1631,7 +1631,7 @@ bool GenericTransactionSignatureChecker<T>::CheckSchnorrSignature(const std::vec
     const uint8_t hashtype = sig.size() == 65 ? sig[64] : SIGHASH_DEFAULT;
     uint256 sighash;
     if (!SignatureHashSchnorr(sighash, execdata, *txTo, nIn, hashtype, sigversion, *txdata)) {
-        return false;
+        return set_error(serror, SCRIPT_ERR_SCHNORR_SIG_HASHTYPE);
     }
 
     std::vector<unsigned char> sig64(sig.begin(), sig.begin() + 64);
