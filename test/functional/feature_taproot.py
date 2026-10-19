@@ -72,12 +72,14 @@ def taproot_output_and_control_from_internal(internal_pubkey_bytes: bytes, leaf_
     affine = SECP256K1.affine(pub.p)
     assert affine is not None
     internal_xonly = affine[0].to_bytes(32, 'big')
+    # BIP341 tweaks the x-only internal key, i.e. the point with even y.
+    internal_point = pub.p if affine[1] % 2 == 0 else SECP256K1.negate(pub.p)
 
     merkle_root = tapleaf_hash(leaf_script, leaf_version)
     tweak = int.from_bytes(tagged_hash("TapTweak", internal_xonly + merkle_root), "big")
     assert tweak < SECP256K1_ORDER
 
-    tweaked = SECP256K1.affine(SECP256K1.add(pub.p, SECP256K1.mul([(SECP256K1_G, tweak)])))
+    tweaked = SECP256K1.affine(SECP256K1.add(internal_point, SECP256K1.mul([(SECP256K1_G, tweak)])))
     assert tweaked is not None
     output_xonly = tweaked[0].to_bytes(32, 'big')
     parity = tweaked[1] & 1
