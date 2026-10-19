@@ -115,6 +115,7 @@ std::atomic_bool fReindex(false);
 bool fHavePruned = false;
 bool fPruneMode = false;
 bool fRequireStandard = true;
+static bool IsTaprootEnabled(const CBlockIndex* pindexPrev, const Consensus::Params& params);
 bool fCheckBlockIndex = false;
 bool fCheckpointsEnabled = DEFAULT_CHECKPOINTS_ENABLED;
 size_t nCoinCacheUsage = 5000 * 300;
@@ -675,7 +676,8 @@ bool MemPoolAccept::PreChecks(ATMPArgs& args, Workspace& ws)
     }
 
     // Check for non-standard pay-to-script-hash in inputs
-    if (fRequireStandard && !AreInputsStandard(tx, m_view))
+    const bool taproot_active = IsTaprootEnabled(::ChainActive().Tip(), Params().GetConsensus());
+    if (fRequireStandard && !AreInputsStandard(tx, m_view, taproot_active))
         return state.Invalid(TxValidationResult::TX_NOT_STANDARD, "bad-txns-nonstandard-inputs");
 
     // Check for non-standard witness in P2WSH

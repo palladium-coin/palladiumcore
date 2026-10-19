@@ -8,7 +8,6 @@ Ported from Bitcoin Core v22.0 (test/functional/feature_taproot.py). Differences
 - Palladium activates Taproot by height, so node 0 is started with -taprootheight=-1
   instead of -vbparams=taproot:1:1.
 - Expected script error strings are those of Palladium's ScriptErrorString().
-- Valid Taproot spends are standard on the inactive node (see spenders_taproot_inactive).
 - The --previous_release option is not supported.
 """
 
@@ -1143,16 +1142,13 @@ def spenders_taproot_inactive():
     ]
     tap = taproot_construct(pub, scripts)
 
-    # Test that keypath spending is valid, and non-standard unless valid.
-    # Unlike Bitcoin Core, Palladium's mempool policy does not consider valid Taproot spends
-    # non-standard before activation (AreInputsStandard has no taproot_active parameter), so
-    # the valid ones are standard here.
-    add_spender(spenders, "inactive/keypath_valid", key=sec, tap=tap)
+    # Test that keypath spending is valid & non-standard, regardless of validity.
+    add_spender(spenders, "inactive/keypath_valid", key=sec, tap=tap, standard=False)
     add_spender(spenders, "inactive/keypath_invalidsig", key=sec, tap=tap, standard=False, sighash=bitflipper(default_sighash))
     add_spender(spenders, "inactive/keypath_empty", key=sec, tap=tap, standard=False, witness=[])
 
     # Same for scriptpath spending (and features like annex, leaf versions, or OP_SUCCESS don't change this)
-    add_spender(spenders, "inactive/scriptpath_valid", key=sec, tap=tap, leaf="pk", inputs=[getter("sign")])
+    add_spender(spenders, "inactive/scriptpath_valid", key=sec, tap=tap, leaf="pk", standard=False, inputs=[getter("sign")])
     add_spender(spenders, "inactive/scriptpath_invalidsig", key=sec, tap=tap, leaf="pk", standard=False, inputs=[getter("sign")], sighash=bitflipper(default_sighash))
     add_spender(spenders, "inactive/scriptpath_invalidcb", key=sec, tap=tap, leaf="pk", standard=False, inputs=[getter("sign")], controlblock=bitflipper(default_controlblock))
     add_spender(spenders, "inactive/scriptpath_valid_unkleaf", key=sec, tap=tap, leaf="future_leaf", standard=False, inputs=[getter("sign")])
