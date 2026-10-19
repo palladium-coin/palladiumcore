@@ -10,6 +10,7 @@ Tests are layered:
   - New F.3: multi-input taproot tx (2 taproot inputs) is accepted.
   - New F.4: persistence test — after restart, wallet can still spend taproot UTXO.
   - New F.6: an imported private key makes the wallet recognise and spend its Taproot outputs.
+  - New F.7: dumpprivkey and importpubkey (watch-only) work with Taproot addresses.
 """
 import hashlib
 import struct
@@ -403,8 +404,11 @@ class TaprootReproTest(PalladiumTestFramework):
             # Fund the address before importing the key, so that the rescan has to find the output.
             fund_txid = wallet.sendtoaddress(addr, 0.5)
             node.generatetoaddress(1, mining_addr)
-            wallet.importprivkey(byte_to_base58(key.get_bytes() + b'\x01', 255), "", True)
+            wif = byte_to_base58(key.get_bytes() + b'\x01', 255)
+            wallet.importprivkey(wif, "", True)
             assert_equal(wallet.getaddressinfo(addr)["ismine"], True)
+            # dumpprivkey returns the internal key behind a Taproot address
+            assert_equal(wallet.dumpprivkey(addr), wif)
             utxo = next(u for u in wallet.listunspent() if u["txid"] == fund_txid and u["scriptPubKey"] == spk_hex)
             assert utxo["spendable"], "imported Taproot output is not spendable"
 
@@ -421,6 +425,52 @@ class TaprootReproTest(PalladiumTestFramework):
         for addr in addrs:
             assert_equal(wallet.getaddressinfo(addr)["ismine"], True)
         self.log.info("F.6: imported Taproot keys recognised, spent and still recognised after restart")
+
+    # -----------------------------------------------------------------------
+    # F.7 — dumpprivkey, watch-only keys and multisig with Taproot addresses
+    # -----------------------------------------------------------------------
+
+    def test_taproot_key_rpcs(self, wallet, mining_addr):
+        """F.7: dumpprivkey works for generated Taproot addresses, importpubkey makes the P2TR address
+        watch-only and solvable, and a Taproot address is not accepted as a multisig key."""
+        node = self.nodes[0]
+        self.log.info("F.7: dumpprivkey, watch-only and multisig with Taproot addresses")
+
+        # The key dumped for a generated address, imported in a blank wallet, makes it recognise the address.
+        addr = wallet.getnewaddress("", "bech32m")
+        dumped = wallet.dumpprivkey(addr)
+        node.createwallet("tr_copy", False, True)
+        copy = node.get_wallet_rpc("tr_copy")
+        assert_equal(copy.getaddressinfo(addr)["ismine"], False)
+        copy.importprivkey(dumped, "", False)
+        assert_equal(copy.getaddressinfo(addr)["ismine"], True)
+
+        # Watch-only wallet: the P2TR address of the imported public key is watched and solvable.
+        node.createwallet("tr_watch", True)
+        watch = node.get_wallet_rpc("tr_watch")
+        for want_odd_y in (False, True):
+            while True:
+                key = ECKey()
+                key.generate()
+                pubkey = key.get_pubkey().get_bytes()
+                if bool(pubkey[0] & 1) == want_odd_y:
+                    break
+            output_key, _ = tweak_add_pubkey(pubkey[1:], TaggedHash("TapTweak", pubkey[1:]))
+            watch_addr = program_to_witness(1, output_key, main=False)
+            watch.importpubkey(pubkey.hex(), "", False)
+            info = watch.getaddressinfo(watch_addr)
+            assert_equal(info["ismine"], False)
+            assert_equal(info["iswatchonly"], True)
+            assert_equal(info["solvable"], True)
+            before = watch.getbalances()["watchonly"]["trusted"]
+            wallet.sendtoaddress(watch_addr, 1)
+            node.generatetoaddress(1, mining_addr)
+            watch.rescanblockchain()
+            assert_equal(watch.getbalances()["watchonly"]["trusted"], before + 1)
+
+        # A multisig must not silently use the internal key of a Taproot address.
+        assert_raises_rpc_error(-5, "does not refer to a key", wallet.addmultisigaddress, 1, [addr])
+        self.log.info("F.7: dumpprivkey, watch-only and multisig behave as expected")
 
     # -----------------------------------------------------------------------
     # Main entry point
@@ -458,6 +508,10 @@ class TaprootReproTest(PalladiumTestFramework):
 
         self.log.info("=== F.6: Taproot outputs of imported keys ===")
         self.test_imported_key_taproot(wallet, mining_addr)
+        wallet = self.get_loaded_wallet("tr_test")
+
+        self.log.info("=== F.7: dumpprivkey, watch-only and multisig ===")
+        self.test_taproot_key_rpcs(wallet, mining_addr)
 
 
 if __name__ == '__main__':
