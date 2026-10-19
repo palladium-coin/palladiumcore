@@ -11,6 +11,7 @@ Tests are layered:
   - New F.4: persistence test — after restart, wallet can still spend taproot UTXO.
   - New F.6: an imported private key makes the wallet recognise and spend its Taproot outputs.
   - New F.7: dumpprivkey and importpubkey (watch-only) work with Taproot addresses.
+  - New F.8: importaddress and importmulti work with Taproot addresses; decoding shows them.
 """
 import hashlib
 import struct
@@ -473,6 +474,80 @@ class TaprootReproTest(PalladiumTestFramework):
         self.log.info("F.7: dumpprivkey, watch-only and multisig behave as expected")
 
     # -----------------------------------------------------------------------
+    # F.8 — importaddress / importmulti and decoding with Taproot addresses
+    # -----------------------------------------------------------------------
+
+    def test_taproot_import_rpcs(self, wallet, mining_addr):
+        """F.8: importaddress and importmulti with a Taproot address, with and without keys."""
+        node = self.nodes[0]
+        self.log.info("F.8: importaddress and importmulti with Taproot addresses")
+
+        def new_key(want_odd_y):
+            while True:
+                key = ECKey()
+                key.generate()
+                pubkey = key.get_pubkey().get_bytes()
+                if bool(pubkey[0] & 1) == want_odd_y:
+                    break
+            output_key, _ = tweak_add_pubkey(pubkey[1:], TaggedHash("TapTweak", pubkey[1:]))
+            return key, pubkey, output_key, program_to_witness(1, output_key, main=False)
+
+        for want_odd_y in (False, True):
+            key, pubkey, output_key, addr = new_key(want_odd_y)
+            other_key, other_pubkey, _, _ = new_key(want_odd_y)
+            wif = byte_to_base58(key.get_bytes() + b'\x01', 255)
+            txid = wallet.sendtoaddress(addr, 1)
+            node.generatetoaddress(1, mining_addr)
+
+            # The decoded output shows the address and the type.
+            spk_hex = "5120" + output_key.hex()
+            vout = next(o for o in node.decoderawtransaction(wallet.gettransaction(txid)["hex"])["vout"] if o["scriptPubKey"]["hex"] == spk_hex)
+            assert_equal(vout["scriptPubKey"]["type"], "witness_v1_taproot")
+            assert_equal(vout["scriptPubKey"]["addresses"], [addr])
+
+            def new_wallet(name, watch_only=True):
+                node.createwallet(name, watch_only)
+                return node.get_wallet_rpc(name)
+
+            def check(w, ismine, watchonly, solvable):
+                info = w.getaddressinfo(addr)
+                assert_equal((info["ismine"], info["iswatchonly"], info["solvable"]), (ismine, watchonly, solvable))
+                w.rescanblockchain()
+                balances = w.getbalances()
+                assert_equal(balances["mine"]["trusted"], Decimal(1) if ismine else 0)
+                assert_equal(balances["watchonly"]["trusted"] if "watchonly" in balances else 0, Decimal(1) if watchonly else 0)
+
+            tag = "%d" % want_odd_y
+
+            w = new_wallet("tr_importaddress" + tag)
+            w.importaddress(addr, "", False)
+            check(w, False, True, False)
+
+            w = new_wallet("tr_multi_address" + tag)
+            assert_equal(w.importmulti([{"scriptPubKey": {"address": addr}, "timestamp": "now", "watchonly": True}], {"rescan": False}), [{"success": True}])
+            check(w, False, True, False)
+
+            w = new_wallet("tr_multi_pubkey" + tag)
+            assert_equal(w.importmulti([{"scriptPubKey": {"address": addr}, "timestamp": "now", "pubkeys": [pubkey.hex()], "watchonly": True}], {"rescan": False}), [{"success": True}])
+            check(w, False, True, True)
+
+            # A key that is not the internal key of the output is ignored, with a warning.
+            w = new_wallet("tr_multi_wrongkey" + tag)
+            result = w.importmulti([{"scriptPubKey": {"address": addr}, "timestamp": "now", "pubkeys": [other_pubkey.hex()], "watchonly": True}], {"rescan": False})
+            assert_equal(result[0]["success"], True)
+            assert any("none of the provided keys is the internal key" in warning for warning in result[0]["warnings"])
+            check(w, False, True, False)
+
+            w = new_wallet("tr_multi_privkey" + tag, False)
+            assert_equal(w.importmulti([{"scriptPubKey": {"address": addr}, "timestamp": "now", "keys": [wif]}], {"rescan": False}), [{"success": True}])
+            check(w, True, False, True)
+            utxo = next(u for u in w.listunspent() if u["txid"] == txid and u["scriptPubKey"] == spk_hex)
+            assert utxo["spendable"], "Taproot output imported with importmulti is not spendable"
+            raw = node.createrawtransaction([{"txid": txid, "vout": utxo["vout"]}], {wallet.getnewaddress(): Decimal("0.999")})
+            assert_equal(w.signrawtransactionwithwallet(raw)["complete"], True)
+        self.log.info("F.8: importaddress, importmulti and decoding with Taproot addresses behave as expected")
+
+    # -----------------------------------------------------------------------
     # Main entry point
     # -----------------------------------------------------------------------
 
@@ -512,6 +587,9 @@ class TaprootReproTest(PalladiumTestFramework):
 
         self.log.info("=== F.7: dumpprivkey, watch-only and multisig ===")
         self.test_taproot_key_rpcs(wallet, mining_addr)
+
+        self.log.info("=== F.8: importaddress, importmulti and decoding ===")
+        self.test_taproot_import_rpcs(wallet, mining_addr)
 
 
 if __name__ == '__main__':
