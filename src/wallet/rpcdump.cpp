@@ -943,6 +943,30 @@ static std::string RecurseImportData(const CScript& script, ImportData& import_d
     }
 }
 
+// A Taproot output commits to a tweaked key, so the key to provide is its internal key. Find which of the
+// provided keys has the output key as its key-path-only tweak and mark it as used (and required).
+static std::string TaprootImportData(const std::vector<unsigned char>& output_key_bytes, const std::map<CKeyID, CPubKey>& pubkey_map, const std::map<CKeyID, CKey>& privkey_map, ImportData& import_data)
+{
+    const XOnlyPubKey output_key(output_key_bytes.begin(), output_key_bytes.end());
+    auto is_internal_key = [&](const CPubKey& pubkey) {
+        if (!pubkey.IsCompressed()) return false;
+        return pubkey.GetXOnlyPubKey().CreatePayToTaprootPubKey(nullptr).first == output_key;
+    };
+    for (const auto& entry : pubkey_map) {
+        if (is_internal_key(entry.second)) {
+            import_data.used_keys[entry.first] = true;
+            return "";
+        }
+    }
+    for (const auto& entry : privkey_map) {
+        if (is_internal_key(entry.second.GetPubKey())) {
+            import_data.used_keys[entry.first] = true;
+            return "";
+        }
+    }
+    return "none of the provided keys is the internal key of the Taproot output";
+}
+
 static UniValue ProcessImportLegacy(ImportData& import_data, std::map<CKeyID, CPubKey>& pubkey_map, std::map<CKeyID, CKey>& privkey_map, std::set<CScript>& script_pub_keys, bool& have_solving_data, const UniValue& data, std::vector<CKeyID>& ordered_pubkeys)
 {
     UniValue warnings(UniValue::VARR);
@@ -1035,7 +1059,10 @@ static UniValue ProcessImportLegacy(ImportData& import_data, std::map<CKeyID, CP
     have_solving_data = import_data.redeemscript || import_data.witnessscript || pubkey_map.size() || privkey_map.size();
     if (have_solving_data) {
         // Match up data in import_data with the scriptPubKey in script.
-        auto error = RecurseImportData(script, import_data, ScriptContext::TOP);
+        std::vector<std::vector<unsigned char>> solverdata;
+        std::string error = Solver(script, solverdata) == TX_WITNESS_V1_TAPROOT ?
+            TaprootImportData(solverdata[0], pubkey_map, privkey_map, import_data) :
+            RecurseImportData(script, import_data, ScriptContext::TOP);
 
         // Verify whether the watchonly option corresponds to the availability of private keys.
         bool spendable = std::all_of(import_data.used_keys.begin(), import_data.used_keys.end(), [&](const std::pair<CKeyID, bool>& used_key){ return privkey_map.count(used_key.first) > 0; });
@@ -1077,7 +1104,7 @@ static UniValue ProcessImportLegacy(ImportData& import_data, std::map<CKeyID, CP
                 auto oldit = it++;
                 auto key_data_it = import_data.used_keys.find(oldit->first);
                 if (key_data_it == import_data.used_keys.end() || !key_data_it->second) {
-                    warnings.push_back("Ignoring public key \"" + HexStr(oldit->first) + "\" as it doesn't appear inside P2PKH or P2WPKH.");
+                    warnings.push_back("Ignoring public key \"" + HexStr(oldit->first) + "\" as it doesn't appear inside P2PKH, P2WPKH or P2TR.");
                     pubkey_map.erase(oldit);
                 }
             }
