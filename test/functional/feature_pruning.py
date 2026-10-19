@@ -10,6 +10,7 @@ This test takes 30 mins or more (up to 2 hours)
 """
 import os
 
+from test_framework.authproxy import JSONRPCException
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.util import (
     assert_equal,
@@ -44,10 +45,25 @@ def mine_large_blocks(node, n):
         if len(utxos) < tx_per_block:
             utxos.clear()
             utxos.extend(node.listunspent())
-        if not utxos:
+        if utxos:
+            create_lots_of_big_transactions(node, txouts, utxos, min(tx_per_block, len(utxos)), fee=fee)
+        elif not node.getrawmempool():
             raise AssertionError("No spendable UTXOs available for large-block mining")
-        create_lots_of_big_transactions(node, txouts, utxos, min(tx_per_block, len(utxos)), fee=fee)
+        # After a reorg the mempool can hold every spendable output; its
+        # transactions are already large, so just mine them.
         generate_blocks(node, 1)
+
+def abandon_unconfirmed(node):
+    # A reorg leaves the wallet with transactions from the losing chain that are
+    # neither in a block nor in the mempool. The wallet keeps counting their
+    # inputs as spent, so release them.
+    mempool = set(node.getrawmempool())
+    txids = {tx["txid"] for tx in node.listtransactions("*", 1000000) if tx["confirmations"] == 0}
+    for txid in txids - mempool:
+        try:
+            node.abandontransaction(txid)
+        except JSONRPCException:
+            pass
 
 def calc_usage(blockdir):
     return sum(os.path.getsize(blockdir + f) for f in os.listdir(blockdir) if os.path.isfile(os.path.join(blockdir, f))) / (1024. * 1024.)
@@ -98,10 +114,10 @@ class PruneTest(PalladiumTestFramework):
         # Start by creating some coinbases we can spend later
         generate_blocks(self.nodes[1], 200)
         self.sync_blocks(self.nodes[0:2])
-        generate_blocks(self.nodes[0], 200)
+        generate_blocks(self.nodes[0], 150)
 
         # Then mine enough full blocks to create more than 550MiB of data
-        mine_large_blocks(self.nodes[0], 595)
+        mine_large_blocks(self.nodes[0], 645)
 
         self.sync_blocks(self.nodes[0:5])
 
@@ -140,6 +156,7 @@ class PruneTest(PalladiumTestFramework):
             connect_nodes(self.nodes[0], 1)
             connect_nodes(self.nodes[0], 2)
             self.sync_blocks(self.nodes[0:3])
+            abandon_unconfirmed(self.nodes[1])
 
         self.log.info("Usage can be over target because of high stale rate: %d" % calc_usage(self.prunedir))
 
