@@ -386,6 +386,17 @@ void CRegTestParams::UpdateActivationParametersFromArgs(const ArgsManager& args)
         consensus.SegwitHeight = static_cast<int>(height);
     }
 
+    if (gArgs.IsArgSet("-taprootheight")) {
+        int64_t height = gArgs.GetArg("-taprootheight", consensus.TaprootHeight);
+        if (height < -1 || height >= std::numeric_limits<int>::max()) {
+            throw std::runtime_error(strprintf("Activation height %ld for taproot is out of valid range. Use -1 to disable taproot.", height));
+        } else if (height == -1) {
+            LogPrintf("Taproot disabled for testing\n");
+            height = std::numeric_limits<int>::max();
+        }
+        consensus.TaprootHeight = static_cast<int>(height);
+    }
+
     if (!args.IsArgSet("-vbparams")) return;
 
     for (const std::string& strDeployment : args.GetArgs("-vbparams")) {
