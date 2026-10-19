@@ -140,7 +140,8 @@ CPubKey AddrToPubKey(const FillableSigningProvider& keystore, const std::string&
     if (!IsValidDestination(dest)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address: " + addr_in);
     }
-    CKeyID key = GetKeyForDestination(keystore, dest);
+    // A Taproot address commits to a tweaked key, so its internal key must not be used as the key of the address.
+    CKeyID key = boost::get<WitnessUnknown>(&dest) ? CKeyID() : GetKeyForDestination(keystore, dest);
     if (key.IsNull()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("%s does not refer to a key", addr_in));
     }

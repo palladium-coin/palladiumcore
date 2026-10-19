@@ -181,7 +181,7 @@ bool FillableSigningProvider::GetCScript(const CScriptID &hash, CScript& redeemS
 CKeyID GetKeyForDestination(const SigningProvider& store, const CTxDestination& dest)
 {
     // Only supports destinations which map to single public keys, i.e. P2PKH,
-    // P2WPKH, and P2SH-P2WPKH.
+    // P2WPKH, P2SH-P2WPKH and Taproot (the internal key).
     if (auto id = boost::get<PKHash>(&dest)) {
         return CKeyID(*id);
     }
@@ -200,15 +200,11 @@ CKeyID GetKeyForDestination(const SigningProvider& store, const CTxDestination& 
     }
     if (auto witness = boost::get<WitnessUnknown>(&dest)) {
         if (witness->version == 1 && witness->length == WITNESS_V1_TAPROOT_SIZE) {
-            std::array<unsigned char, CPubKey::COMPRESSED_SIZE> candidate;
-            std::copy(witness->program, witness->program + witness->length, candidate.begin() + 1);
-            for (unsigned char prefix : {0x02, 0x03}) {
-                candidate[0] = prefix;
-                const CPubKey pubkey(candidate.begin(), candidate.end());
-                if (!pubkey.IsFullyValid()) continue;
-                if (store.HaveKey(pubkey.GetID())) {
-                    return pubkey.GetID();
-                }
+            // The key behind a Taproot address is its internal key, which the provider
+            // maps from the tweaked output key found in the address.
+            CPubKey internal_key;
+            if (store.GetTaprootInternalKey(XOnlyPubKey(witness->program, witness->program + witness->length), internal_key)) {
+                return internal_key.GetID();
             }
         }
     }

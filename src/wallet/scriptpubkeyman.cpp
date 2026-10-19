@@ -878,6 +878,7 @@ bool LegacyScriptPubKeyMan::AddWatchOnlyInMem(const CScript &dest)
     if (ExtractPubKey(dest, pubKey)) {
         mapWatchKeys[pubKey.GetID()] = pubKey;
         ImplicitlyLearnRelatedKeyScripts(pubKey);
+        ImplicitlyLearnTaprootKeyScripts(pubKey);
     }
     return true;
 }
