@@ -25,6 +25,11 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     if ((pindexLast->nHeight >= DIFF_RESET_FIRST) && (pindexLast->nHeight <= DIFF_RESET_LAST))
         return nProofOfWorkLimit;
 
+    // Regtest: keep the difficulty fixed, otherwise LWMA keeps raising it as
+    // blocks are mined much faster than the target spacing.
+    if (params.fPowNoRetargeting)
+        return pindexLast->nBits;
+
     // Special difficulty rule for testnet: If the new block's timestamp is more than 20 minutes
     // then allow mining of a min-difficulty block. This rule has priority over LWMA.
     if (params.fPowAllowMinDifficultyBlocks && pblock->GetBlockTime() > pindexLast->GetBlockTime() + 20 * 60)
