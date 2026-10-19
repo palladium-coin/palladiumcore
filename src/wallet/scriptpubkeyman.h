@@ -260,6 +260,13 @@ private:
     bool AddCryptedKeyInner(const CPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
 
     /**
+     * Learn the P2TR script and the output key -> internal key mapping of a compressed key.
+     * Like ImplicitlyLearnRelatedKeyScripts, this is done for every key added or loaded and is
+     * not written to disk, so imported keys recognise their Taproot outputs too.
+     */
+    void ImplicitlyLearnTaprootKeyScripts(const CPubKey& pubkey) EXCLUSIVE_LOCKS_REQUIRED(cs_KeyStore);
+
+    /**
      * Private version of AddWatchOnly method which does not accept a
      * timestamp, and which will reset the wallet's nTimeFirstKey value to 1 if
      * the watch key did not previously have a timestamp associated with it.

@@ -744,11 +744,35 @@ bool LegacyScriptPubKeyMan::LoadTaprootInternalKey(const uint256& output_key_has
     return true;
 }
 
+void LegacyScriptPubKeyMan::ImplicitlyLearnTaprootKeyScripts(const CPubKey& pubkey)
+{
+    AssertLockHeld(cs_KeyStore);
+    if (!pubkey.IsCompressed()) return;
+    const XOnlyPubKey internal_key = pubkey.GetXOnlyPubKey();
+    if (!internal_key.IsFullyValid()) return;
+    auto [output_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+    if (!output_key.IsFullyValid()) return;
+
+    WitnessUnknown dest;
+    dest.version = 1;
+    dest.length = WITNESS_V1_TAPROOT_SIZE;
+    std::copy(output_key.begin(), output_key.end(), dest.program);
+    const CScript script = GetScriptForDestination(dest);
+    // This does not use AddCScript, as it may be overridden.
+    mapScripts[CScriptID(script)] = script;
+
+    uint256 output_key_hash;
+    memcpy(output_key_hash.begin(), output_key.data(), XOnlyPubKey::SIZE);
+    m_taproot_internal_keys[output_key_hash] = pubkey;
+}
+
 bool LegacyScriptPubKeyMan::AddKeyPubKeyInner(const CKey& key, const CPubKey &pubkey)
 {
     LOCK(cs_KeyStore);
     if (!m_storage.HasEncryptionKeys()) {
-        return FillableSigningProvider::AddKeyPubKey(key, pubkey);
+        if (!FillableSigningProvider::AddKeyPubKey(key, pubkey)) return false;
+        ImplicitlyLearnTaprootKeyScripts(pubkey);
+        return true;
     }
 
     if (m_storage.IsLocked()) {
@@ -779,6 +803,7 @@ bool LegacyScriptPubKeyMan::AddCryptedKeyInner(const CPubKey &vchPubKey, const s
 
     mapCryptedKeys[vchPubKey.GetID()] = make_pair(vchPubKey, vchCryptedSecret);
     ImplicitlyLearnRelatedKeyScripts(vchPubKey);
+    ImplicitlyLearnTaprootKeyScripts(vchPubKey);
     return true;
 }
 
