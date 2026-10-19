@@ -9,17 +9,21 @@ Tests are layered:
   - New F.2: invalid control block is rejected by the mempool.
   - New F.3: multi-input taproot tx (2 taproot inputs) is accepted.
   - New F.4: persistence test — after restart, wallet can still spend taproot UTXO.
+  - New F.6: an imported private key makes the wallet recognise and spend its Taproot outputs.
 """
 import hashlib
 import struct
 from decimal import Decimal
 
-from test_framework.address import program_to_witness
+from test_framework.address import byte_to_base58, program_to_witness
 from test_framework.key import (
+    ECKey,
     ECPubKey,
     SECP256K1,
     SECP256K1_G,
     SECP256K1_ORDER,
+    TaggedHash,
+    tweak_add_pubkey,
 )
 from test_framework.messages import (
     COutPoint,
@@ -372,6 +376,53 @@ class TaprootReproTest(PalladiumTestFramework):
         self.log.info("F.5: Valid script-path spend accepted and mined")
 
     # -----------------------------------------------------------------------
+    # F.6 — Taproot outputs of an imported private key are recognised and spendable
+    # -----------------------------------------------------------------------
+
+    def test_imported_key_taproot(self, wallet, mining_addr):
+        """F.6: importprivkey makes the wallet recognise (also after a rescan and a restart) and spend
+        the BIP86-style P2TR output of the key, whatever the parity of its public key."""
+        node = self.nodes[0]
+        self.log.info("F.6: Taproot outputs of imported keys")
+
+        addrs = []
+        for want_odd_y in (False, True):
+            while True:
+                key = ECKey()
+                key.generate()
+                pubkey = key.get_pubkey().get_bytes()
+                if bool(pubkey[0] & 1) == want_odd_y:
+                    break
+            xonly = pubkey[1:]
+            output_key, _ = tweak_add_pubkey(xonly, TaggedHash("TapTweak", xonly))
+            addr = program_to_witness(1, output_key, main=False)
+            spk_hex = "5120" + output_key.hex()
+            addrs.append(addr)
+            assert_equal(wallet.getaddressinfo(addr)["ismine"], False)
+
+            # Fund the address before importing the key, so that the rescan has to find the output.
+            fund_txid = wallet.sendtoaddress(addr, 0.5)
+            node.generatetoaddress(1, mining_addr)
+            wallet.importprivkey(byte_to_base58(key.get_bytes() + b'\x01', 255), "", True)
+            assert_equal(wallet.getaddressinfo(addr)["ismine"], True)
+            utxo = next(u for u in wallet.listunspent() if u["txid"] == fund_txid and u["scriptPubKey"] == spk_hex)
+            assert utxo["spendable"], "imported Taproot output is not spendable"
+
+            raw = node.createrawtransaction([{"txid": fund_txid, "vout": utxo["vout"]}], {wallet.getnewaddress(): Decimal("0.499")})
+            signed = wallet.signrawtransactionwithwallet(raw)
+            assert_equal(signed["complete"], True)
+            spend_txid = node.sendrawtransaction(signed["hex"])
+            node.generatetoaddress(1, mining_addr)
+            assert wallet.gettransaction(spend_txid)["confirmations"] >= 1
+
+        # The mapping is not written to disk for imported keys: it must be rebuilt when the wallet loads.
+        self.restart_node(0)
+        wallet = self.get_loaded_wallet("tr_test")
+        for addr in addrs:
+            assert_equal(wallet.getaddressinfo(addr)["ismine"], True)
+        self.log.info("F.6: imported Taproot keys recognised, spent and still recognised after restart")
+
+    # -----------------------------------------------------------------------
     # Main entry point
     # -----------------------------------------------------------------------
 
@@ -404,6 +455,9 @@ class TaprootReproTest(PalladiumTestFramework):
 
         self.log.info("=== F.5: Valid script-path spend ===")
         self.test_valid_script_path_spend(wallet, mining_addr)
+
+        self.log.info("=== F.6: Taproot outputs of imported keys ===")
+        self.test_imported_key_taproot(wallet, mining_addr)
 
 
 if __name__ == '__main__':
