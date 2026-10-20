@@ -36,6 +36,8 @@ Palladium-specific harnesses:
 | `taproot_tweak` | BIP341 output key tweaking: a key path signature made with `SignSchnorrTaproot` verifies against the output key from `CreatePayToTaprootPubKey`, and not for another message. |
 | `key_io` | Address and key decoding on all networks (base58, bech32, bech32m; `plm`, `tplm`, `rplm`) and the encode/decode round trip. |
 
+`process_message` sends one network message of a known type, with fuzzed contents, to a connected peer of a regtest node (`ProcessMessage`).
+
 Other harnesses: `bech32`, `base_encode_decode`, `hex`, `decode_tx`, `transaction`, `block`,
 `eval_script` (legacy, segwit v0 and tapscript), `parse_script`, `descriptor_parse`, `psbt`.
 
@@ -43,8 +45,6 @@ Other harnesses: `bech32`, `base_encode_decode`, `hex`, `decode_tx`, `transactio
 again gives the same bytes (block, blockheader, blocklocator, blockundo, txundo, block_file_info, blocktransactions, blocktransactionsrequest, prefilled_transaction, block_header_and_short_txids, bloomfilter, coins, flat_file_pos, inv, merkle_block, partial_merkle_tree, partially_signed_transaction, psbt_input, psbt_output, pub_key, script, tx_in, out_point, txoutcompressor, uint160, uint256, netaddr, service, address, sub_net, banentry). Coins and undo data
 (`coins`, `blockundo`, `txundo`) are only checked for not crashing, because several compressed
 encodings give the same script.
-
-There is no harness for `ProcessMessage` yet.
 
 To add one: create `src/test/fuzz/<name>.cpp`, add `test/fuzz/<name>` to `FUZZ_TARGETS` and its
 `test_fuzz_<name>_*` block in [`src/Makefile.test.include`](../src/Makefile.test.include).
@@ -68,11 +68,13 @@ $ src/test/fuzz/pow crash-1234abcd
 ## Running all harnesses once
 
 ```sh
-$ test/fuzz/test_runner.py <corpus dir>            # all targets, each over corpus/<target>/
-$ test/fuzz/test_runner.py <corpus dir> pow key_io # selected targets
+$ test/fuzz/test_runner.py test/fuzz/corpus            # all targets, each over corpus/<target>/
+$ test/fuzz/test_runner.py test/fuzz/corpus pow key_io # selected targets
 ```
 
-There is no seed corpus in the repository: targets without one are listed and run on empty input.
+[`test/fuzz/corpus/`](../test/fuzz/corpus) has a small seed corpus (about 70 KB) for `pow`, `taproot_verify`,
+`taproot_tweak` and `key_io`. Targets without one are listed and run on empty input. To refresh a corpus
+after fuzzing, merge the new inputs into it: `src/test/fuzz/pow -merge=1 test/fuzz/corpus/pow <new dir>`.
 
 ## macOS hints for libFuzzer
 
