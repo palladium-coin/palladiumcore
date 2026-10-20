@@ -15,6 +15,7 @@
 #include <script/standard.h>
 #include <serialize.h>
 #include <streams.h>
+#include <tinyformat.h>
 #include <test/util/setup_common.h>
 #include <test/util/transaction_utils.h>
 #include <uint256.h>
@@ -97,11 +98,13 @@ static bool CreateTaprootOutput(const XOnlyPubKey& xonly, const uint256* merkle_
 static const std::string WIF_KEY = "Kwr371tjA9u2rFSMZjTNun2PXXP3WPZu2afRHTcta6KxEUdm1vEw";
 
 
+BOOST_FIXTURE_TEST_SUITE(taproot_tests, BasicTestingSetup)
+
 // =============================================================================
 // Suite A — TapTweak primitive
 // =============================================================================
 
-BOOST_FIXTURE_TEST_SUITE(taproot_tweak_tests, BasicTestingSetup)
+BOOST_AUTO_TEST_SUITE(taproot_tweak_tests)
 
 // A.1 — ComputeTapTweak(nullptr) matches the BIP341 manual formula
 BOOST_AUTO_TEST_CASE(tap_tweak_key_path_only)
@@ -259,7 +262,7 @@ BOOST_AUTO_TEST_SUITE_END()
 // Suite B — SignatureHashSchnorr (untested before, highest priority)
 // =============================================================================
 
-BOOST_FIXTURE_TEST_SUITE(taproot_sighash_tests, BasicTestingSetup)
+BOOST_AUTO_TEST_SUITE(taproot_sighash_tests)
 
 // Helper: build a single-input taproot tx and return the spent_outputs vector.
 // The caller constructs PrecomputedTransactionData(spend_out, spent_outs_out)
@@ -350,11 +353,11 @@ BOOST_AUTO_TEST_CASE(sighash_all_variants_sign_verify)
     for (size_t i = 0; i < sizeof(valid_htypes)/sizeof(valid_htypes[0]); ++i) {
         int htype = valid_htypes[i];
         uint256 sighash = SignatureHash(CScript(), spend, 0, htype, amount, SigVersion::TAPROOT, &txdata);
-        BOOST_CHECK_MESSAGE(!sighash.IsNull(), "null sighash for htype=" + std::to_string(htype));
+        BOOST_CHECK_MESSAGE(!sighash.IsNull(), "null sighash for htype=" + strprintf("%d", htype));
 
         std::vector<unsigned char> sig;
         BOOST_REQUIRE_MESSAGE(key.SignSchnorrTaproot(sighash, sig, nullptr),
-                              "SignSchnorrTaproot failed for htype=" + std::to_string(htype));
+                              "SignSchnorrTaproot failed for htype=" + strprintf("%d", htype));
 
         if (htype != SIGHASH_DEFAULT) {
             sig.push_back(static_cast<unsigned char>(htype));
@@ -373,8 +376,8 @@ BOOST_AUTO_TEST_CASE(sighash_all_variants_sign_verify)
         ScriptError serror;
         bool ok = VerifyScript(CScript(), spk, &spend_tx.vin[0].scriptWitness,
                                TAPROOT_FLAGS, checker, &serror);
-        BOOST_CHECK_MESSAGE(ok, "VerifyScript failed for htype=" + std::to_string(htype)
-                            + " err=" + std::to_string(serror));
+        BOOST_CHECK_MESSAGE(ok, "VerifyScript failed for htype=" + strprintf("%d", htype)
+                            + " err=" + strprintf("%d", static_cast<int>(serror)));
     }
 }
 
@@ -393,7 +396,7 @@ BOOST_AUTO_TEST_CASE(sighash_invalid_hashtypes_rejected)
     for (size_t i = 0; i < sizeof(invalid_htypes)/sizeof(invalid_htypes[0]); ++i) {
         int htype = invalid_htypes[i];
         uint256 h = SignatureHash(CScript(), spend, 0, htype, amount, SigVersion::TAPROOT, &txdata);
-        BOOST_CHECK_MESSAGE(h.IsNull(), "Expected null sighash for invalid htype=" + std::to_string(htype));
+        BOOST_CHECK_MESSAGE(h.IsNull(), "Expected null sighash for invalid htype=" + strprintf("%d", htype));
     }
 }
 
@@ -483,7 +486,7 @@ BOOST_AUTO_TEST_SUITE_END()
 // Suite C — Key-path spend end-to-end
 // =============================================================================
 
-BOOST_FIXTURE_TEST_SUITE(taproot_keypath_tests, BasicTestingSetup)
+BOOST_AUTO_TEST_SUITE(taproot_keypath_tests)
 
 // C.1 — Full key-path spend pipeline succeeds
 BOOST_AUTO_TEST_CASE(keypath_spend_valid)
@@ -614,7 +617,7 @@ BOOST_AUTO_TEST_SUITE_END()
 // Suite D — Script-path spend
 // =============================================================================
 
-BOOST_FIXTURE_TEST_SUITE(taproot_scriptpath_tests, BasicTestingSetup)
+BOOST_AUTO_TEST_SUITE(taproot_scriptpath_tests)
 
 // D.1 — OP_1 (always-true) script-path spend succeeds
 BOOST_AUTO_TEST_CASE(scriptpath_op1_valid)
@@ -759,7 +762,7 @@ BOOST_AUTO_TEST_CASE(scriptpath_wrong_control_size_fails)
         ScriptError serror;
         bool ok = VerifyScript(CScript(), spk, &spend_tx.vin[0].scriptWitness,
                                TAPROOT_FLAGS, checker, &serror);
-        BOOST_CHECK_MESSAGE(!ok, "Expected failure for ctrl size=" + std::to_string(bad_sizes[si]));
+        BOOST_CHECK_MESSAGE(!ok, "Expected failure for ctrl size=" + strprintf("%d", bad_sizes[si]));
         BOOST_CHECK_EQUAL(serror, SCRIPT_ERR_TAPROOT_WRONG_CONTROL_SIZE);
     }
 }
@@ -1073,7 +1076,7 @@ BOOST_AUTO_TEST_SUITE_END()
 // Suite E — Multi-input taproot transactions
 // =============================================================================
 
-BOOST_FIXTURE_TEST_SUITE(taproot_multiinput_tests, BasicTestingSetup)
+BOOST_AUTO_TEST_SUITE(taproot_multiinput_tests)
 
 // E.1 — spent_outputs count must equal vin.size() for m_bip341_taproot_ready
 BOOST_AUTO_TEST_CASE(multiinput_spent_outputs_required)
@@ -1210,3 +1213,5 @@ BOOST_AUTO_TEST_CASE(multiinput_cross_signature_fails)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END() // taproot_tests
