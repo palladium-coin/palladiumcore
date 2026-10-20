@@ -168,6 +168,11 @@ class MultiWalletTest(PalladiumTestFramework):
         subsidy = w5_info['immature_balance']
         assert_equal(w5_info['immature_balance'], subsidy)
 
+        # a trailing separator in -walletdir must not change which directory is used
+        self.restart_node(0, ['-wallet=w4', '-wallet=w5', '-walletdir=' + data_dir() + os.sep])
+        assert_equal(set(node.listwallets()), {"w4", "w5"})
+        assert_equal(wallet("w5").getwalletinfo()['immature_balance'], subsidy)
+
         competing_wallet_dir = os.path.join(self.options.tmpdir, 'competing_walletdir')
         os.mkdir(competing_wallet_dir)
         self.restart_node(0, ['-walletdir=' + competing_wallet_dir])
