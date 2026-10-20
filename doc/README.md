@@ -69,6 +69,7 @@ The Palladium repo's [root README](/README.md) contains relevant information on 
 - [Assets Attribution](assets-attribution.md)
 - [palladium.conf Configuration File](palladium-conf.md)
 - [Files](files.md)
+- [Tests and what they cover](testing.md)
 - [Fuzz-testing](fuzzing.md)
 - [Reduce Memory](reduce-memory.md)
 - [Reduce Traffic](reduce-traffic.md)

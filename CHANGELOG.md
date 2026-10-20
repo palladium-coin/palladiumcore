@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Tests
+- Unit tests for the difficulty rules in `pow_tests` (difficulty reset window, LWMA, Resilience fork retarget, testnet minimum difficulty, regtest) and a new `chainparams_tests` suite
+- Functional tests `feature_taproot_activation.py` (Taproot activation height) and `feature_opreturn_prefork.py` (pre-fork OP_RETURN policy); `-walletdir` trailing separator case in `wallet_multiwallet.py`
+- Fuzz harnesses in `src/test/fuzz/` (`pow`, `taproot_verify`, `taproot_tweak`, `key_io`, script, transaction, block and PSBT harnesses, and deserialization of 31 types); the fuzz targets listed in `src/Makefile.test.include` had no sources before
+
+### Documentation
+- Added `doc/testing.md` (what the tests cover) and rewrote `doc/fuzzing.md` for the harnesses that exist
+
 ## [2.0.3] - 2026-03-12
 
 ### Fixed
