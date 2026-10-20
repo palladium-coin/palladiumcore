@@ -7,7 +7,7 @@
 Before nResilienceForkHeight (200 on regtest) a transaction with an unspendable
 output larger than 83 bytes is rejected from the mempool with
 bad-txns-oversize-opreturn-prefork, even when -datacarriersize allows more.
-After the fork the limit is the one set by -datacarriersize.
+From the fork block on the limit is the one set by -datacarriersize.
 """
 
 from test_framework.test_framework import PalladiumTestFramework
@@ -58,10 +58,15 @@ class OpReturnPreforkTest(PalladiumTestFramework):
         self.check(PREFORK_LIMIT - 2, allowed=False, reason="bad-txns-oversize-opreturn-prefork")
         self.check(200, allowed=False, reason="bad-txns-oversize-opreturn-prefork")
 
-        self.log.info("Also rejected right before the fork height")
-        node.generatetoaddress(FORK_HEIGHT - 3 - node.getblockcount(), addr)
-        assert_equal(node.getblockcount(), FORK_HEIGHT - 3)
+        self.log.info("The limit applies to the block that would contain the transaction")
+        # Tip FORK_HEIGHT - 2: the next block is FORK_HEIGHT - 1, still before the fork
+        node.generatetoaddress(FORK_HEIGHT - 2 - node.getblockcount(), addr)
+        assert_equal(node.getblockcount(), FORK_HEIGHT - 2)
         self.check(200, allowed=False, reason="bad-txns-oversize-opreturn-prefork")
+        # Tip FORK_HEIGHT - 1: the next block is the fork block
+        node.generatetoaddress(1, addr)
+        assert_equal(node.getblockcount(), FORK_HEIGHT - 1)
+        self.check(200, allowed=True)
 
         self.log.info("After the fork: the -datacarriersize limit applies")
         node.generatetoaddress(FORK_HEIGHT + 5 - node.getblockcount(), addr)
