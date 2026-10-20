@@ -238,6 +238,9 @@ struct CNodeState {
     int64_t nHeadersSyncTimeout;
     //! Last time we sent a getheaders request to this peer, in seconds.
     int64_t nLastGetHeadersTime;
+    //! Whether a getheaders request was suppressed while one was in flight, and the hash_stop it asked for.
+    bool m_getheaders_deferred;
+    uint256 m_getheaders_deferred_stop;
     //! Since when we're stalling block download progress (in microseconds), or 0.
     int64_t nStallingSince;
     std::list<QueuedBlock> vBlocksInFlight;
@@ -381,6 +384,7 @@ struct CNodeState {
         fSyncStarted = false;
         nHeadersSyncTimeout = 0;
         nLastGetHeadersTime = 0;
+        m_getheaders_deferred = false;
         nStallingSince = 0;
         nDownloadingSince = 0;
         nBlocksInFlight = 0;
@@ -417,12 +421,28 @@ static bool MaybeSendGetHeaders(CNode* pfrom, CConnman* connman, const CNetMsgMa
 
     const int64_t now = GetTime();
     if (state->nLastGetHeadersTime != 0 && now - state->nLastGetHeadersTime < HEADERS_RESPONSE_TIME) {
+        // Remember the latest suppressed request, to be sent once the pending one is answered.
+        state->m_getheaders_deferred = true;
+        state->m_getheaders_deferred_stop = hash_stop;
         return false;
     }
 
     connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, locator, hash_stop));
     state->nLastGetHeadersTime = now;
     return true;
+}
+
+//! Send the getheaders suppressed while a previous one was in flight, if its target is still unknown.
+static void SendDeferredGetHeaders(CNode* pfrom, CConnman* connman, const CNetMsgMaker& msgMaker) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
+{
+    CNodeState* state = State(pfrom->GetId());
+    if (state == nullptr || !state->m_getheaders_deferred) return;
+    state->m_getheaders_deferred = false;
+    const uint256 stop = state->m_getheaders_deferred_stop;
+    if (!stop.IsNull() && LookupBlockIndex(stop) != nullptr) return;
+    if (MaybeSendGetHeaders(pfrom, connman, msgMaker, ::ChainActive().GetLocator(pindexBestHeader), stop)) {
+        LogPrint(BCLog::NET, "sent deferred getheaders (%d) %s to peer=%d\n", pindexBestHeader->nHeight, stop.ToString(), pfrom->GetId());
+    }
 }
 
 static void UpdatePreferredDownload(CNode* node, CNodeState* state) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
@@ -1703,7 +1723,10 @@ bool static ProcessHeadersMessage(CNode* pfrom, CConnman* connman, CTxMemPool& m
         // Nothing interesting. Stop asking this peers for more headers.
         LOCK(cs_main);
         CNodeState* nodestate = State(pfrom->GetId());
-        if (nodestate) nodestate->nLastGetHeadersTime = 0;
+        if (nodestate) {
+            nodestate->nLastGetHeadersTime = 0;
+            SendDeferredGetHeaders(pfrom, connman, msgMaker);
+        }
         return true;
     }
 
@@ -1775,6 +1798,12 @@ bool static ProcessHeadersMessage(CNode* pfrom, CConnman* connman, CTxMemPool& m
         LOCK(cs_main);
         CNodeState *nodestate = State(pfrom->GetId());
         nodestate->nLastGetHeadersTime = 0;
+        if (nCount < MAX_HEADERS_RESULTS) {
+            SendDeferredGetHeaders(pfrom, connman, msgMaker);
+        } else {
+            // The follow-up getheaders below already asks for everything up to the peer's tip.
+            nodestate->m_getheaders_deferred = false;
+        }
         if (nodestate->nUnconnectingHeaders > 0) {
             LogPrint(BCLog::NET, "peer=%d: resetting nUnconnectingHeaders (%d -> 0)\n", pfrom->GetId(), nodestate->nUnconnectingHeaders);
         }

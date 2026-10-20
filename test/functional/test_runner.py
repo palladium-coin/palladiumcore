@@ -94,6 +94,7 @@ BASE_SCRIPTS = [
     'wallet_listtransactions.py',
     # vv Tests less than 60s vv
     'p2p_sendheaders.py',
+    'p2p_getheaders_deferred.py',
     'wallet_zapwallettxes.py',
     'wallet_importmulti.py',
     'mempool_limit.py',
