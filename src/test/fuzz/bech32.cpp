@@ -5,8 +5,8 @@
 #include <bech32.h>
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>
+#include <util/strencodings.h>
 
-#include <algorithm>
 #include <cassert>
 #include <string>
 #include <vector>
@@ -22,9 +22,7 @@ void test_one_input(const std::vector<uint8_t>& buffer)
     const bech32::Encoding encoding = bech32::Decode(s, hrp, data);
     if (encoding != bech32::Encoding::INVALID) {
         assert(!hrp.empty());
-        std::string lower = s;
-        std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
-        assert(bech32::Encode(encoding, hrp, data) == lower);
+        assert(bech32::Encode(encoding, hrp, data) == ToLower(s));
     }
 
     // Encode arbitrary 5-bit values with a lowercase hrp

@@ -6,6 +6,7 @@
 #include <chainparamsbase.h>
 #include <consensus/params.h>
 #include <test/util/setup_common.h>
+#include <tinyformat.h>
 #include <util/system.h>
 #include <validation.h>
 
@@ -128,7 +129,7 @@ BOOST_AUTO_TEST_CASE(regtest_taprootheight_arg)
     // Out of range values are rejected
     gArgs.ForceSetArg("-taprootheight", "-2");
     BOOST_CHECK_THROW(CreateChainParams(CBaseChainParams::REGTEST), std::runtime_error);
-    gArgs.ForceSetArg("-taprootheight", std::to_string(std::numeric_limits<int>::max()));
+    gArgs.ForceSetArg("-taprootheight", strprintf("%d", std::numeric_limits<int>::max()));
     BOOST_CHECK_THROW(CreateChainParams(CBaseChainParams::REGTEST), std::runtime_error);
 
     // 0 is the regtest default; the argument is only meaningful for regtest
