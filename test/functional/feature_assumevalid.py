@@ -31,23 +31,14 @@ Start three nodes:
 """
 import time
 
-from test_framework.blocktools import (create_block, create_coinbase)
-from test_framework.key import ECKey
 from test_framework.messages import (
-    CBlock,
     CBlockHeader,
-    COutPoint,
-    CTransaction,
-    CTxIn,
-    CTxOut,
-    FromHex,
     msg_block,
     msg_headers,
 )
 from test_framework.mininode import P2PInterface
-from test_framework.script import (CScript, OP_TRUE)
 from test_framework.test_framework import PalladiumTestFramework
-from test_framework.util import assert_equal, COINBASE_MATURITY, connect_nodes
+from test_framework.util import assert_equal, connect_nodes
 
 
 class BaseNode(P2PInterface):

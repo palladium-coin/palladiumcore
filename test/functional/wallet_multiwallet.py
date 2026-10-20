@@ -7,7 +7,6 @@
 Verify that a palladiumd node can load multiple wallet files
 """
 from threading import Thread
-import decimal
 import os
 import shutil
 import time
@@ -15,7 +14,6 @@ import time
 from test_framework.authproxy import JSONRPCException
 from test_framework.test_framework import PalladiumTestFramework
 from test_framework.test_node import ErrorMatch
-from test_framework.messages import COIN
 from test_framework.util import (
     assert_equal,
     assert_raises_rpc_error,

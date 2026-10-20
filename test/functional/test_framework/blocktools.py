@@ -38,7 +38,7 @@ from .script import (
     OP_TRUE,
     hash160,
 )
-from .util import COINBASE_MATURITY, assert_equal
+from .util import assert_equal
 from binascii import a2b_hex
 from io import BytesIO
 import struct
