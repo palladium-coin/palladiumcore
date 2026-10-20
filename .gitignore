@@ -7,7 +7,7 @@ src/palladiumd
 src/palladium-cli
 src/palladium-tx
 src/palladium-wallet
-src/test/fuzz
+src/test/fuzz/*
 !src/test/fuzz/*.*
 src/test/test_palladium
 src/qt/test/test_palladium-qt
