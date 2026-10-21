@@ -40,7 +40,9 @@ Palladium-specific harnesses:
 
 Other harnesses: `bech32`, `base_encode_decode`, `hex`, `decode_tx`, `transaction`, `block`,
 `eval_script` (legacy, segwit v0 and tapscript), `parse_script`, `descriptor_parse`, `psbt`.
-Also `netaddress`, `net_permissions`, `p2p_transport_deserializer` (the wire format deserializer), `parse_numbers`,
+Also `script` (classification and destinations), `key` (signing, verification, compact recovery, BIP32),
+`scriptnum_ops`, `compress` (amounts and scripts), `prevector`, `cuckoocache`, `checkqueue`, `merkleblock`,
+`signature_checker` (mutable and immutable checker agree), `addrman`, `netaddress`, `net_permissions`, `p2p_transport_deserializer` (the wire format deserializer), `parse_numbers`,
 `parse_iso8601`, `parse_hd_keypath`, `spanparsing`, `fee_rate` and `bloom_filter`.
 
 `*_deserialize` harnesses deserialize one type each and check that serializing and deserializing

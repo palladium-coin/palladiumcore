@@ -79,6 +79,14 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     return CalculateNextWorkRequired(pindexLast, pindexFirst->GetBlockTime(), params);
 }
 
+/**
+ * LWMA (linearly weighted moving average) over the last N = 240 blocks.
+ *
+ * Consensus-critical: don't change it without a fork. The window sum uses integer division
+ * (target / (k * N)), so it would give a zero target if all targets of the window were below
+ * k * N, about 2^30. The proof-of-work limit is about 2^224, so a real chain can't get there
+ * and no guard is needed. See doc/palladium-consensus.md.
+ */
 unsigned int LwmaCalculateNextWorkRequired(const CBlockIndex* pindexLast, const Consensus::Params& params)
 {
     const int64_t T = params.nPowTargetSpacingV2;

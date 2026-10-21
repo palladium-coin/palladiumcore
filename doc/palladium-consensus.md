@@ -20,14 +20,27 @@ Where Palladium Core departs from Bitcoin Core. Values are from `src/chainparams
 Checked in this order:
 
 1. Heights 28930-28999: proof-of-work limit (difficulty reset for the new algorithm and for Segwit/CSV activation).
-2. Testnet (`fPowAllowMinDifficultyBlocks`): a block more than 20 minutes after its parent may use the minimum difficulty; otherwise LWMA from genesis. Regtest follows the same path.
-3. From `nResilienceForkHeight`: retarget every 60 blocks with a 7200 s target timespan (60 blocks x 120 s), each step limited to a factor of 4 in either direction.
-4. Heights 29000 to the fork: LWMA (`LwmaCalculateNextWorkRequired`, window of 240 blocks, solve times capped at 6 x target spacing).
-5. Below 29000: the legacy Bitcoin retarget every `DifficultyAdjustmentInterval()` blocks (14 days / 10 minutes).
+2. Regtest (`fPowNoRetargeting`): the difficulty never changes.
+3. Testnet (`fPowAllowMinDifficultyBlocks`): a block more than 20 minutes after its parent may use the minimum difficulty; otherwise LWMA from genesis.
+4. From `nResilienceForkHeight`: retarget every 60 blocks with a 7200 s target timespan (60 blocks x 120 s), each step limited to a factor of 4 in either direction.
+5. Heights 29000 to the fork: LWMA (`LwmaCalculateNextWorkRequired`, window of 240 blocks, solve times capped at 6 x target spacing).
+6. Below 29000: the legacy Bitcoin retarget every `DifficultyAdjustmentInterval()` blocks (14 days / 10 minutes).
+
+### Known limit of the LWMA
+
+`LwmaCalculateNextWorkRequired` adds up `target / (k * N)` for the blocks of the window with integer
+division, where `k * N` is about 8.3 x 10^8 (N = 240, T = 120 s). If every target in the window is
+below that value the sum is 0 and the next target is 0, which no hash can satisfy.
+
+This cannot happen on a real chain: the proof-of-work limit is about 2^224, so it would take a
+difficulty about 2^194 times the minimum. The code is therefore left as it is on purpose. Adding a
+guard would change consensus and need a fork, for a case that cannot occur. The fuzz target `pow` keeps
+its targets above `powLimit >> 100` for this reason. If the algorithm is ever changed (for example by
+a new fork), the window sum should be computed with a division that rounds up or a minimum target.
 
 ## Policy
 
-Before `nResilienceForkHeight`, transactions with an OP_RETURN output whose script is larger than 83 bytes are rejected by mempool acceptance (`bad-txns-oversize-opreturn-prefork`). This is a relay policy check, not a block validity rule.
+While the next block is below `nResilienceForkHeight`, transactions with an OP_RETURN output whose script is larger than 83 bytes are rejected by mempool acceptance (`bad-txns-oversize-opreturn-prefork`). This is a relay policy check, not a block validity rule.
 
 ## Network parameters
 
