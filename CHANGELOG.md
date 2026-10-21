@@ -7,10 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-21
+
+Mainnet consensus rules are unchanged. One testnet validation rule is stricter (see Changed).
+
+### Added
+- `-taprootheight` option to set the Taproot activation height (regtest only)
+- Taproot support in the wallet: `dumpprivkey`, watch-only keys, `importaddress` and `importmulti` now recognise and spend Taproot outputs of imported keys
+- `doc/palladium-consensus.md` (consensus differences from Bitcoin Core) and `CLAUDE.md`
+
+### Changed
+- **Testnet**: the difficulty (`nBits`) of every header is now compared with the expected value. Before, `ContextualCheckBlockHeader` skipped the comparison for blocks more than 4 minutes after their parent, so such a block could claim any difficulty. The 20 minute minimum difficulty rule is already part of `GetNextWorkRequired`. Testnet nodes should upgrade together; mainnet is not affected.
+- Taproot spends are not relayed before the activation height (policy only)
+- The pre-fork OP_RETURN size limit is checked against the next block (`Height() + 1`), so a transaction accepted just before the fork height no longer fails in the first block of the fork (relay policy, not consensus)
+- Tip staleness and sync estimates use the post-fork block spacing (2 minutes)
+- `getblockchaininfo` reports Taproot as a buried softfork
+- `estimatesmartfee` returns the `-fallbackfee` rate when there is not enough data
+- Regtest: RPC port is now 28443 (P2P port minus 1 pattern), `nPowTargetSpacingV2` is set, and the difficulty is fixed (never retargets)
+- `pow.cpp` uses named constants and consensus parameters instead of hardcoded fork heights and timespan
+- `-walletdir` with a trailing path separator is canonicalised
+- Man pages and examples use the Palladium default ports
+
+### Fixed
+- Signed overflow (undefined behaviour) when a peer sends an extreme timestamp in its `version` message; found by the new `process_messages` fuzz target. The value is clamped before the clock offset is computed.
+- A `getheaders` request dropped while another was in flight is now sent when the headers reply arrives; before, a burst of block announcements could leave the node a few blocks behind until the next announcement
+- Regtest difficulty rose on every block (LWMA branch taken), so around height 935 `generate` could silently return no block
+- `SCRIPT_ERR_SCHNORR_SIG_HASHTYPE` is reported when the sighash of a Schnorr signature fails
+- A Taproot address no longer resolves to its untweaked internal key in `AddrToPubKey` (used by `createmultisig` and `addmultisigaddress`)
+- `make check` passes several Boost suites per test file
+
 ### Tests
 - Unit tests for the difficulty rules in `pow_tests` (difficulty reset window, LWMA, Resilience fork retarget, testnet minimum difficulty, regtest) and a new `chainparams_tests` suite
 - Functional tests `feature_taproot_activation.py` (Taproot activation height) and `feature_opreturn_prefork.py` (pre-fork OP_RETURN policy); `-walletdir` trailing separator case in `wallet_multiwallet.py`
-- Signed overflow (undefined behaviour) when a peer sends an extreme timestamp in its `version` message; found by the new `process_messages` fuzz target. The value is clamped before the clock offset is computed.
 - Fuzz harnesses in `src/test/fuzz/` (`pow`, `taproot_verify`, `taproot_tweak`, `key_io`, script, transaction, block and PSBT harnesses, `process_message`, network, parsing, fee rate, bloom filter, key, script, address manager, check queue and merkle block harnesses, node-level `process_block`, `mempool_accept`, `rpc`, `http_request` and `process_messages` harnesses, and deserialization of 31 types) with a small seed corpus in `test/fuzz/corpus/`; the fuzz targets listed in `src/Makefile.test.include` had no sources before
 
 ### Documentation
