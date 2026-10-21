@@ -15,6 +15,7 @@ from typing import List, Dict
 
 from .key import TaggedHash, tweak_add_pubkey
 
+from .ripemd160 import ripemd160
 from .messages import (
     CTransaction,
     CTxOut,
@@ -32,7 +33,11 @@ ANNEX_TAG = 0x50
 LEAF_VERSION_TAPSCRIPT = 0xc0
 
 def hash160(s):
-    return hashlib.new('ripemd160', sha256(s)).digest()
+    try:
+        return hashlib.new('ripemd160', sha256(s)).digest()
+    except ValueError:
+        # OpenSSL 3 no longer provides RIPEMD-160
+        return ripemd160(sha256(s))
 
 def bn2vch(v):
     """Convert number to palladium-specific little endian format."""

@@ -14,3 +14,14 @@ setban
 hist
 ser
 unselect
+nin
+unser
+keypair
+keypairs
+blockin
+fo
+covert
+asend
+inout
+daa
+delibrately

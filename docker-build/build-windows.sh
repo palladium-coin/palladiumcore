@@ -75,7 +75,7 @@ docker run --rm --platform=linux/amd64 \
       [[ -f \"\$b\" ]] && install -m 0755 \"\$b\" /out/
     done
 
-    if [[ "\$BUILD_INSTALLER" == "true" ]]; then
+    if [[ \"\$BUILD_INSTALLER\" == \"true\" ]]; then
         echo '[*] make deploy (creating installer)...'
         make deploy
         echo '[*] copying installer to /out...'

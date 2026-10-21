@@ -37,6 +37,7 @@ Mainnet consensus rules are unchanged. One testnet validation rule is stricter (
 - `make check` passes several Boost suites per test file
 
 ### Tests
+- GitHub Actions workflow (`.github/workflows/ci.yml`): lint, build with unit and functional tests, and the fuzz targets built with libFuzzer, ASan and UBSan and run on the seed corpus
 - Unit tests for the difficulty rules in `pow_tests` (difficulty reset window, LWMA, Resilience fork retarget, testnet minimum difficulty, regtest) and a new `chainparams_tests` suite
 - Functional tests `feature_taproot_activation.py` (Taproot activation height) and `feature_opreturn_prefork.py` (pre-fork OP_RETURN policy); `-walletdir` trailing separator case in `wallet_multiwallet.py`
 - Fuzz harnesses in `src/test/fuzz/` (`pow`, `taproot_verify`, `taproot_tweak`, `key_io`, script, transaction, block and PSBT harnesses, `process_message`, network, parsing, fee rate, bloom filter, key, script, address manager, check queue and merkle block harnesses, node-level `process_block`, `mempool_accept`, `rpc`, `http_request` and `process_messages` harnesses, and deserialization of 31 types) with a small seed corpus in `test/fuzz/corpus/`; the fuzz targets listed in `src/Makefile.test.include` had no sources before

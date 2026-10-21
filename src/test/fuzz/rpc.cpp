@@ -9,6 +9,7 @@
 #include <test/fuzz/FuzzedDataProvider.h>
 #include <test/fuzz/fuzz.h>
 #include <test/util/setup_common.h>
+#include <tinyformat.h>
 #include <univalue.h>
 #include <util/strencodings.h>
 #include <util/system.h>
@@ -63,7 +64,7 @@ std::string ConsumeParam(FuzzedDataProvider& provider)
 {
     switch (provider.ConsumeIntegralInRange<int>(0, 7)) {
     case 0: return provider.ConsumeRandomLengthString(64);
-    case 1: return std::to_string(provider.ConsumeIntegral<int64_t>());
+    case 1: return strprintf("%d", provider.ConsumeIntegral<int64_t>());
     case 2: return provider.ConsumeBool() ? "true" : "false";
     case 3: return "\"" + provider.ConsumeRandomLengthString(40) + "\"";
     case 4: return "[" + provider.ConsumeRandomLengthString(40) + "]";
