@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Mainnet consensus rules are unchanged. One testnet validation rule is stricter (see Changed).
 
 ### Added
+- Reproducible Docker builds (`docker-build/`; `build-linux-*.sh` and `build-windows.sh` are replaced by `build.sh <target>`, and the four Dockerfiles by one): one `Dockerfile` pinned by image digest and Ubuntu archive snapshot, one `build.sh` for all targets (Linux x86_64, aarch64, armv7l and Windows) that builds the exported commit with fixed time, path and Qt resource dates, strips the binaries and writes `SHA256SUMS`; `check-reproducible.sh` builds twice and compares. Verified on Ubuntu amd64 for all four targets (the Windows installer excluded): two builds give identical binaries.
 - `-taprootheight` option to set the Taproot activation height (regtest only)
 - Taproot support in the wallet: `dumpprivkey`, watch-only keys, `importaddress` and `importmulti` now recognise and spend Taproot outputs of imported keys
 - `doc/palladium-consensus.md` (consensus differences from Bitcoin Core) and `CLAUDE.md`
