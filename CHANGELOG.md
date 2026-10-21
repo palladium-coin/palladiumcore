@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Tests
 - Unit tests for the difficulty rules in `pow_tests` (difficulty reset window, LWMA, Resilience fork retarget, testnet minimum difficulty, regtest) and a new `chainparams_tests` suite
 - Functional tests `feature_taproot_activation.py` (Taproot activation height) and `feature_opreturn_prefork.py` (pre-fork OP_RETURN policy); `-walletdir` trailing separator case in `wallet_multiwallet.py`
-- Fuzz harnesses in `src/test/fuzz/` (`pow`, `taproot_verify`, `taproot_tweak`, `key_io`, script, transaction, block and PSBT harnesses, `process_message`, network, parsing, fee rate, bloom filter, key, script, address manager, check queue and merkle block harnesses, and deserialization of 31 types) with a small seed corpus in `test/fuzz/corpus/`; the fuzz targets listed in `src/Makefile.test.include` had no sources before
+- Signed overflow (undefined behaviour) when a peer sends an extreme timestamp in its `version` message; found by the new `process_messages` fuzz target. The value is clamped before the clock offset is computed.
+- Fuzz harnesses in `src/test/fuzz/` (`pow`, `taproot_verify`, `taproot_tweak`, `key_io`, script, transaction, block and PSBT harnesses, `process_message`, network, parsing, fee rate, bloom filter, key, script, address manager, check queue and merkle block harnesses, node-level `process_block`, `mempool_accept`, `rpc`, `http_request` and `process_messages` harnesses, and deserialization of 31 types) with a small seed corpus in `test/fuzz/corpus/`; the fuzz targets listed in `src/Makefile.test.include` had no sources before
 
 ### Documentation
 - Documented the known limit of the LWMA (zero target if every target of the window is below about 2^30, unreachable on a real chain) in `doc/palladium-consensus.md` and `src/pow.cpp`; no behaviour change. Fixed the order of the difficulty rules in that page (regtest never retargets)

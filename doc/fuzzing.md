@@ -36,7 +36,16 @@ Palladium-specific harnesses:
 | `taproot_tweak` | BIP341 output key tweaking: a key path signature made with `SignSchnorrTaproot` verifies against the output key from `CreatePayToTaprootPubKey`, and not for another message. |
 | `key_io` | Address and key decoding on all networks (base58, bech32, bech32m; `plm`, `tplm`, `rplm`) and the encode/decode round trip. |
 
-`process_message` sends one network message of a known type, with fuzzed contents, to a connected peer of a regtest node (`ProcessMessage`).
+`process_message` sends one network message of a known type, with fuzzed contents, to a connected peer of a regtest node (`ProcessMessage`). `process_messages` sends a conversation of up to 8 messages to one peer, inbound or outbound, so the state built between messages is exercised.
+
+Targets that run on a full node setup (regtest, started once; slower, a few hundred to thousands of executions per second):
+
+| Target | What it does |
+| --- | --- |
+| `process_block` | `ProcessNewBlock` and `ProcessNewBlockHeaders` with a fuzzed block; half of the inputs get the right parent, difficulty, merkle root and proof of work, so validation goes past the first checks. |
+| `mempool_accept` | `AcceptToMemoryPool` on a chain with mature coinbases, with fuzzed transactions (half of them spending real coinbase outputs), then `CTxMemPool::check`. |
+| `rpc` | Any registered RPC (except the ones that stop or mine) with fuzzed parameters; only the documented error types may come out. |
+| `http_request` | Every accessor of `HTTPRequest` on a hand-built libevent request (method, URI, headers, body). |
 
 Other harnesses: `bech32`, `base_encode_decode`, `hex`, `decode_tx`, `transaction`, `block`,
 `eval_script` (legacy, segwit v0 and tapscript), `parse_script`, `descriptor_parse`, `psbt`.

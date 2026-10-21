@@ -49,6 +49,11 @@ FUZZ_TARGETS = \
   test/fuzz/prefilled_transaction_deserialize \
   test/fuzz/prevector \
   test/fuzz/process_message \
+  test/fuzz/http_request \
+  test/fuzz/mempool_accept \
+  test/fuzz/process_block \
+  test/fuzz/process_messages \
+  test/fuzz/rpc \
   test/fuzz/psbt \
   test/fuzz/psbt_input_deserialize \
   test/fuzz/psbt_output_deserialize \
@@ -413,6 +418,36 @@ test_fuzz_prefilled_transaction_deserialize_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAG
 test_fuzz_prefilled_transaction_deserialize_LDADD = $(FUZZ_SUITE_LD_COMMON)
 test_fuzz_prefilled_transaction_deserialize_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 test_fuzz_prefilled_transaction_deserialize_SOURCES = test/fuzz/deserialize.cpp
+
+test_fuzz_http_request_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES) $(EVENT_CFLAGS)
+test_fuzz_http_request_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_http_request_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_http_request_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_http_request_SOURCES = test/fuzz/http_request.cpp
+
+test_fuzz_mempool_accept_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_mempool_accept_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_mempool_accept_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_mempool_accept_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_mempool_accept_SOURCES = test/fuzz/mempool_accept.cpp
+
+test_fuzz_process_block_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_process_block_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_process_block_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_process_block_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_process_block_SOURCES = test/fuzz/process_block.cpp
+
+test_fuzz_process_messages_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_process_messages_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_process_messages_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_process_messages_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_process_messages_SOURCES = test/fuzz/process_messages.cpp
+
+test_fuzz_rpc_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_rpc_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_rpc_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_rpc_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_rpc_SOURCES = test/fuzz/rpc.cpp
 
 test_fuzz_process_message_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
 test_fuzz_process_message_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
