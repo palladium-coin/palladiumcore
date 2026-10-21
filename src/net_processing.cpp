@@ -2144,7 +2144,10 @@ bool ProcessMessage(CNode* pfrom, const std::string& msg_type, CDataStream& vRec
                   pfrom->nStartingHeight, addrMe.ToString(), pfrom->GetId(),
                   remoteAddr);
 
-        int64_t nTimeOffset = nTime - GetTime();
+        // nTime is whatever the peer sent: clamp it so that the subtraction cannot overflow
+        // (an offset of this size is ignored by AddTimeData anyway)
+        const int64_t max_time = int64_t{1} << 50;
+        int64_t nTimeOffset = std::max<int64_t>(-max_time, std::min<int64_t>(nTime, max_time)) - GetTime();
         pfrom->nTimeOffset = nTimeOffset;
         AddTimeData(pfrom->addr, nTimeOffset);
 
