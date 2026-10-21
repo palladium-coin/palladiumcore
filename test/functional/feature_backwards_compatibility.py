@@ -231,13 +231,13 @@ class BackwardsCompatibilityTest(PalladiumTestFramework):
         assert_equal(txs[1]["txid"], tx1_id)
         assert_equal(txs[2]["walletconflicts"], [tx1_id])
         assert_equal(txs[1]["replaced_by_txid"], tx2_id)
-        assert not(txs[1]["abandoned"])
+        assert not (txs[1]["abandoned"])
         assert_equal(txs[1]["confirmations"], -1)
         assert_equal(txs[2]["blockindex"], 1)
         assert txs[3]["abandoned"]
         assert_equal(txs[4]["walletconflicts"], [tx3_id])
         assert_equal(txs[3]["replaced_by_txid"], tx4_id)
-        assert not(hasattr(txs[3], "blockindex"))
+        assert not (hasattr(txs[3], "blockindex"))
 
         node_v19.loadwallet("w2")
         wallet = node_v19.get_wallet_rpc("w2")
@@ -262,13 +262,13 @@ class BackwardsCompatibilityTest(PalladiumTestFramework):
         assert_equal(txs[1]["txid"], tx1_id)
         assert_equal(txs[2]["walletconflicts"], [tx1_id])
         assert_equal(txs[1]["replaced_by_txid"], tx2_id)
-        assert not(txs[1]["abandoned"])
+        assert not (txs[1]["abandoned"])
         assert_equal(txs[1]["confirmations"], -1)
         assert_equal(txs[2]["blockindex"], 1)
         assert txs[3]["abandoned"]
         assert_equal(txs[4]["walletconflicts"], [tx3_id])
         assert_equal(txs[3]["replaced_by_txid"], tx4_id)
-        assert not(hasattr(txs[3], "blockindex"))
+        assert not (hasattr(txs[3], "blockindex"))
 
         node_v18.loadwallet("w2")
         wallet = node_v18.get_wallet_rpc("w2")

@@ -37,13 +37,13 @@ class RejectLowDifficultyHeadersTest(PalladiumTestFramework):
         if not os.path.exists(self.headers_file_path):
             raise SkipTest("header data file not available for this chain")
         with open(self.headers_file_path, encoding='utf-8') as headers_data:
-            h_lines = [l.strip() for l in headers_data.readlines()]
+            h_lines = [line.strip() for line in headers_data.readlines()]
 
         # The headers data is taken from testnet for early blocks from genesis until the first checkpoint. There are
         # two headers with valid POW at height 1 and 2, forking off from genesis. They are indicated by the FORK_PREFIX.
         FORK_PREFIX = 'fork:'
-        self.headers = [l for l in h_lines if not l.startswith(FORK_PREFIX)]
-        self.headers_fork = [l[len(FORK_PREFIX):] for l in h_lines if l.startswith(FORK_PREFIX)]
+        self.headers = [line for line in h_lines if not line.startswith(FORK_PREFIX)]
+        self.headers_fork = [line[len(FORK_PREFIX):] for line in h_lines if line.startswith(FORK_PREFIX)]
 
         self.headers = [FromHex(CBlockHeader(), h) for h in self.headers]
         self.headers_fork = [FromHex(CBlockHeader(), h) for h in self.headers_fork]
