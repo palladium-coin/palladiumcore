@@ -4,6 +4,7 @@
 
 FUZZ_TARGETS = \
   test/fuzz/address_deserialize \
+  test/fuzz/addrman \
   test/fuzz/banentry_deserialize \
   test/fuzz/base_encode_decode \
   test/fuzz/bech32 \
@@ -18,7 +19,10 @@ FUZZ_TARGETS = \
   test/fuzz/blockundo_deserialize \
   test/fuzz/bloom_filter \
   test/fuzz/bloomfilter_deserialize \
+  test/fuzz/checkqueue \
   test/fuzz/coins_deserialize \
+  test/fuzz/compress \
+  test/fuzz/cuckoocache \
   test/fuzz/decode_tx \
   test/fuzz/descriptor_parse \
   test/fuzz/eval_script \
@@ -26,8 +30,10 @@ FUZZ_TARGETS = \
   test/fuzz/flat_file_pos_deserialize \
   test/fuzz/hex \
   test/fuzz/inv_deserialize \
+  test/fuzz/key \
   test/fuzz/key_io \
   test/fuzz/merkle_block_deserialize \
+  test/fuzz/merkleblock \
   test/fuzz/net_permissions \
   test/fuzz/netaddr_deserialize \
   test/fuzz/netaddress \
@@ -41,13 +47,17 @@ FUZZ_TARGETS = \
   test/fuzz/partially_signed_transaction_deserialize \
   test/fuzz/pow \
   test/fuzz/prefilled_transaction_deserialize \
+  test/fuzz/prevector \
   test/fuzz/process_message \
   test/fuzz/psbt \
   test/fuzz/psbt_input_deserialize \
   test/fuzz/psbt_output_deserialize \
   test/fuzz/pub_key_deserialize \
+  test/fuzz/script \
   test/fuzz/script_deserialize \
+  test/fuzz/scriptnum_ops \
   test/fuzz/service_deserialize \
+  test/fuzz/signature_checker \
   test/fuzz/spanparsing \
   test/fuzz/sub_net_deserialize \
   test/fuzz/taproot_tweak \
@@ -463,6 +473,66 @@ test_fuzz_spanparsing_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 test_fuzz_spanparsing_LDADD = $(FUZZ_SUITE_LD_COMMON)
 test_fuzz_spanparsing_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 test_fuzz_spanparsing_SOURCES = test/fuzz/spanparsing.cpp
+
+test_fuzz_addrman_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_addrman_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_addrman_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_addrman_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_addrman_SOURCES = test/fuzz/addrman.cpp
+
+test_fuzz_checkqueue_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_checkqueue_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_checkqueue_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_checkqueue_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_checkqueue_SOURCES = test/fuzz/checkqueue.cpp
+
+test_fuzz_compress_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_compress_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_compress_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_compress_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_compress_SOURCES = test/fuzz/compress.cpp
+
+test_fuzz_cuckoocache_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_cuckoocache_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_cuckoocache_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_cuckoocache_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_cuckoocache_SOURCES = test/fuzz/cuckoocache.cpp
+
+test_fuzz_key_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_key_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_key_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_key_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_key_SOURCES = test/fuzz/key.cpp
+
+test_fuzz_merkleblock_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_merkleblock_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_merkleblock_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_merkleblock_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_merkleblock_SOURCES = test/fuzz/merkleblock.cpp
+
+test_fuzz_prevector_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_prevector_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_prevector_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_prevector_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_prevector_SOURCES = test/fuzz/prevector.cpp
+
+test_fuzz_script_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_script_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_script_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_script_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_script_SOURCES = test/fuzz/script.cpp
+
+test_fuzz_scriptnum_ops_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_scriptnum_ops_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_scriptnum_ops_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_scriptnum_ops_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_scriptnum_ops_SOURCES = test/fuzz/scriptnum_ops.cpp
+
+test_fuzz_signature_checker_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
+test_fuzz_signature_checker_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_fuzz_signature_checker_LDADD = $(FUZZ_SUITE_LD_COMMON)
+test_fuzz_signature_checker_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+test_fuzz_signature_checker_SOURCES = test/fuzz/signature_checker.cpp
 
 test_fuzz_psbt_CPPFLAGS = $(AM_CPPFLAGS) $(PALLADIUM_INCLUDES)
 test_fuzz_psbt_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
