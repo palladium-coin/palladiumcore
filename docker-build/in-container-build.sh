@@ -38,7 +38,7 @@ case "${TARGET}" in
 linux-x86_64)
     CONFIGURE_ARGS=(--prefix="${DEPENDS_PREFIX}" --enable-glibc-back-compat --enable-reduce-exports
         LDFLAGS=-static-libstdc++)
-    STRIP=strip
+    STRIP="strip"
     SUFFIX=""
     ;;
 linux-aarch64 | linux-armv7l)
