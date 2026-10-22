@@ -1,237 +1,139 @@
-# Palladium Core
+Palladium Core
+==============
 
 [![Release](https://img.shields.io/github/v/release/palladium-coin/palladiumcore)](https://github.com/palladium-coin/palladiumcore/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](COPYING)
 
-**Official Websites:** [palladiumblockchain.net](https://palladiumblockchain.net) | [palladium-coin.com](https://palladium-coin.com)
+https://palladiumblockchain.net | https://palladium-coin.com
 
-## Table of Contents
+What is Palladium?
+------------------
 
-- [What is Palladium Core?](#what-is-palladium-core)
-- [Quick Start](#quick-start)
-- [Building from Source](#building-from-source)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
-- [Version History](#version-history)
-- [Support](#support)
-- [License](#license)
+Palladium (PLM) is a decentralized digital currency with a peer-to-peer network and no central authority.
+Palladium Core is the reference client: it connects to the network, downloads and fully validates every block
+and transaction, and includes a wallet and a graphical interface (`palladium-qt`).
 
-## What is Palladium Core?
+Palladium Core is a fork of [Bitcoin Core](https://github.com/bitcoin/bitcoin) with these differences:
 
-Palladium Core is a decentralized cryptocurrency built on Bitcoin's proven codebase, enhanced with modern features including **Taproot support** (BIP340/341/342/350). Designed for the palladium market ecosystem, it delivers enterprise-grade security, efficiency, and privacy for digital transactions.
+- **Taproot** (BIP 340/341/342/350): Schnorr signatures, bech32m addresses (`plm1p...`). Active on mainnet from
+  block 405000. See the [Taproot guide](doc/taproot-guide.md) and the [technical specification](doc/TAPROOT.md).
+- **Difficulty and block time**: from the *Resilience* fork (block 340000) blocks are targeted every 2 minutes
+  and the difficulty is adjusted every 60 blocks. Testnet uses LWMA from the genesis block.
+  See [doc/palladium-consensus.md](doc/palladium-consensus.md).
+- **Network**: mainnet P2P port 2333 and RPC port 2332, testnet 12333 and 12332; bech32 prefixes `plm` and `tplm`.
+- **Names**: `palladiumd`, `palladium-cli`, `palladium-qt`, `palladium-tx`, `palladium-wallet`, `palladium.conf`,
+  data directory `~/.palladium`.
 
-### Key Features
+The history of every release is in the [CHANGELOG](CHANGELOG.md).
 
-- **Taproot Support**: Enhanced privacy with Schnorr signatures and bech32m addresses
-- **Security**: Advanced cryptographic techniques ensure transaction security and fund protection
-- **Efficiency**: Optimized blockchain parameters provide fast and reliable transaction processing
-- **Transparency**: Open-source architecture enables community inspection and contribution
-- **Market-Focused**: Tailored features specifically designed for palladium industry requirements
-- **Decentralized**: Peer-to-peer network with no central authority
+Getting started
+---------------
 
-### What's New in v2.0.0
+Download the binaries from the [releases page](https://github.com/palladium-coin/palladiumcore/releases),
+unpack them and run `palladium-qt` (GUI) or `palladiumd` (headless). The first synchronization downloads the
+whole chain and can take from a few hours to a day, depending on your machine and connection.
 
-Palladium Core 2.0.0 introduces **full Taproot support**, bringing cutting-edge privacy and efficiency improvements:
+Verify what you download: each release has a `SHA256SUMS` file. The binaries are built reproducibly (see
+below), so you can build the same commit yourself and compare the hashes.
 
-- **Schnorr Signatures**: More efficient and secure than traditional ECDSA signatures
-- **Bech32m Addresses**: New address format (`plm1p...`) for Taproot outputs
-- **Enhanced Privacy**: Complex smart contracts appear as simple transactions on-chain
-- **Smaller Transactions**: Lower fees through more efficient signature schemes
+Configuration is optional. Create `palladium.conf` in the data directory (`~/.palladium/` on Linux,
+`%APPDATA%\Palladium\` on Windows, `~/Library/Application Support/Palladium/` on macOS). All the options, with
+examples for mainnet, testnet and regtest, are in the [configuration guide](doc/configuration-file.md).
 
-**Learn More**: [Taproot User Guide](doc/taproot-guide.md) | [Technical Specification](doc/TAPROOT.md)
+Building
+--------
 
-## Quick Start
+### Reproducible release builds
 
-### Pre-built Binaries
-
-Download the latest Palladium Core release:
-
-**[Download Latest Release](https://github.com/palladium-coin/palladiumcore/releases/latest)**
-
-**Installation Steps:**
-
-1. **Download**: Get the appropriate binary for your operating system
-2. **Install**: Extract and run the installer
-3. **Configure**: Create `palladium.conf` (see [Configuration](#configuration) below)
-4. **Launch**: Start Palladium Core and sync with the network
-
-**First-time users?** Check out the [Taproot User Guide](doc/taproot-guide.md) to learn about creating modern Taproot addresses with enhanced privacy.
-
-### Configuration
-
-For enhanced connectivity and performance, you can create a configuration file. Palladium Core supports comprehensive configuration options for mainnet, testnet, and regtest networks.
-
-**Configuration File Location:**
-- **Windows**: `%appdata%/Palladium/`  
-- **Linux**: `/home/[username]/.palladium/`  
-- **macOS**: `~/Library/Application Support/Palladium/`
-
-Create a file named `palladium.conf` in the appropriate directory for your operating system.
-
-**Complete Configuration Guide:**
-For detailed configuration instructions, network-specific settings, security best practices, and complete configuration examples, please refer to our comprehensive configuration guide: **[Palladium Configuration File Documentation](doc/configuration-file.md)**
-
-## Building from Source
-
-### Docker Build (Recommended)
-
-For a simpler and more reproducible build process, you can use our Docker-based build system. This method provides a consistent build environment and eliminates dependency management issues.
-
-**Requirements:**
-- Linux AMD x86_64 system with Ubuntu 20.04 or newer
-- Docker installed and running
-
-For detailed instructions and configuration options, see the [docker-build](docker-build/) directory.
-
-### Manual Build Instructions
-
-## Manual Build Instructions
-
-### Quick Build Script (Ubuntu/WSL Only)
-
-**For rapid development and debugging on Ubuntu 20.04 or WSL with Ubuntu 20.04**
-
-We provide a convenient automated build script designed specifically for quick development iterations and GUI testing:
+The binaries for Linux (x86_64, aarch64, armv7l) and Windows are built inside Docker, from a pinned image and
+a pinned Ubuntu package snapshot, so that the same commit gives the same binaries byte for byte:
 
 ```bash
-./quick-build.sh [OPTIONS]
+cd docker-build
+./build.sh linux-x86_64        # or linux-aarch64, linux-armv7l, windows
 ```
 
-**⚠️ Important Note**: This script is optimized for **Ubuntu 20.04** (including WSL with Ubuntu 20.04). It may not work correctly on newer Ubuntu versions due to dependency differences.
+Needs Docker on an amd64 Ubuntu host. See [docker-build/README.md](docker-build/README.md) for the options, how
+to check the reproducibility and how to verify a release.
 
-#### Available Options:
+### From source
 
-- `--full` or no arguments: Complete build process (dependencies + BerkeleyDB + compilation) [DEFAULT]
-- `--build`: Full build with reconfigure (runs distclean, configure, and make)
-- `--rebuild`: Quick incremental rebuild (clean + make, no reconfigure) - **fastest for testing**
-- `--install-deps`: Install system dependencies only
-- `--install-db`: Install BerkeleyDB 4.8 only
-- `--clean`: Clean build artifacts
-- `--help`: Show help message
-
-#### Usage Examples:
+The build is the usual autotools one:
 
 ```bash
-# First time setup (installs everything)
-./quick-build.sh
-
-# Full rebuild after configuration changes
-./quick-build.sh --build
-
-# Quick rebuild after code changes (fastest)
-./quick-build.sh --rebuild
-
-# Clean build artifacts
-./quick-build.sh --clean
+./autogen.sh
+./configure
+make -j"$(nproc)"
 ```
 
-#### What It Does:
+Instructions for each platform, with the dependencies:
 
-- **Automated dependency installation**: Installs all required build tools, libraries, and Qt5 for GUI
-- **BerkeleyDB 4.8 setup**: Automatically installs BerkeleyDB 4.8 (required for wallet functionality)
-- **Optimized compilation**: Uses all available CPU cores with `make -j$(nproc)`
-- **ccache support**: Automatically enables ccache for faster recompilation
-- **GUI support**: Builds `palladium-qt` for testing the graphical interface
+- [Unix / Linux](doc/build-unix.md)
+- [Windows](doc/build-windows.md)
+- [macOS](doc/build-osx.md)
+- [FreeBSD](doc/build-freebsd.md), [NetBSD](doc/build-netbsd.md), [OpenBSD](doc/build-openbsd.md)
+- [Dependencies](doc/dependencies.md)
 
-#### Output Binaries:
+`./quick-build.sh` is a helper for development on Ubuntu 20.04 (or WSL): it installs the dependencies and
+BerkeleyDB 4.8 and builds with ccache (`./quick-build.sh --help` lists the options).
 
-After successful build, binaries are located at:
-- `src/palladiumd` - Daemon
-- `src/palladium-cli` - Command-line interface
-- `src/qt/palladium-qt` - Qt GUI application
+Testing
+-------
 
-#### Build Workflow Recommendation:
+Testing and code review are the bottleneck of the development: please test your changes and help to review
+the ones of others.
 
-1. **First time**: `./quick-build.sh` (installs everything)
-2. **After code changes**: `./quick-build.sh --rebuild` (fastest, keeps configuration)
-3. **After configure changes**: `./quick-build.sh --build` (reconfigures everything)
+```bash
+make check                          # unit tests
+test/functional/test_runner.py      # functional tests
+test/lint/lint-all.sh               # lint
+```
 
----
+- [Unit tests and functional tests](test/README.md)
+- [Fuzzing](doc/fuzzing.md): libFuzzer harnesses, including the stateful ones for blocks, mempool, RPC, HTTP and
+  P2P messages
+- [Benchmarks](doc/benchmarking.md)
 
-For detailed manual build instructions specific to your operating system, please refer to the comprehensive documentation available in the `/doc` folder:
+Every push and pull request runs lint, the unit and functional tests and the fuzz targets on GitHub Actions
+(see [.github/workflows/ci.yml](.github/workflows/ci.yml)).
 
-### Platform-Specific Build Guides
+Contributing
+------------
 
-- **Unix/Linux Systems**: [`doc/build-unix.md`](doc/build-unix.md)
-- **Windows**: [`doc/build-windows.md`](doc/build-windows.md)
-- **macOS**: [`doc/build-osx.md`](doc/build-osx.md)
-- **FreeBSD**: [`doc/build-freebsd.md`](doc/build-freebsd.md)
-- **NetBSD**: [`doc/build-netbsd.md`](doc/build-netbsd.md)
-- **OpenBSD**: [`doc/build-openbsd.md`](doc/build-openbsd.md)
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[developer notes](doc/developer-notes.md) first. In short: fork the repository, work on a topic branch, add tests
+for what you change, and open a pull request. Commits use the prefixes of Bitcoin Core (`rpc:`, `net:`,
+`wallet:`, `qt:`, `test:`, `doc:`, `build:`).
 
-### Additional Resources
+Changes to the consensus rules (`src/consensus/`, `src/pow.cpp`, `src/validation.cpp`) need particular care and
+are reviewed more strictly.
 
-- **Dependencies Overview**: [`doc/dependencies.md`](doc/dependencies.md) - Complete list of build dependencies
-- **Developer Notes**: [`doc/developer-notes.md`](doc/developer-notes.md) - Advanced build configurations and development setup
-- **Gitian Building**: [`doc/gitian-building.md`](doc/gitian-building.md) - Deterministic builds for release binaries
+Security
+--------
 
-Each platform-specific guide includes:
-- Required dependencies and installation commands
-- Step-by-step build process
-- Configuration options and optimizations
-- Troubleshooting common build issues
-- Platform-specific considerations and best practices
+Please report vulnerabilities privately, as described in [SECURITY.md](SECURITY.md). Do not open a public issue.
 
-Choose the appropriate guide for your operating system to ensure a successful build process.
+Documentation
+-------------
 
-## Contributing
+The index of all the documents is [doc/README.md](doc/README.md). Among them:
 
-We welcome contributions from the community! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
+- [Configuration file](doc/configuration-file.md)
+- [JSON-RPC interface](doc/JSON-RPC-interface.md), [REST interface](doc/REST-interface.md), [ZMQ](doc/zmq.md)
+- [Taproot guide](doc/taproot-guide.md), [BIPs implemented](doc/bips.md)
+- [Release process](doc/release-process.md)
 
-### Development Process
+Support
+-------
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+- Issues: [GitHub Issues](https://github.com/palladium-coin/palladiumcore/issues)
+- Community: [Discord](https://discord.gg/palladium) | [Telegram](https://t.me/palladiumcoin)
+- Websites: [palladiumblockchain.net](https://palladiumblockchain.net) | [palladium-coin.com](https://palladium-coin.com)
 
-## Security
+License
+-------
 
-Security is paramount in cryptocurrency development. Please report security vulnerabilities privately to our security team. See [SECURITY.md](SECURITY.md) for details.
+Palladium Core is released under the terms of the MIT license. See [COPYING](COPYING).
 
-## License
-
-Palladium Core is released under the terms of the MIT license. See [COPYING](COPYING) for more information.
-
-## Documentation
-
-### Core Documentation
-- **[CHANGELOG](CHANGELOG.md)** - Complete version history
-- **[Taproot User Guide](doc/taproot-guide.md)** - How to use Taproot addresses (v2.0.0)
-- **[Taproot Technical Specification](doc/TAPROOT.md)** - Deep dive into Taproot implementation
-- **[Configuration Guide](doc/configuration-file.md)** - Complete configuration reference
-- **[BIP Implementation Status](doc/bips.md)** - Bitcoin Improvement Proposals implemented
-
-### Build Documentation
-- **[Build Instructions](doc/)** - Platform-specific build guides
-- **[Dependencies](doc/dependencies.md)** - Complete dependency list
-- **[Developer Notes](doc/developer-notes.md)** - Advanced development setup
-
-### API Documentation
-- **[JSON-RPC API](doc/JSON-RPC-interface.md)** - Complete RPC command reference
-- **[REST Interface](doc/REST-interface.md)** - RESTful API documentation
-- **[ZMQ Interface](doc/zmq.md)** - ZeroMQ notification interface
-
-## Support
-
-- **Documentation**: [Wiki](https://github.com/palladium-coin/palladium/wiki)
-- **Issues**: [GitHub Issues](https://github.com/palladium-coin/palladium/issues)
-- **Community**: [Discord](https://discord.gg/palladium) | [Telegram](https://t.me/palladiumcoin)
-- **Website**: [palladiumblockchain.net](https://palladiumblockchain.net/)
-
-## Version History
-
-For a complete history of changes, improvements, and bug fixes across all versions, see the **[CHANGELOG](CHANGELOG.md)**.
-
-[View all releases](https://github.com/palladium-coin/palladiumcore/releases)
-
-## Acknowledgments
-
-Palladium Core is built upon the Bitcoin Core codebase. We thank the Bitcoin Core developers and the broader cryptocurrency community for their foundational work.
-
-**Taproot Implementation**: The Taproot implementation (v2.0.0) is based on Bitcoin Core v24.2, adapted for Palladium's chain parameters and consensus rules.
-
----
-
-**Disclaimer**: Cryptocurrency investments carry risk. Please do your own research and invest responsibly.
+Palladium Core is built on the work of the Bitcoin Core developers and of the wider community. The Taproot
+implementation is based on Bitcoin Core v24.2, adapted to the chain parameters and consensus rules of Palladium.
