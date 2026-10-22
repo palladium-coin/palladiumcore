@@ -33,12 +33,14 @@ Update the hardcoded seeds when needed, see [contrib/seeds/README.md](../contrib
 ## Version
 
 ```bash
-./update_version.sh
+./update_version.sh 2.1.1               # a final release
+./update_version.sh --rc 1 2.2.0        # release candidate 2.2.0rc1
+./update_version.sh --dev 2.3.0         # a development version (CLIENT_VERSION_IS_RELEASE false)
 ```
 
-It updates `configure.ac`, `build_msvc/palladium_config.h` and the five man pages. Check the result with
-`git diff`, then commit it (`build: bump the version to X.Y.Z`). For a release candidate set
-`CLIENT_VERSION_RC` in `configure.ac`; for a final release it is `0` and `CLIENT_VERSION_IS_RELEASE` is `true`.
+Without the version it asks for it. It updates `configure.ac` (including `CLIENT_VERSION_RC` and
+`CLIENT_VERSION_IS_RELEASE`), `build_msvc/palladium_config.h` and the version and the date of the five man pages,
+then checks the result. Look at `git diff` and commit it (`build: bump the version to X.Y.Z`).
 
 ## Build
 
