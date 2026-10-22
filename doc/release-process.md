@@ -73,8 +73,8 @@ git push origin v<version>
 1. Make one archive per target from the binaries of `build/<target>/`, for example
    `palladium-<version>-x86_64-linux-gnu.tar.gz`, `palladium-<version>-win64.zip` and the installer
    `palladium-<version>-win64-setup-unsigned.exe` (the installer is not code-signed).
-2. Create `SHA256SUMS` with the checksums of the files to publish and sign it. Check that `SHA256SUMS` itself is
-   not in the list.
+2. Create `SHA256SUMS` with the checksums of the files to publish (archives and installer) and sign it. Check
+   that `SHA256SUMS` itself is not in the list.
 
 ```bash
 sha256sum palladium-<version>-* > SHA256SUMS
@@ -82,11 +82,22 @@ gpg --digest-algo sha256 --clearsign SHA256SUMS     # outputs SHA256SUMS.asc
 ```
 
    The digest algorithm is forced to sha256 to avoid confusion between the `Hash:` header that GPG adds and the
-   SHA256 of the files. Publish `SHA256SUMS` together with `SHA256SUMS.asc`; the unsigned binaries inside the
-   archives are the ones whose hashes are in `docker-build`'s `SHA256SUMS`, so anyone can compare them.
-3. Create the [GitHub release](https://github.com/palladium-coin/palladiumcore/releases/new) for the tag, with
-   the archives, `SHA256SUMS`, `SHA256SUMS.asc` and a link to the `CHANGELOG.md` section.
-4. Announce the release on the official channels and update the websites.
+   SHA256 of the files. This file lets a user check the download.
+3. Publish also the checksums of the binaries inside the archives, one file per target, so that anyone can rebuild
+   the commit with `docker-build` and compare ([how](../docker-build/README.md#verify-a-release)). The file written by
+   the build is `build/<target>/SHA256SUMS`; the installer is not in it, because it is not reproducible:
+
+```bash
+for t in linux-x86_64 linux-aarch64 linux-armv7l windows; do
+    cp build/$t/SHA256SUMS SHA256SUMS-$t
+    gpg --digest-algo sha256 --clearsign SHA256SUMS-$t     # outputs SHA256SUMS-$t.asc
+done
+```
+
+4. Create the [GitHub release](https://github.com/palladium-coin/palladiumcore/releases/new) for the tag, with
+   the archives, the installer, `SHA256SUMS` and `SHA256SUMS.asc`, the four `SHA256SUMS-<target>` with their
+   `.asc`, and a link to the `CHANGELOG.md` section.
+5. Announce the release on the official channels and update the websites.
 
 ## Additional information
 

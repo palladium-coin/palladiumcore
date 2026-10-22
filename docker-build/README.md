@@ -74,7 +74,11 @@ The Windows installer (NSIS) is not part of the check: its timestamps are not co
 ### Verify a release
 
 1. `git checkout <tag>`, then `cd docker-build && ./build.sh <target>`.
-2. Compare `build/<target>/SHA256SUMS` with the published one: they must be identical.
+2. Compare `build/<target>/SHA256SUMS` with the `SHA256SUMS-<target>.asc` attached to the release (the same file,
+   clear-signed): the lines with the checksums must be identical (`gpg --verify` checks the signature).
+
+The release also has a `SHA256SUMS` for the archives and the installer that you download; it checks the download,
+not the reproducibility.
 
 Two builders on different machines with the same result is the strongest check available here; the check above only compares two builds on the same machine.
 
@@ -82,7 +86,7 @@ Two builders on different machines with the same result is the strongest check a
 
 - The reproducibility is checked between builds on the same machine only. Until someone else builds the same commit and compares their hashes, the claim rests on that.
 - The packages come from `snapshot.ubuntu.com`. If the service is down the image cannot be built, and the packages are pinned by the date of the snapshot, not by their own hashes.
-- `SHA256SUMS` is not signed.
+- The `SHA256SUMS` written by the build is not signed; the release publishes signed copies of it.
 - The binaries are not started and the tests are not run by the build; `make check` and the functional tests run in the CI workflow.
 - The NSIS installer is not reproducible and is excluded from the check.
 - The Linux binaries are built on Ubuntu 20.04 (glibc 2.31) with `--enable-glibc-back-compat`: they need glibc 2.31 or newer.
