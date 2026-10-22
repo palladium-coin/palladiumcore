@@ -24,7 +24,7 @@ Output, in `build/<target>/` (at the root of the repository, ignored by git):
 - the stripped binaries
 - `SHA256SUMS`: the checksums to publish and to compare
 - `build-info.txt`: commit, source date, target and image of the build
-- the installer, if requested
+- the installer, if requested: `palladium-<version>-win64-setup-unsigned.exe` (not code-signed, not reproducible)
 
 Environment variables of `build.sh`:
 

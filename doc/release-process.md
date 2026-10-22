@@ -72,7 +72,7 @@ git push origin v<version>
 
 1. Make one archive per target from the binaries of `build/<target>/`, for example
    `palladium-<version>-x86_64-linux-gnu.tar.gz`, `palladium-<version>-win64.zip` and the installer
-   `palladium-<version>-win64-setup.exe`.
+   `palladium-<version>-win64-setup-unsigned.exe` (the installer is not code-signed).
 2. Create `SHA256SUMS` with the checksums of the files to publish and sign it. Check that `SHA256SUMS` itself is
    not in the list.
 

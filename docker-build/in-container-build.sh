@@ -84,7 +84,14 @@ done
 if [[ "${TARGET}" == windows && "${BUILD_INSTALLER}" == true ]]; then
     echo "[*] make deploy (installer; not part of the reproducibility check)"
     make deploy
-    find . -iname 'palladium-*-win64-setup.exe' -exec install -m 0644 {} /out/ \;
+    # NSIS writes <name>-<version>-win64-setup-unsigned.exe (not code-signed) into the source directory.
+    # make deploy prints an error but exits 0 when NSIS fails, so check that the installer exists.
+    installer="$(find . -maxdepth 1 -name 'palladium-*-win64-setup-unsigned.exe' | head -n1)"
+    if [[ -z "${installer}" ]]; then
+        echo "[!] make deploy did not produce the installer (palladium-*-win64-setup-unsigned.exe)" >&2
+        exit 1
+    fi
+    install -m 0644 "${installer}" /out/
 fi
 
 echo "[*] checksums"
