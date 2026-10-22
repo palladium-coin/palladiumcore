@@ -43,7 +43,7 @@ In order to build the Palladium Core a static build of Qt is required. The runti
 
 Some prebuilt x64 versions of Qt can be downloaded from [here](https://github.com/sipsorcery/qt_win_binary/releases). Please be aware these downloads are NOT officially sanctioned by Palladium Core and are provided for developer convenience only. They should NOT be used for builds that will be used in a production environment or with real funds.
 
-To determine which Qt prebuilt version to download open the `.appveyor.yml` file and note the `QT_DOWNLOAD_URL`. When extracting the zip file the destination path must be set to `C:\`. This is due to the way that Qt includes, libraries and tools use internal paths.
+Download the Qt version that `depends/packages/qt.mk` uses (`$(package)_version`). When extracting the zip file the destination path must be set to `C:\`. This is due to the way that Qt includes, libraries and tools use internal paths.
 
 To build Palladium Core without Qt unload or disable the `palladium-qt`, `libpalladium_qt` and `test_palladium-qt` projects.
 
@@ -80,14 +80,3 @@ msbuild /m palladium.sln /p:Platform=x64 /p:Configuration=Release /t:build
 ```
 
 - Alternatively open the `build_msvc\palladium.sln` file in Visual Studio.
-
-AppVeyor
----------------------
-The .appveyor.yml in the root directory is suitable to perform builds on [AppVeyor](https://www.appveyor.com/) Continuous Integration servers. The simplest way to perform an AppVeyor build is to fork Palladium Core and then configure a new AppVeyor Project pointing to the forked repository.
-
-For safety reasons the Palladium Core .appveyor.yml file has the artifact options disabled. The build will be performed but no executable files will be available. To enable artifacts on a forked repository uncomment the lines shown below:
-
-```
-    #- 7z a palladium-%APPVEYOR_BUILD_VERSION%.zip %APPVEYOR_BUILD_FOLDER%\build_msvc\%platform%\%configuration%\*.exe
-    #- path: palladium-%APPVEYOR_BUILD_VERSION%.zip
-```

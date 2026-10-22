@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Runs inside the build container (started by build.sh). Do not run it on the host.
-export LC_ALL=C TZ=UTC
+export LC_ALL=C
+export TZ=UTC
 set -euo pipefail
 
 : "${TARGET:?}" "${HOST_TRIPLE:?}" "${SOURCE_DATE_EPOCH:?}" "${COMMIT:?}"

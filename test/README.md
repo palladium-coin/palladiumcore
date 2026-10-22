@@ -237,7 +237,7 @@ levels using the logger included in the test_framework, e.g.
   `test_framework.log` and no logs are output to the console.
 - when run directly, *all* logs are written to `test_framework.log` and INFO
   level and above are output to the console.
-- when run by [our CI (Continuous Integration)](/ci/README.md), no logs are output to the console. However, if a test
+- when run by [our CI (Continuous Integration)](../.github/workflows/ci.yml), no logs are output to the console. However, if a test
   fails, the `test_framework.log` and palladiumd `debug.log`s will all be dumped
   to the console to help troubleshooting.
 
@@ -346,7 +346,7 @@ Use the `-v` option for verbose output.
 
 #### Dependencies
 
-| Lint test | Dependency | Version [used by CI](../ci/lint/04_install.sh) | Installation
+| Lint test | Dependency | Version | Installation
 |-----------|:----------:|:-------------------------------------------:|--------------
 | [`lint-python.sh`](lint/lint-python.sh) | [flake8](https://gitlab.com/pycqa/flake8) | [3.7.8](https://github.com/palladium/palladium/pull/15257) | `pip3 install flake8==3.7.8`
 | [`lint-shell.sh`](lint/lint-shell.sh) | [ShellCheck](https://github.com/koalaman/shellcheck) | [0.6.0](https://github.com/palladium/palladium/pull/15166) | [details...](https://github.com/koalaman/shellcheck#installing)
