@@ -95,7 +95,9 @@ if [[ "${TARGET}" == windows && "${BUILD_INSTALLER}" == true ]]; then
 fi
 
 echo "[*] checksums"
-(cd /out && sha256sum palladium*"${SUFFIX}" > SHA256SUMS)
+# Only the binaries: the installer is not reproducible, so it is not in the list that is compared
+(cd /out && sha256sum palladium-cli"${SUFFIX}" palladium-qt"${SUFFIX}" palladium-tx"${SUFFIX}" \
+    palladium-wallet"${SUFFIX}" palladiumd"${SUFFIX}" > SHA256SUMS)
 cat > /out/build-info.txt <<INFO
 commit: ${COMMIT}
 source date epoch: ${SOURCE_DATE_EPOCH}
