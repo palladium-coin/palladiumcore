@@ -73,7 +73,7 @@ echo "[*] build image ${IMAGE_NAME}"
 docker build --platform=linux/amd64 \
     --build-arg EXTRA_PACKAGES="${EXTRA_PACKAGES}" \
     --build-arg POST_INSTALL="${POST_INSTALL}" \
-    -t "${IMAGE_NAME}" -f "${SCRIPT_DIR}/Dockerfile" "${SCRIPT_DIR}"
+    -t "${IMAGE_NAME}" - < "${SCRIPT_DIR}/Dockerfile"
 IMAGE_ID="$(docker image inspect --format '{{.Id}}' "${IMAGE_NAME}")"
 
 mkdir -p "${OUT_DIR}" "${CACHE_DIR}/sources"

@@ -78,6 +78,15 @@ The Windows installer (NSIS) is not part of the check: its timestamps are not co
 
 Two builders on different machines with the same result is the strongest check available here; the check above only compares two builds on the same machine.
 
+### Limits
+
+- The reproducibility is checked between builds on the same machine only. Until someone else builds the same commit and compares their hashes, the claim rests on that.
+- The packages come from `snapshot.ubuntu.com`. If the service is down the image cannot be built, and the packages are pinned by the date of the snapshot, not by their own hashes.
+- `SHA256SUMS` is not signed.
+- The binaries are not started and the tests are not run by the build; `make check` and the functional tests run in the CI workflow.
+- The NSIS installer is not reproducible and is excluded from the check.
+- The Linux binaries are built on Ubuntu 20.04 (glibc 2.31) with `--enable-glibc-back-compat`: they need glibc 2.31 or newer.
+
 ### Changing the pins
 
 The digest of the base image and `APT_SNAPSHOT` change what is built, so change them on purpose, in a commit of their own, and write it in `CHANGELOG.md`:
