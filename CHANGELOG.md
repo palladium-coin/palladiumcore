@@ -22,6 +22,7 @@ Mainnet consensus rules are unchanged. One testnet validation rule is stricter (
 - Taproot spends are not relayed before the activation height (policy only)
 - The pre-fork OP_RETURN size limit is checked against the next block (`Height() + 1`), so a transaction accepted just before the fork height no longer fails in the first block of the fork (relay policy, not consensus)
 - Tip staleness and sync estimates use the post-fork block spacing (2 minutes)
+- Mainnet `chainTxData`, `nMinimumChainWork` and `defaultAssumeValid` (now block 541892) are updated; the signatures of the whole chain were verified with `-assumevalid=0` up to that block
 - `getblockchaininfo` reports Taproot as a buried softfork
 - `estimatesmartfee` returns the `-fallbackfee` rate when there is not enough data
 - Regtest: RPC port is now 28443 (P2P port minus 1 pattern), `nPowTargetSpacingV2` is set, and the difficulty is fixed (never retargets)
