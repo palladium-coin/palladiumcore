@@ -36,6 +36,19 @@ whole chain and can take from a few hours to a day, depending on your machine an
 Verify what you download: each release has a `SHA256SUMS` file. The binaries are built reproducibly (see
 below), so you can build the same commit yourself and compare the hashes.
 
+Or run it in Docker (Linux amd64, arm64 and armv7l). The image downloads the release and checks the signature
+and the checksums; the data directory is a named volume:
+
+```bash
+docker build -t palladiumd docker
+docker run -d --name palladium --restart unless-stopped -v ~/.palladium:/home/palladium/.palladium -p 2333:2333 palladiumd
+docker exec palladium palladium-cli getblockchaininfo
+```
+
+To use the node as the backend of other services (mining pool, explorer, ...), [docker/docker-compose.yml](docker/docker-compose.yml)
+runs it on the data directory of the host (`~/.palladium`, with its `palladium.conf`) and opens RPC and ZMQ only to
+the containers on the `palladium` network: `cd docker && docker compose up -d --build`.
+
 Configuration is optional. Create `palladium.conf` in the data directory (`~/.palladium/` on Linux,
 `%APPDATA%\Palladium\` on Windows, `~/Library/Application Support/Palladium/` on macOS). All the options, with
 examples for mainnet, testnet and regtest, are in the [configuration guide](doc/configuration-file.md).

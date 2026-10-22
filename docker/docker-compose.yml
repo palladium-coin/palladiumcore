@@ -1,0 +1,22 @@
+# Palladium node for other containers (pool, explorer, ...). Setup and usage: README.md
+services:
+  palladiumd:
+    build: .
+    image: palladiumd
+    restart: unless-stopped
+    # added to the rpcbind/rpcallowip of palladium.conf (172.16.0.0/12 is where Docker puts its networks)
+    command: ["-rpcbind=0.0.0.0", "-rpcallowip=172.16.0.0/12"]
+    ports:
+      - "2333:2333"      # P2P only
+    volumes:
+      - ${PALLADIUM_DATADIR:-~/.palladium}:/home/palladium/.palladium
+    # owner of the data directory: PLM_UID/PLM_GID if it is not user 1000
+    user: "${PLM_UID:-1000}:${PLM_GID:-1000}"
+    environment:
+      HOME: /home/palladium
+    stop_grace_period: 2m   # lets the node flush the chainstate on shutdown
+    networks: [palladium]
+
+networks:
+  palladium:
+    name: palladium
