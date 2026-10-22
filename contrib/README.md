@@ -26,20 +26,8 @@ The [Debian](/contrib/debian) subfolder contains the copyright file.
 
 All other packaging related files can be found in the [palladium-core/packaging](https://github.com/palladium-core/packaging) repository.
 
-### [Gitian-descriptors](/contrib/gitian-descriptors) ###
-Files used during the gitian build process. For more information about gitian, see the [the Palladium Core documentation repository](https://github.com/palladium-core/docs).
-
-### [Gitian-keys](/contrib/gitian-keys)
-PGP keys used for signing Palladium Core [Gitian release](/doc/release-process.md) results.
-
 ### [MacDeploy](/contrib/macdeploy) ###
 Scripts and notes for Mac builds.
-
-### [Gitian-build](/contrib/gitian-build.py) ###
-Script for running full Gitian builds.
-
-Test and Verify Tools
----------------------
 
 ### [TestGen](/contrib/testgen) ###
 Utilities to generate test vectors for the data-driven Palladium tests.
