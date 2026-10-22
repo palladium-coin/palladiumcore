@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [2.1.0] - 2026-10-21
+## [2.1.0] - 2026-10-22
 
 Mainnet consensus rules are unchanged. One testnet validation rule is stricter (see Changed).
 
@@ -29,6 +29,12 @@ Mainnet consensus rules are unchanged. One testnet validation rule is stricter (
 - `pow.cpp` uses named constants and consensus parameters instead of hardcoded fork heights and timespan
 - `-walletdir` with a trailing path separator is canonicalised
 - Man pages and examples use the Palladium default ports
+- `update_version.sh` takes the version as an argument (`--rc N`, `--dev`), also sets `CLIENT_VERSION_RC` and `CLIENT_VERSION_IS_RELEASE`, updates the date of the man pages and checks the result
+
+### Removed
+- Gitian (`contrib/gitian-*`, `doc/gitian-building.md`) and Guix (`contrib/guix/`): the release binaries are built with `docker-build/`
+- The inherited Travis, Cirrus and AppVeyor configuration and the `ci/` scripts, replaced by the GitHub Actions workflow
+- `INSTALL.md` and `.python-version`
 
 ### Fixed
 - Signed overflow (undefined behaviour) when a peer sends an extreme timestamp in its `version` message; found by the new `process_messages` fuzz target. The value is clamped before the clock offset is computed.
@@ -47,6 +53,7 @@ Mainnet consensus rules are unchanged. One testnet validation rule is stricter (
 ### Documentation
 - Documented the known limit of the LWMA (zero target if every target of the window is below about 2^30, unreachable on a real chain) in `doc/palladium-consensus.md` and `src/pow.cpp`; no behaviour change. Fixed the order of the difficulty rules in that page (regtest never retargets)
 - Added `doc/testing.md` (what the tests cover) and rewrote `doc/fuzzing.md` for the harnesses that exist
+- Restructured `README.md` and rewrote `doc/release-process.md` for the Docker build, the signed `SHA256SUMS` and the GitHub release; `docker-build/README.md` describes the reproducibility check and its limits
 
 ## [2.0.3] - 2026-03-12
 
