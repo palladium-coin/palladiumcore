@@ -1,10 +1,10 @@
 # Runs palladiumd from the official release binaries (not built from source: see ../docker-build for that).
 #
 #   docker build -t palladiumd docker
-#   docker run -d --name palladium -v ~/.palladium:/home/palladium/.palladium -p 2333:2333 palladiumd
-#   docker exec palladium palladium-cli getblockchaininfo
+#   docker run -d --name docker-palladiumcore -v ~/.palladium:/home/palladium/.palladium -p 2333:2333 palladiumd
+#   docker exec docker-palladiumcore palladium-cli getblockchaininfo
 #
-# Builds for linux/amd64, linux/arm64 and linux/arm/v7 (docker buildx build --platform ... ).
+# Builds for linux/amd64 and linux/arm64 (docker buildx build --platform ... ).
 #
 # The archive is checked against the clearsigned SHA256SUMS.asc, which is checked against the release key (pinned fingerprint below).
 
@@ -13,7 +13,7 @@ FROM ubuntu:22.04 AS fetch
 ARG VERSION=2.1.0
 # Fingerprint of palladium-release-key.asc, published in the release notes
 ARG RELEASE_FPR=70D5C2A2F6C5A128CD9223F227AB4AEDBF5D8BC1
-# Set automatically by BuildKit: amd64, arm64 or arm
+# Set automatically by BuildKit: amd64 or arm64
 ARG TARGETARCH
 
 RUN apt-get update \
@@ -25,7 +25,6 @@ RUN set -eux; \
     case "${TARGETARCH}" in \
       amd64) T=x86_64-linux-gnu ;; \
       arm64) T=aarch64-linux-gnu ;; \
-      arm)   T=arm-linux-gnueabihf ;; \
       *) echo "unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     URL=https://github.com/palladium-coin/palladiumcore/releases/download/v${VERSION}; \

@@ -38,6 +38,7 @@ The following are developer notes on how to build Palladium Core on your native 
 - [macOS Build Notes](build-osx.md)
 - [Unix Build Notes](build-unix.md)
 - [Windows Build Notes](build-windows.md)
+- [Docker image](../docker/README.md) (build and publish)
 - [FreeBSD Build Notes](build-freebsd.md)
 - [OpenBSD Build Notes](build-openbsd.md)
 - [NetBSD Build Notes](build-netbsd.md)
@@ -66,6 +67,7 @@ The Palladium repo's [root README](/README.md) contains relevant information on 
 
 ### Miscellaneous
 - [Assets Attribution](assets-attribution.md)
+- [Running a node in production with Docker](docker-production.md)
 - [palladium.conf Configuration File](palladium-conf.md)
 - [Files](files.md)
 - [Tests and what they cover](testing.md)

@@ -36,18 +36,19 @@ whole chain and can take from a few hours to a day, depending on your machine an
 Verify what you download: each release has a `SHA256SUMS` file. The binaries are built reproducibly (see
 below), so you can build the same commit yourself and compare the hashes.
 
-Or run it in Docker (Linux amd64, arm64 and armv7l). The image downloads the release and checks the signature
-and the checksums; the data directory is a named volume:
+Or run it in Docker (Linux amd64 and arm64). The image is built from the release, checking the signature
+and the checksums; the data directory is the `~/.palladium` of the host:
 
 ```bash
-docker build -t palladiumd docker
-docker run -d --name palladium --restart unless-stopped -v ~/.palladium:/home/palladium/.palladium -p 2333:2333 palladiumd
-docker exec palladium palladium-cli getblockchaininfo
+docker run -d --name docker-palladiumcore --restart unless-stopped -v ~/.palladium:/home/palladium/.palladium -p 2333:2333 ghcr.io/palladium-coin/palladiumcore:2.1.0
+docker exec docker-palladiumcore palladium-cli getblockchaininfo
 ```
 
 To use the node as the backend of other services (mining pool, explorer, ...), [docker/docker-compose.yml](docker/docker-compose.yml)
 runs it on the data directory of the host (`~/.palladium`, with its `palladium.conf`) and opens RPC and ZMQ only to
-the containers on the `palladium` network: `cd docker && docker compose up -d --build`.
+the containers on the `palladium` network: `cd docker && docker compose up -d`. Building the image, publishing it and the other options are in
+[docker/README.md](docker/README.md); putting a node on a server (pool, explorer, Electrum server, ports, backups) is in
+[doc/docker-production.md](doc/docker-production.md).
 
 Configuration is optional. Create `palladium.conf` in the data directory (`~/.palladium/` on Linux,
 `%APPDATA%\Palladium\` on Windows, `~/Library/Application Support/Palladium/` on macOS). All the options, with

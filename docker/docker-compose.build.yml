@@ -1,0 +1,6 @@
+# Builds the image from the Dockerfile instead of pulling it from ghcr.io. Used on top of docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  palladiumd:
+    build: .
+    image: palladiumd:dev
