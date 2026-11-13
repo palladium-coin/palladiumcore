@@ -1,0 +1,24 @@
+# vendored subtrees
+src/leveldb/
+src/secp256k1/
+src/univalue/
+src/crc32c/
+src/minisketch/
+src/ipc/libmultiprocess/
+depends/
+# generated / data
+src/qt/locale/
+src/test/data/
+test/fuzz/corpus/
+# build config, tooling, images
+build_msvc/
+.claude/
+*.png
+*.svg
+*.ico
+*.icns
+*.jpg
+*.jpeg
+*.bmp
+*.xpm
+*.gif
