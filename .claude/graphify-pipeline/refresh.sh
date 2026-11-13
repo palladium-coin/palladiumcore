@@ -7,7 +7,10 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 WORK="${GRAPHIFY_CLEAN_DIR:-$HOME/.cache/graphify-clean/$(basename "$REPO")}"
-PY="$(uv tool run --from graphifyy python -c 'import sys; print(sys.executable)')"
+# graphify is pinned: a different version can parse differently and give a different graph.
+GRAPHIFY_VERSION="${GRAPHIFY_VERSION:-0.9.108}"
+PY="$(uv tool run --from "graphifyy==$GRAPHIFY_VERSION" python -c 'import sys; print(sys.executable)')"
+echo "graphify $("$PY" -c 'import importlib.metadata as m; print(m.version("graphifyy"))') ($PY)"
 
 rm -rf "$WORK"; mkdir -p "$WORK"
 python3 -I "$HERE/strip_annotations.py" "$REPO" "$WORK" --groups "${GRAPHIFY_GROUPS:-annot,misc,cond,boost}" \
@@ -19,5 +22,5 @@ OUT="$REPO/graphify-out"; mkdir -p "$OUT/raw"
 # keep the first (unstripped) graph once, for comparison
 [ -f "$OUT/raw/graph.raw.json" ] || { [ -f "$OUT/graph.json" ] && cp "$OUT/graph.json" "$OUT/raw/graph.raw.json" || true; }
 cp "$WORK/graphify-out/graph.json" "$WORK/graphify-out/GRAPH_REPORT.md" "$WORK/graphify-out/buildsys.json" "$OUT/"
-( cd "$WORK" && graphify export html >/dev/null 2>&1 ) && cp "$WORK/graphify-out/graph.html" "$OUT/" || true
+( cd "$WORK" && "$PY" -m graphify export html >/dev/null 2>&1 ) && cp "$WORK/graphify-out/graph.html" "$OUT/" || true
 echo "installed clean graph into $OUT (source of truth: stripped copy at $WORK)"
