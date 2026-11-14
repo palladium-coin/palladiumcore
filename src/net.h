@@ -765,7 +765,7 @@ public:
     bool HasPermission(NetPermissionFlags permission) const {
         return NetPermissions::HasFlag(m_permissionFlags, permission);
     }
-    // This boolean is unusued in actual processing, only present for backward compatibility at RPC/QT level
+    // This boolean is unused in actual processing, only present for backward compatibility at RPC/QT level
     bool m_legacyWhitelisted{false};
     bool fFeeler{false}; // If true this node is being used as a short lived feeler.
     bool fOneShot{false};
