@@ -1675,7 +1675,8 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                     {
                         const int taprootHeight = chainparams.GetConsensus().TaprootHeight;
                         LOCK(cs_main);
-                        for (auto& [hash, pindex] : ::BlockIndex()) {
+                        for (auto& entry : ::BlockIndex()) {
+                            CBlockIndex* pindex = entry.second;
                             if (pindex->nHeight < taprootHeight &&
                                     (pindex->nStatus & BLOCK_FAILED_MASK)) {
                                 ResetBlockFailureFlags(pindex);

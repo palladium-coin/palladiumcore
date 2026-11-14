@@ -74,7 +74,13 @@ std::vector<fs::path> ListWalletDir()
         if (it->status().type() == fs::directory_file && IsBerkeleyBtree(it->path() / "wallet.dat")) {
             // Found a directory which contains wallet.dat btree file, add it as a wallet.
             paths.emplace_back(path);
-        } else if (it.level() == 0 && it->symlink_status().type() == fs::regular_file && IsBerkeleyBtree(it->path())) {
+        } else if (
+#if BOOST_VERSION >= 107200
+                   it.depth() == 0
+#else
+                   it.level() == 0
+#endif
+                   && it->symlink_status().type() == fs::regular_file && IsBerkeleyBtree(it->path())) {
             if (it->path().filename() == "wallet.dat") {
                 // Found top-level wallet.dat btree file, add top level directory ""
                 // as a wallet.
