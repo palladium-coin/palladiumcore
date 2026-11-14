@@ -144,3 +144,6 @@ osx_volname
 dist/
 *.background.tiff
 GEMINI.md
+
+# graphify knowledge graph, rebuilt by .claude/graphify-pipeline/refresh.sh
+graphify-out/
