@@ -1681,7 +1681,7 @@ void static ProcessGetData(CNode* pfrom, const CChainParams& chainparams, CConnm
         // of transactions relevant to them, without having to download the
         // entire memory pool.
         // Also, other nodes can use these messages to automatically request a
-        // transaction from some other peer that annnounced it, and stop
+        // transaction from some other peer that announced it, and stop
         // waiting for us to respond.
         // In normal operation, we often send NOTFOUND messages for parents of
         // transactions that we relay; if a peer is missing a parent, they may
