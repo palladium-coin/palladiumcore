@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2024 The Palladium Core developers
+# Copyright (c) 2009-2026 The Palladium Core developers
 # Distributed under the MIT software license
 """Taproot (BIP340/341/342) functional tests.
 
