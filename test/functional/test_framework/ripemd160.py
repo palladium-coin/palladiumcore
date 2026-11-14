@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2021 The Palladium Core developers
+# Copyright (c) 2009-2026 The Palladium Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Pure Python RIPEMD-160, for systems whose OpenSSL no longer provides it (OpenSSL 3).
