@@ -27,6 +27,7 @@ BARE = {"annot": ("NODISCARD", "Q_OBJECT"), "misc": ("QT_BEGIN_NAMESPACE", "QT_E
 EXTS = {".h", ".hpp", ".c", ".cc", ".cpp", ".cxx"}
 RE_ACC = re.compile(r"\b(Q_SIGNALS|Q_SLOTS)\b")
 RE_AFTER_ACCESS = re.compile(r"\b(public|private|protected)\s+$")
+RE_ALIGNAS = re.compile(r"(?<=\w)\s+alignas\s*\(\s*\d+\s*\)(?=\s*\[)")
 RE_UNUSED = re.compile(r"\bUNUSED\b(?!\s*\()")
 RE_ASM = re.compile(r"\b(__asm__|asm)\b(\s*(__volatile__|volatile))?\s*\(")
 RE_BOOST_CASE = re.compile(r"\bBOOST_(?:AUTO|FIXTURE)_TEST_CASE\s*\(\s*(\w+)\s*(?:,[^)]*)?\)")
@@ -110,6 +111,8 @@ def strip_text(text, groups, stats):
     if "misc" in groups:
         for m in RE_UNUSED.finditer(text):
             add(m.start(), m.end(), blank(m.group(0)), "UNUSED")
+        for m in RE_ALIGNAS.finditer(text):
+            add(m.start(), m.end(), blank(m.group(0)), "alignas")
         for m in RE_ASM.finditer(text):
             e = match_paren(text, m.end())
             if e < 0: stats["unbalanced"] += 1; continue

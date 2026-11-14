@@ -35,7 +35,7 @@ function names (for example `ContextualCheckBlockHeader`, `AcceptToMemoryPoolWit
 ## Reproducibility
 
 Checked once: a fresh clone of the branch rebuilt with `refresh.sh` gave a graph identical to the one
-built in the working tree (22,446 nodes, 53,164 edges, same community names; no node or edge on one side only).
+built in the working tree (22,446 nodes, 53,164 edges (before the alignas and palladium-cli fixes), same community names; no node or edge on one side only).
 That was on the same machine, with graphify already installed. Not checked: a host without `uv` or
 graphify, or with another user/home directory.
 
@@ -52,9 +52,9 @@ and to `graphify-out/`; it never modifies the sources.
 | File | Role |
 |---|---|
 | `refresh.sh` | entry point: strip -> build -> labels -> install |
-| `strip_annotations.py` | copies the tracked tree and blanks what the parser cannot read, keeping every line and column in place. Groups: `annot` (thread-safety and Qt macros), `misc` (Qt namespace macros, `UNUSED`, `__declspec`, `asm`), `cond` (first branch of `#ifdef/#else` in the files of `first_branch_files.json`), `boost` (`BOOST_AUTO_TEST_CASE(name)` becomes `void name()`). Also writes `.graphifyrc` (`language.h=cpp`) and takes the exclusion list from `graphifyignore` |
+| `strip_annotations.py` | copies the tracked tree and blanks what the parser cannot read, keeping every line and column in place. Groups: `annot` (thread-safety and Qt macros), `misc` (Qt namespace macros, `UNUSED`, `__declspec`, `asm`, `alignas(N)` before `[]`), `cond` (first branch of `#ifdef/#else` in the files of `first_branch_files.json`), `boost` (`BOOST_AUTO_TEST_CASE(name)` becomes `void name()`). Also writes `.graphifyrc` (`language.h=cpp`) and takes the exclusion list from `graphifyignore` |
 | `graphifyignore` | what is left out of the graph: images, translations, test data, fuzz corpus, `depends/`, `build_msvc/`. The vendored subtrees (`leveldb`, `secp256k1`, `univalue`, `crc32c`) are included again by `refresh.sh` |
-| `first_branch_files.json` | files where conditional compilation splits a statement (`src/netbase.cpp`, `src/util/time.cpp`) |
+| `first_branch_files.json` | files where conditional compilation splits a statement (`src/netbase.cpp`, `src/palladium-cli.cpp`, `src/util/time.cpp`) |
 | `build_graph.py` | AST extraction, merges `semantic.json`, builds and clusters the graph, writes `buildsys.json` |
 | `build_system.py` | reads `src/Makefile.am` and `src/Makefile.*.include`: which source file belongs to which library or binary, and what links against what |
 | `apply_labels.py` + `labels.json` | names the largest communities; each name is attached to an anchor node, not to a community number, because numbers change between builds |
@@ -82,4 +82,4 @@ the committed files. On a host that has graphify, run `graphify install --projec
 - Classes have one placeholder node per file (`CTxMemPool`, `CWallet`): disambiguate with `file::symbol`.
 - Calls through a temporary, such as `MemPoolAccept(pool).AcceptSingleTransaction()`, are not resolved; calls between files are INFERRED (0.85).
 - Results include `src/test`, `src/bench` and the vendored code: ignore them for questions about Palladium itself.
-- Low confidence: `src/netbase.cpp`, `src/util/time.cpp`, `src/tinyformat.h`, `src/palladium-cli.cpp`, `src/qt/`, and the four files that still fail to parse (`src/crypto/sha256_sse4.cpp`, `src/palladium-cli.cpp`, `src/test/arith_uint256_tests.cpp`, `src/tinyformat.h`).
+- Low confidence: `src/netbase.cpp`, `src/util/time.cpp`, `src/tinyformat.h`, `src/qt/`, and the four files that still fail to parse (`src/crypto/sha256_sse4.cpp`, `src/palladium-cli.cpp`, `src/test/arith_uint256_tests.cpp`, `src/tinyformat.h`).
