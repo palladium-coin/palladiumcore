@@ -21,9 +21,11 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ARGS_MACROS = {
     "annot": ("EXCLUSIVE_LOCKS_REQUIRED", "LOCKS_EXCLUDED", "GUARDED_BY"),
-    "misc": ("__declspec", "TINYFORMAT_DEFINE_FORMAT_TRUNCATED_CSTR"),
+    "misc": ("__declspec", "TINYFORMAT_DEFINE_FORMAT_TRUNCATED_CSTR",
+             "CHECKBITWISEOPERATOR", "CHECKASSIGNMENTOPERATOR", "TINYFORMAT_DEFINE_FORMATVALUE_CHAR"),
 }
 BARE = {"annot": ("NODISCARD", "Q_OBJECT"), "misc": ("QT_BEGIN_NAMESPACE", "QT_END_NAMESPACE")}
+BLANK_DEFINES = {"src/tinyformat.h"}
 EXTS = {".h", ".hpp", ".c", ".cc", ".cpp", ".cxx"}
 RE_ACC = re.compile(r"\b(Q_SIGNALS|Q_SLOTS)\b")
 RE_AFTER_ACCESS = re.compile(r"\b(public|private|protected)\s+$")
@@ -80,6 +82,14 @@ def first_branch_only(text):
             kill.update(g["dirs"])
             kill.update(range(g["else_from"], g["end"] + 1))
     return "\n".join(blank(ln) if i in kill else ln for i, ln in enumerate(lines))
+
+
+RE_DEFINE = re.compile(r"^[ \t]*#[ \t]*define\b(?:[^\n]*\\\n)*[^\n]*", re.M)
+
+
+def blank_defines(text):
+    """Blank whole (multi-line) #define blocks: used for files whose macros hold unparsable code."""
+    return RE_DEFINE.sub(lambda m: blank(m.group(0)), text)
 
 
 def strip_text(text, groups, stats):
@@ -165,6 +175,8 @@ def main(argv):
                 text, enc = raw.decode("latin-1"), "latin-1"
             stats["files_total"] += 1
             new = strip_text(text, groups, stats)
+            if rel in BLANK_DEFINES:
+                new = blank_defines(new); stats["blank_defines_files"] += 1
             if rel in fb:
                 new = first_branch_only(new); stats["first_branch_files"] += 1
             if new != text:
