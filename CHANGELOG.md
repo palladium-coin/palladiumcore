@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - 2026-11-14
+
+Maintenance release. Consensus rules and the network protocol are unchanged.
+
+### Fixed
+- Compiler warnings: C++17 structured bindings in a C++11 tree (`init`, `outputtype`, `script/sign`, `wallet/scriptpubkeyman`), the enum/integer ternary in `script/interpreter.cpp`, and the deprecated Boost.Filesystem calls in `wallet/db.cpp` and `wallet/walletutil.cpp`
+- RPC help examples used Bitcoin `bc1q` addresses and port 8332; they now use `plm1q` addresses and port 2332 (same port in `doc/REST-interface.md`)
+- `contrib/verifybinaries/verify.sh` tested `$?` after a condition (shellcheck SC2319)
+- Spelling in comments and in the `psbt.h` error message ("transaction")
+
+### Changed
+- Copyright header is now `2009-2026 The Palladium Core developers` in every first-party file
+- `CLAUDE.md` no longer claims descriptor-wallet support (`createwallet` has no `descriptors` option)
+- The graphify pipeline (`.claude/graphify-pipeline/`) passes `test/lint`
+
 ## [2.1.0] - 2026-10-22
 
 Mainnet consensus rules are unchanged. One testnet validation rule is stricter (see Changed).
