@@ -45,7 +45,7 @@ Library layering (defined in `src/Makefile.am`), lowest to highest — respect i
 - `libpalladium_consensus` — consensus-critical code only (`src/consensus/`, script, primitives, pow.cpp helpers). Also exposed as `libpalladiumconsensus` (`libpalladiumconsensus.pc.in`).
 - `libpalladium_util`, `libpalladium_crypto_*` (SSE4.1/AVX2 variants built separately), `libpalladium_common` — shared utilities, key/address handling, chain params.
 - `libpalladium_server` — node: `init.cpp` (startup/shutdown wiring), `validation.cpp` (chainstate, mempool acceptance, block connect), `net.cpp` / `net_processing.cpp` (P2P), `txmempool.cpp`, `miner.cpp`, RPC (`src/rpc/`, `httprpc.cpp`, `httpserver.cpp`), indexes (`src/index/`), `libpalladium_zmq` for notifications.
-- `libpalladium_wallet` (+ `_wallet_tool`) — `src/wallet/`, BDB and descriptor wallets; `dummywallet.cpp` is the stub when built without wallet.
+- `libpalladium_wallet` (+ `_wallet_tool`) — `src/wallet/`, legacy BDB wallets only (no descriptor wallets: `createwallet` has no `descriptors` option); `dummywallet.cpp` is the stub when built without wallet.
 - `libpalladiumqt` — GUI in `src/qt/`; talks to the node through `src/interfaces/` (Node/Wallet/Chain), not directly.
 - `src/leveldb`, `src/secp256k1`, `src/univalue`, `src/crc32c` are vendored subtrees — don't edit them (see `test/lint/lint-submodule.sh` / `git-subtree-check.sh`).
 
