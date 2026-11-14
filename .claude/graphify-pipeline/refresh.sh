@@ -3,6 +3,7 @@
 # into <repo>/graphify-out/. Use this INSTEAD of `graphify update .`, which would
 # re-parse the original sources and bring back the EXCLUSIVE_LOCKS_REQUIRED / NODISCARD / Q_* defects.
 #   .claude/graphify-pipeline/refresh.sh
+export LC_ALL=C
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"

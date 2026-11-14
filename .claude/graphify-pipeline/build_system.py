@@ -34,6 +34,7 @@ def _read_vars(root: Path):
 def _expand(val, vars_, depth=0):
     if depth > 8:
         return val
+
     def rep(m):
         v = m.group(1)
         return _expand(vars_[v], vars_, depth + 1) if v in vars_ else m.group(0)
@@ -88,7 +89,8 @@ def build_layer(root: Path, nodes: list):
 
 
 if __name__ == "__main__":
-    import json, sys
+    import json
+    import sys
     g = json.load(open(sys.argv[2]))
     n, e = build_layer(Path(sys.argv[1]), g["nodes"])
     print(len(n), "targets,", len(e), "edges")

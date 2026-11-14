@@ -14,7 +14,12 @@ Groups (each is one measurable transformation):
          first_branch_files.json (conditional code split mid-statement)  (default on)
   boost  BOOST_AUTO/FIXTURE_TEST_CASE(name..) -> `void name()`, suites blanked  (opt-in)
 """
-import bisect, json, re, shutil, subprocess, sys
+import bisect
+import json
+import re
+import shutil
+import subprocess
+import sys
 from collections import defaultdict
 from pathlib import Path
 
@@ -46,7 +51,8 @@ def match_paren(text, j):
     while j < n and depth:
         c = text[j]
         if c in "\"'":
-            q = c; j += 1
+            q = c
+            j += 1
             while j < n and text[j] != q:
                 j += 2 if text[j] == "\\" else 1
         elif c == "(":
@@ -69,13 +75,16 @@ def first_branch_only(text):
         d = m.group(1)
         if d in ("if", "ifdef", "ifndef"):
             g = {"dirs": [i], "else_from": None, "end": None}
-            groups.append(g); stack.append(g)
+            groups.append(g)
+            stack.append(g)
         elif stack:
-            g = stack[-1]; g["dirs"].append(i)
+            g = stack[-1]
+            g["dirs"].append(i)
             if d in ("elif", "else") and g["else_from"] is None:
                 g["else_from"] = i
             if d == "endif":
-                g["end"] = i; stack.pop()
+                g["end"] = i
+                stack.pop()
     kill = set()
     for g in groups:
         if g["else_from"] is not None and g["end"] is not None:
@@ -101,14 +110,17 @@ def strip_text(text, groups, stats):
     def add(s, e, r, key):
         if lineno(s) in pre:
             return
-        edits.append((s, e, r)); stats[key] += 1
+        edits.append((s, e, r))
+        stats[key] += 1
 
     for g in groups & {"annot", "misc"}:
         names = ARGS_MACROS.get(g, ())
         if names:
             for m in re.finditer(r"\b(" + "|".join(names) + r")\b\s*\(", text):
                 e = match_paren(text, m.end())
-                if e < 0: stats["unbalanced"] += 1; continue
+                if e < 0:
+                    stats["unbalanced"] += 1
+                    continue
                 add(m.start(), e, blank(text[m.start():e]), m.group(1))
         if BARE.get(g):
             for m in re.finditer(r"\b(" + "|".join(BARE[g]) + r")\b", text):
@@ -125,7 +137,9 @@ def strip_text(text, groups, stats):
             add(m.start(), m.end(), blank(m.group(0)), "alignas")
         for m in RE_ASM.finditer(text):
             e = match_paren(text, m.end())
-            if e < 0: stats["unbalanced"] += 1; continue
+            if e < 0:
+                stats["unbalanced"] += 1
+                continue
             add(m.start(), e, blank(text[m.start():e]), "asm")
     if "boost" in groups:
         for m in RE_BOOST_CASE.finditer(text):
@@ -139,7 +153,9 @@ def strip_text(text, groups, stats):
     for s, e, r in edits:
         if s < pos:
             continue
-        res.append(text[pos:s]); res.append(r); pos = e
+        res.append(text[pos:s])
+        res.append(r)
+        pos = e
     res.append(text[pos:])
     new = "".join(res)
     assert len(new) == len(text) and new.count("\n") == text.count("\n")
@@ -153,9 +169,11 @@ def main(argv):
     i = 2
     while i < len(argv):
         if argv[i] == "--groups":
-            groups = set(argv[i + 1].split(",")) - {""}; i += 2
+            groups = set(argv[i + 1].split(",")) - {""}
+            i += 2
         elif argv[i] == "--include":
-            includes.append(argv[i + 1].rstrip("/") + "/"); i += 2
+            includes.append(argv[i + 1].rstrip("/") + "/")
+            i += 2
         else:
             raise SystemExit("bad arg " + argv[i])
     fb = set(json.loads((HERE / "first_branch_files.json").read_text())) if "cond" in groups else set()
@@ -176,9 +194,11 @@ def main(argv):
             stats["files_total"] += 1
             new = strip_text(text, groups, stats)
             if rel in BLANK_DEFINES:
-                new = blank_defines(new); stats["blank_defines_files"] += 1
+                new = blank_defines(new)
+                stats["blank_defines_files"] += 1
             if rel in fb:
-                new = first_branch_only(new); stats["first_branch_files"] += 1
+                new = first_branch_only(new)
+                stats["first_branch_files"] += 1
             if new != text:
                 stats["files_changed"] += 1
             d.write_bytes(new.encode(enc))
@@ -191,7 +211,7 @@ def main(argv):
     if ig.exists():
         lines = ig.read_text().splitlines()
         # --include DIR: drop that directory's exclusion line so it enters the graph
-        lines = [l for l in lines if l.strip() not in includes]
+        lines = [ln for ln in lines if ln.strip() not in includes]
         (dst / ".graphifyignore").write_text("\n".join(lines) + "\n")
     print(dict(stats))
 

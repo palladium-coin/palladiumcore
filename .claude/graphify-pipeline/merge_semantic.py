@@ -7,7 +7,9 @@ Usage: merge_semantic.py <chunk_dir> <graph.json> <out semantic.json>
 - reports coverage and counts
 The result is applied by build_graph.py on every refresh (it merges semantic.json if present).
 """
-import glob, json, sys
+import glob
+import json
+import sys
 from pathlib import Path
 
 chunk_dir, graph_path, out_path = sys.argv[1:4]
@@ -38,7 +40,7 @@ for n in nodes.values():
 for e in ok:
     e.setdefault("_origin", "semantic")
 
-import re
+import re  # noqa: E402
 _pre = re.compile(r"^.*?/graphify-clean/[^/]+/")      # portable: repo-relative source_file
 for o in list(nodes.values()) + ok + hyper_ok:
     sf = o.get("source_file")
