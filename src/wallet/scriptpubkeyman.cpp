@@ -101,7 +101,7 @@ bool HaveTaprootKey(const valtype& xonly, const LegacyScriptPubKeyMan& keystore)
         if (keystore.GetKey(key_id, key)) {
             // Found a key, check if its tweaked version matches output_key
             XOnlyPubKey internal_key = key.GetPubKey().GetXOnlyPubKey();
-            auto [tweaked, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+            auto tweaked = internal_key.CreatePayToTaprootPubKey(nullptr).first;
             if (tweaked == output_key) {
                 return true;
             }
@@ -750,7 +750,7 @@ void LegacyScriptPubKeyMan::ImplicitlyLearnTaprootKeyScripts(const CPubKey& pubk
     if (!pubkey.IsCompressed()) return;
     const XOnlyPubKey internal_key = pubkey.GetXOnlyPubKey();
     if (!internal_key.IsFullyValid()) return;
-    auto [output_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+    auto output_key = internal_key.CreatePayToTaprootPubKey(nullptr).first;
     if (!output_key.IsFullyValid()) return;
 
     WitnessUnknown dest;
@@ -1391,7 +1391,7 @@ void LegacyScriptPubKeyMan::LearnRelatedScripts(const CPubKey& key, OutputType t
             // Store the mapping from tweaked output key to internal key
             // This allows us to find the internal key when signing
             XOnlyPubKey internal_key = key.GetXOnlyPubKey();
-            auto [output_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+            auto output_key = internal_key.CreatePayToTaprootPubKey(nullptr).first;
             if (output_key.IsFullyValid()) {
                 // Convert XOnlyPubKey to uint256 for storage
                 uint256 output_key_hash;
@@ -1427,7 +1427,7 @@ void LegacyScriptPubKeyMan::BackfillTaprootScriptsAndKeys()
         }
 
         XOnlyPubKey internal_key = pubkey.GetXOnlyPubKey();
-        auto [output_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+        auto output_key = internal_key.CreatePayToTaprootPubKey(nullptr).first;
         if (!output_key.IsFullyValid()) {
             continue;
         }

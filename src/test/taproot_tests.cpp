@@ -238,7 +238,7 @@ BOOST_AUTO_TEST_CASE(bip86_vectors)
     for (const Vector& v : vectors) {
         const std::vector<unsigned char> internal = ParseHex(v.internal_key);
         const XOnlyPubKey internal_key(internal.begin(), internal.end());
-        auto [output_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+        auto output_key = internal_key.CreatePayToTaprootPubKey(nullptr).first;
         BOOST_CHECK_EQUAL(HexStr(output_key.begin(), output_key.end()), v.output_key);
 
         // The wallet builds the destination from a compressed key; the x-only internal key

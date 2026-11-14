@@ -1628,7 +1628,7 @@ bool GenericTransactionSignatureChecker<T>::CheckSchnorrSignature(const std::vec
     if (pubkey_in.size() != 32) return set_error(serror, SCRIPT_ERR_PUBKEYTYPE);
     if (txdata == nullptr) return false;
 
-    const uint8_t hashtype = sig.size() == 65 ? sig[64] : SIGHASH_DEFAULT;
+    const uint8_t hashtype = sig.size() == 65 ? sig[64] : static_cast<uint8_t>(SIGHASH_DEFAULT);
     uint256 sighash;
     if (!SignatureHashSchnorr(sighash, execdata, *txTo, nIn, hashtype, sigversion, *txdata)) {
         return set_error(serror, SCRIPT_ERR_SCHNORR_SIG_HASHTYPE);

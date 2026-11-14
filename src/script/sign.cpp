@@ -136,7 +136,7 @@ static bool FindTaprootPubKey(const SigningProvider& provider, const std::vector
         XOnlyPubKey internal_key = found_pubkey.GetXOnlyPubKey();
         if (!internal_key.IsFullyValid()) continue;
 
-        auto [tweaked_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+        auto tweaked_key = internal_key.CreatePayToTaprootPubKey(nullptr).first;
 
         // Check if tweaked key matches the output key
         if (tweaked_key == output_key) {

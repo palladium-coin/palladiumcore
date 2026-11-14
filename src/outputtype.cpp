@@ -31,7 +31,7 @@ static CTxDestination GetDestinationForTaprootKey(const CPubKey& key)
     }
 
     // Compute the tweaked output key: output_key = internal_key + H(internal_key) * G
-    auto [output_key, parity] = internal_key.CreatePayToTaprootPubKey(nullptr);
+    auto output_key = internal_key.CreatePayToTaprootPubKey(nullptr).first;
     if (!output_key.IsFullyValid()) {
         return CNoDestination();
     }
