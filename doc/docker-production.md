@@ -57,7 +57,7 @@ What each option does is in [Appendix A](#appendix-a-what-each-option-does).
    ```yaml
    services:
      palladiumd:
-       image: ghcr.io/palladium-coin/palladiumcore:2.1.0
+       image: ghcr.io/palladium-coin/palladiumcore:2.1.1
        logging:
          driver: json-file
          options: { max-size: "50m", max-file: "5" }     # at most 5 files of 50 MB
@@ -409,7 +409,7 @@ node already uses. Publish (`ports:`) only what must be reachable from outside. 
 container on the network (the port is not published on the host), with the user and password of section 4:
 
 ```bash
-docker run --rm --network palladium --entrypoint palladium-cli ghcr.io/palladium-coin/palladiumcore:2.1.0 \
+docker run --rm --network palladium --entrypoint palladium-cli ghcr.io/palladium-coin/palladiumcore:2.1.1 \
   -rpcconnect=palladiumd -rpcport=2332 -rpcuser=<user> -rpcpassword=<password> getconnectioncount
 ```
 

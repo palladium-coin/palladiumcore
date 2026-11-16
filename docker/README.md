@@ -54,7 +54,7 @@ docker compose stop                # clean shutdown (up to 2 minutes to flush th
 Without compose:
 
 ```bash
-docker run -d --name docker-palladiumcore --restart unless-stopped -v ~/.palladium:/home/palladium/.palladium -p 2333:2333 ghcr.io/palladium-coin/palladiumcore:2.1.0
+docker run -d --name docker-palladiumcore --restart unless-stopped -v ~/.palladium:/home/palladium/.palladium -p 2333:2333 ghcr.io/palladium-coin/palladiumcore:2.1.1
 docker exec docker-palladiumcore palladium-cli getblockchaininfo
 ```
 
@@ -152,20 +152,20 @@ GitHub. The user of the node does not do this.
 
    ```bash
    docker buildx build --platform linux/amd64,linux/arm64 \
-     -t ghcr.io/palladium-coin/palladiumcore:2.1.0 -t ghcr.io/palladium-coin/palladiumcore:latest --push .
+     -t ghcr.io/palladium-coin/palladiumcore:2.1.1 -t ghcr.io/palladium-coin/palladiumcore:latest --push .
    ```
 
 3. Check that the image has both architectures (the two `unknown/unknown` entries are not architectures, they are
    records that Docker attaches about how it was built):
 
    ```bash
-   docker buildx imagetools inspect ghcr.io/palladium-coin/palladiumcore:2.1.0 | grep Platform
+   docker buildx imagetools inspect ghcr.io/palladium-coin/palladiumcore:2.1.1 | grep Platform
    ```
 
 4. The first time, the package is private. On GitHub: the organization → Packages → `palladiumcore` → Package settings →
    Change visibility → Public, and "Connect repository" to `palladiumcore`.
 5. Log out (`docker logout ghcr.io`: the token is stored unencrypted in `~/.docker/config.json`), delete the token on
-   GitHub, and test the pull without login: `docker run --rm ghcr.io/palladium-coin/palladiumcore:2.1.0 --version`.
+   GitHub, and test the pull without login: `docker run --rm ghcr.io/palladium-coin/palladiumcore:2.1.1 --version`.
 
 A tag can be pushed again to overwrite it; a wrong version of the package can be deleted from its page on GitHub.
 

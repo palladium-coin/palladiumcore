@@ -1,7 +1,7 @@
 # Palladium node for other containers (pool, explorer, ...). Setup and usage: README.md
 services:
   palladiumd:
-    image: ghcr.io/palladium-coin/palladiumcore:2.1.0   # to build it locally: docker-compose.build.yml (see README.md)
+    image: ghcr.io/palladium-coin/palladiumcore:2.1.1   # to build it locally: docker-compose.build.yml (see README.md)
     container_name: docker-palladiumcore
     restart: unless-stopped
     # added to the rpcbind/rpcallowip of palladium.conf (172.16.0.0/12 is where Docker puts its networks)

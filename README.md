@@ -40,7 +40,7 @@ Or run it in Docker (Linux amd64 and arm64). The image is built from the release
 and the checksums; the data directory is the `~/.palladium` of the host:
 
 ```bash
-docker run -d --name docker-palladiumcore --restart unless-stopped -v ~/.palladium:/home/palladium/.palladium -p 2333:2333 ghcr.io/palladium-coin/palladiumcore:2.1.0
+docker run -d --name docker-palladiumcore --restart unless-stopped -v ~/.palladium:/home/palladium/.palladium -p 2333:2333 ghcr.io/palladium-coin/palladiumcore:2.1.1
 docker exec docker-palladiumcore palladium-cli getblockchaininfo
 ```
 

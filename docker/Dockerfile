@@ -10,7 +10,7 @@
 
 FROM ubuntu:22.04 AS fetch
 
-ARG VERSION=2.1.0
+ARG VERSION=2.1.1
 # Fingerprint of palladium-release-key.asc, published in the release notes
 ARG RELEASE_FPR=70D5C2A2F6C5A128CD9223F227AB4AEDBF5D8BC1
 # Set automatically by BuildKit: amd64 or arm64

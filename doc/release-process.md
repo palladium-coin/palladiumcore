@@ -55,7 +55,10 @@ cd docker-build
 ./build.sh windows --installer           # the installer is not reproducible and is not checked
 ```
 
-The binaries are in `build/<target>/`. See [docker-build/README.md](../docker-build/README.md) for the options.
+`check-reproducible.sh` writes the two builds to `build/reproducible-check/<target>/a` and `/b`, not to
+`build/<target>/`. The steps below use `build/<target>/`, so build each target once more with
+`./build.sh <target>` (`REF=v<version>` to build a tag), or take the files from `.../a`. The binaries are in
+`build/<target>/`. See [docker-build/README.md](../docker-build/README.md) for the options.
 Only committed files are built, and the commit must be the one that will be tagged.
 
 Optionally, ask someone else to build the same commit on another machine and send their `SHA256SUMS`: they must
@@ -67,6 +70,10 @@ be identical to yours.
 git tag -s v<version> -m "Palladium Core <version>"
 git push origin v<version>
 ```
+
+The signing key is only on the maintainer's machine, so the tag and the signatures below are made by hand; CI never
+signs or publishes. If `gpg` fails with `Inappropriate ioctl for device`, run `export GPG_TTY=$(tty)` first (put it
+in `~/.bashrc`).
 
 ## Publish
 
@@ -97,7 +104,12 @@ done
 4. Create the [GitHub release](https://github.com/palladium-coin/palladiumcore/releases/new) for the tag, with
    the archives, the installer, `SHA256SUMS` and `SHA256SUMS.asc`, the four `SHA256SUMS-<target>` with their
    `.asc`, and a link to the `CHANGELOG.md` section.
-5. Announce the release on the official channels and update the websites.
+5. Publish the Docker image, **after** the release exists: the Dockerfile downloads the archive and
+   `SHA256SUMS.asc` from it and checks them against `RELEASE_FPR`. Follow
+   [Publish the image](../docker/README.md#publish-the-image-maintainers) (multi-architecture, tags `<version>` and
+   `latest`), then set the new version in `docker/Dockerfile`, `docker/docker-compose.yml` and the READMEs
+   (`build: use <version> in the Docker files`). It is not done by CI.
+6. Announce the release on the official channels and update the websites.
 
 ## Additional information
 
